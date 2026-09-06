@@ -1,0 +1,15 @@
+{
+  "name": "@craft-ones/game-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@colyseus/core": "0.16.24",
+    "@colyseus/ws-transport": "0.16.5",
+    "@craft-ones/shared": "workspace:*"
+  }
+}
