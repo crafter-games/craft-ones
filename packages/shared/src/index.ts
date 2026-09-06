@@ -21,12 +21,24 @@ export type Phase = "waiting" | "aiming" | "flying" | "exploding" | "finished";
 export type FireAction = { angle: number; power: number; turnNumber: number };
 
 export class Player extends Schema {
-  sessionId = "";
-  number = 0;
-  x = 0;
-  y = ARENA.groundY - ARENA.playerRadius;
-  hp = 100;
-  connected = true;
+  declare sessionId: string;
+  declare number: number;
+  declare x: number;
+  declare y: number;
+  declare hp: number;
+  declare connected: boolean;
+
+  constructor() {
+    super();
+    Object.assign(this, {
+      sessionId: "",
+      number: 0,
+      x: 0,
+      y: ARENA.groundY - ARENA.playerRadius,
+      hp: 100,
+      connected: true,
+    });
+  }
 }
 defineTypes(Player, {
   sessionId: "string",
@@ -38,11 +50,16 @@ defineTypes(Player, {
 });
 
 export class Projectile extends Schema {
-  active = false;
-  x = 0;
-  y = 0;
-  vx = 0;
-  vy = 0;
+  declare active: boolean;
+  declare x: number;
+  declare y: number;
+  declare vx: number;
+  declare vy: number;
+
+  constructor() {
+    super();
+    Object.assign(this, { active: false, x: 0, y: 0, vx: 0, vy: 0 });
+  }
 }
 defineTypes(Projectile, {
   active: "boolean",
@@ -53,22 +70,42 @@ defineTypes(Projectile, {
 });
 
 export class Explosion extends Schema {
-  id = 0;
-  x = 0;
-  y = 0;
+  declare id: number;
+  declare x: number;
+  declare y: number;
+
+  constructor() {
+    super();
+    Object.assign(this, { id: 0, x: 0, y: 0 });
+  }
 }
 defineTypes(Explosion, { id: "number", x: "number", y: "number" });
 
 export class BattleState extends Schema {
-  players = new ArraySchema<Player>();
-  projectile = new Projectile();
-  explosion = new Explosion();
-  phase: Phase = "waiting";
-  currentPlayer = "";
-  turnNumber = 0;
-  remainingMs = 0;
-  winner = "";
-  finishReason = "";
+  declare players: ArraySchema<Player>;
+  declare projectile: Projectile;
+  declare explosion: Explosion;
+  declare phase: Phase;
+  declare currentPlayer: string;
+  declare turnNumber: number;
+  declare remainingMs: number;
+  declare winner: string;
+  declare finishReason: string;
+
+  constructor() {
+    super();
+    Object.assign(this, {
+      players: new ArraySchema<Player>(),
+      projectile: new Projectile(),
+      explosion: new Explosion(),
+      phase: "waiting",
+      currentPlayer: "",
+      turnNumber: 0,
+      remainingMs: 0,
+      winner: "",
+      finishReason: "",
+    });
+  }
 }
 defineTypes(BattleState, {
   players: [Player],

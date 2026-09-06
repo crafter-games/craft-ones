@@ -3,13 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "start": "bun src/index.ts",
+    "dev": "node --watch --import tsx src/index.ts",
+    "start": "node --import tsx src/index.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@colyseus/core": "0.16.24",
     "@colyseus/ws-transport": "0.16.5",
-    "@craft-ones/shared": "workspace:*"
+    "@craft-ones/shared": "workspace:*",
+    "tsx": "4.20.6"
+  },
+  "devDependencies": {
+    "colyseus.js": "0.16.22"
   }
 }

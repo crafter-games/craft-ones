@@ -1,0 +1,260 @@
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { fileURLToPath } from "node:url";
+import { ARENA, type BattleView } from "@craft-ones/shared";
+import { Client, type Room } from "colyseus.js";
+import { parseWebOrigins } from "./server";
+
+async function waitFor(predicate: () => boolean, timeout = 4_000) {
+  const until = performance.now() + timeout;
+  while (!predicate()) {
+    if (performance.now() >= until)
+      throw new Error("Timed out waiting for server state");
+    await Bun.sleep(10);
+  }
+}
+
+const clients = new Set<Room<BattleView>>();
+let runtime: ReturnType<typeof Bun.spawn>;
+let endpoint = "";
+
+beforeAll(async () => {
+  const child = Bun.spawn(["node", "--import", "tsx", "src/index.ts"], {
+    cwd: fileURLToPath(new URL("..", import.meta.url)),
+    env: {
+      ...process.env,
+      PORT: "0",
+      WEB_ORIGIN: "http://192.168.1.5:3000, http://craft.local:3000",
+    },
+    stdout: "pipe",
+    stderr: "inherit",
+  });
+  runtime = child;
+  void (async () => {
+    let output = "";
+    for await (const chunk of child.stdout) {
+      output += new TextDecoder().decode(chunk);
+      const match = output.match(/http:\/\/127\.0\.0\.1:\d+/);
+      if (match) endpoint = match[0];
+    }
+  })();
+  await waitFor(() => endpoint !== "", 10_000);
+}, 15_000);
+
+afterAll(async () => {
+  try {
+    await Promise.all(
+      [...clients].map((room) => room.leave().catch(() => undefined)),
+    );
+  } finally {
+    runtime.kill();
+    await runtime.exited;
+  }
+});
+
+async function join() {
+  const room = await new Client(endpoint).joinOrCreate<BattleView>("battle");
+  clients.add(room);
+  room.onLeave(() => clients.delete(room));
+  room.onMessage("actionError", () => undefined);
+  await waitFor(() => !!room.state?.players?.length);
+  return room;
+}
+
+describe("HTTP readiness and explicit CORS", () => {
+  test("health is available on IPv4", async () => {
+    const response = await fetch(`${endpoint}/health`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true });
+  });
+
+  test.each([
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://192.168.1.5:3000",
+    "http://craft.local:3000",
+  ])(
+    "native matchmaking preflight and POST allow exact configured origin %s",
+    async (origin) => {
+      const response = await fetch(
+        `${endpoint}/matchmake/joinOrCreate/battle`,
+        {
+          method: "OPTIONS",
+          headers: { Origin: origin, "Access-Control-Request-Method": "POST" },
+        },
+      );
+      expect(response.status).toBe(204);
+      expect(response.headers.get("access-control-allow-origin")).toBe(origin);
+      expect(response.headers.get("access-control-allow-methods")).toContain(
+        "POST",
+      );
+      expect(response.headers.get("access-control-allow-headers")).toContain(
+        "Content-Type",
+      );
+      expect(response.headers.get("vary")).toContain("Origin");
+      const post = await fetch(`${endpoint}/matchmake/invalid/battle`, {
+        method: "POST",
+        headers: { Origin: origin, "Content-Type": "application/json" },
+        body: "{}",
+      });
+      expect(post.headers.get("access-control-allow-origin")).toBe(origin);
+      expect(await post.json()).toHaveProperty("error");
+    },
+  );
+
+  test.each([
+    "http://evil.local:3000",
+    "http://localhost:3000.evil.test",
+    "null",
+  ])(
+    "denies disallowed origin %s before native matchmaker can reflect it",
+    async (origin) => {
+      for (const method of ["OPTIONS", "POST"]) {
+        const response = await fetch(
+          `${endpoint}/matchmake/joinOrCreate/battle`,
+          {
+            method,
+            headers: { Origin: origin },
+            ...(method === "POST" ? { body: "{}" } : {}),
+          },
+        );
+        expect(response.status).toBe(403);
+        expect(response.headers.get("access-control-allow-origin")).toBeNull();
+      }
+    },
+  );
+
+  test("health also uses the allowlist and unknown routes return 404", async () => {
+    const health = await fetch(`${endpoint}/health`, {
+      headers: { Origin: "http://localhost:3000" },
+    });
+    expect(health.headers.get("access-control-allow-origin")).toBe(
+      "http://localhost:3000",
+    );
+    expect((await fetch(`${endpoint}/missing`)).status).toBe(404);
+    expect(
+      (await fetch(`${endpoint}/matchmake/join/battle`, { method: "PUT" }))
+        .status,
+    ).toBe(405);
+  });
+
+  test("bounds HTTP matchmaking payloads as well as WebSocket payloads", async () => {
+    const response = await fetch(`${endpoint}/matchmake/joinOrCreate/battle`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ padding: "x".repeat(5_000) }),
+    });
+    expect(response.status).toBe(413);
+  });
+
+  test("validates configured origins instead of silently producing wrong CORS", () => {
+    expect(parseWebOrigins(undefined).has("http://localhost:3000")).toBe(true);
+    expect(
+      parseWebOrigins(" http://192.168.0.10:3000/ ").has(
+        "http://192.168.0.10:3000",
+      ),
+    ).toBe(true);
+    for (const invalid of [
+      "*",
+      "not a url",
+      "ftp://host",
+      "http://host/path",
+      "http://user:pass@host",
+    ]) {
+      expect(() => parseWebOrigins(invalid)).toThrow();
+    }
+  });
+});
+
+describe("real Colyseus SDK clients", () => {
+  test("two clients share a schema match, rejected actions report errors, shots sync, disconnect forfeits", async () => {
+    const one = await join();
+    expect(one.state.phase).toBe("waiting");
+    const two = await join();
+    expect(two.roomId).toBe(one.roomId);
+    await waitFor(
+      () => one.state.phase === "aiming" && two.state.phase === "aiming",
+    );
+    expect(one.state.players.map((player) => player.sessionId)).toEqual([
+      one.sessionId,
+      two.sessionId,
+    ]);
+    expect(one.state.currentPlayer).toBe(one.sessionId);
+    await expect(new Client(endpoint).joinById(one.roomId)).rejects.toThrow();
+
+    let error: unknown;
+    two.onMessage("actionError", (message: unknown) => {
+      error = message;
+    });
+    two.send("fire", {
+      angle: -1,
+      power: 0.5,
+      turnNumber: one.state.turnNumber,
+    });
+    await waitFor(() => typeof error === "string");
+    expect(one.state.projectile.active).toBe(false);
+
+    one.send("fire", {
+      angle: -Math.PI / 4,
+      power: 0.5,
+      turnNumber: one.state.turnNumber,
+    });
+    await waitFor(
+      () => one.state.phase === "flying" && two.state.projectile.active,
+    );
+    expect(two.state.projectile.vx).toBeGreaterThan(0);
+    expect(two.state.projectile.vy).toBeLessThan(0);
+    await waitFor(
+      () => one.state.phase === "exploding" && two.state.explosion.id === 1,
+    );
+    await waitFor(
+      () => one.state.phase === "aiming" && one.state.turnNumber === 2,
+    );
+    expect(one.state.currentPlayer).toBe(two.sessionId);
+    expect(one.state.remainingMs).toBeLessThanOrEqual(ARENA.turnMs);
+
+    const roomId = one.roomId;
+    const reconnectToken = one.reconnectionToken;
+    await one.leave(false);
+    await waitFor(() => two.state.phase === "finished");
+    expect(two.state.winner).toBe(two.sessionId);
+    expect(two.state.finishReason).toBe("forfeit");
+    expect(two.state.players[0].connected).toBe(false);
+    await expect(new Client(endpoint).joinById(roomId)).rejects.toThrow();
+    await expect(
+      new Client(endpoint).reconnect(reconnectToken),
+    ).rejects.toThrow();
+    const third = await join();
+    expect(third.roomId).not.toBe(roomId);
+    await third.leave();
+    await two.leave();
+    await expect(new Client(endpoint).joinById(roomId)).rejects.toThrow();
+  }, 10_000);
+
+  test("a lone waiting disconnect disposes the room and new players get a fresh room", async () => {
+    const old = await join();
+    const oldId = old.roomId;
+    expect(old.state.phase).toBe("waiting");
+    await old.leave();
+    await expect(new Client(endpoint).joinById(oldId)).rejects.toThrow();
+    const replacement = await join();
+    expect(replacement.roomId).not.toBe(oldId);
+    expect(replacement.state.players.length).toBe(1);
+    expect(replacement.state.phase).toBe("waiting");
+    await replacement.leave();
+    await expect(
+      new Client(endpoint).joinById(replacement.roomId),
+    ).rejects.toThrow();
+  });
+
+  test("oversized WebSocket messages disconnect instead of accepting unbounded intents", async () => {
+    const room = await join();
+    let closeCode = 0;
+    room.onLeave((code) => {
+      closeCode = code;
+    });
+    room.send("fire", { padding: "x".repeat(5_000) });
+    await waitFor(() => closeCode !== 0);
+    expect(closeCode).toBe(1009);
+    await expect(new Client(endpoint).joinById(room.roomId)).rejects.toThrow();
+  });
+});
