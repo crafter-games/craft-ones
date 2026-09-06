@@ -3,8 +3,8 @@
   "files": {
     "includes": [
       "**",
-      "!!.next",
-      "!!node_modules",
+      "!!**/.next",
+      "!!**/node_modules",
       "!!.devin",
       "!!playwright-report",
       "!!test-results",
@@ -15,5 +15,5 @@
   "formatter": { "indentStyle": "space", "indentWidth": 2 },
   "javascript": { "formatter": { "quoteStyle": "double" } },
   "css": { "parser": { "tailwindDirectives": true } },
-  "linter": { "enabled": true, "rules": { "recommended": true } }
+  "linter": { "enabled": true, "rules": { "preset": "recommended" } }
 }
