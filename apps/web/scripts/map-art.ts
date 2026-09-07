@@ -34,10 +34,13 @@ for (const id of ["andes", "coast"] as const) {
   );
   const rows = makeWorld(id);
   let terrain = "";
+  let rim = "";
   for (let y = 0; y < rows.length; y++) {
     const row = rows[y];
     let start = -1;
     for (let x = 0; x <= row.length; x++) {
+      if (row[x] === "1" && rows[y - 1]?.[x] !== "1")
+        rim += `M${x * CELL} ${y * CELL}h${CELL}v6h-${CELL}Z`;
       if (row[x] === "1" && start < 0) start = x;
       if (row[x] !== "1" && start >= 0) {
         terrain += `M${start * CELL} ${y * CELL}h${(x - start) * CELL}v${CELL}H${start * CELL}Z`;
@@ -45,8 +48,13 @@ for (const id of ["andes", "coast"] as const) {
       }
     }
   }
+  const strata = Array.from(
+    { length: 8 },
+    (_, i) =>
+      `<path d="M0 ${340 + i * 100}Q400 ${260 + i * 100} 896 ${355 + i * 100}T1792 ${320 + i * 100}v28Q1300 ${345 + i * 100} 896 ${386 + i * 100}T0 ${368 + i * 100}Z" fill="${coast ? "#bb805d" : "#8d6650"}"/>`,
+  ).join("");
   await Bun.write(
     new URL(`${id}-preview.svg`, root),
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 1024"><title>${WORLD_MAPS[id].name} playable terrain preview</title>${artwork}<path d="${terrain}" fill="${coast ? "#9d6250" : "#715044"}" stroke="${coast ? "#e1b274" : "#9abc68"}" stroke-width="2"/></svg>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1792 1024"><title>${WORLD_MAPS[id].name} playable terrain preview</title><defs><clipPath id="land"><path d="${terrain}"/></clipPath></defs>${artwork}<path d="${terrain}" fill="${coast ? "#9d6250" : "#715044"}"/><g clip-path="url(#land)">${strata}</g><path d="${rim}" fill="${coast ? "#e1b274" : "#9abc68"}"/></svg>`,
   );
 }
