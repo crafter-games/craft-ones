@@ -294,6 +294,42 @@ describe("real Colyseus SDK clients", () => {
     await expect(new Client(endpoint).joinById(roomId)).rejects.toThrow();
   }, 10_000);
 
+  test("movement synchronizes; remote debug options and stale movement cannot change state", async () => {
+    const one = await join(),
+      two = await join();
+    await waitFor(
+      () => one.state.phase === "aiming" && two.state.phase === "aiming",
+    );
+    const terrain = [...one.state.terrain];
+    const x = one.state.players[0].x;
+    one.send("move", {
+      direction: 1,
+      sequence: 1,
+      turnNumber: one.state.turnNumber,
+    });
+    await waitFor(() => two.state.players[0].x > x);
+    expect(two.state.players[0].x).toBe(one.state.players[0].x);
+    expect(two.state.players[0].movementLeft).toBe(
+      ARENA.moveBudget - ARENA.moveStep,
+    );
+    const moved = two.state.players[0].x;
+    const errors: string[] = [];
+    one.onMessage("actionError", (error: string) => errors.push(error));
+    one.send("move", {
+      direction: 1,
+      sequence: 1,
+      turnNumber: one.state.turnNumber,
+    });
+    one.send("setPosition", { x: 900, y: 0 });
+    one.send("infiniteHp", true);
+    one.send("destructible", true);
+    await waitFor(() => errors.length === 4);
+    expect(one.state.players[0].x).toBe(moved);
+    expect([...two.state.terrain]).toEqual(terrain);
+    await one.leave();
+    await two.leave();
+  });
+
   test("a lone waiting disconnect disposes the room and new players get a fresh room", async () => {
     const old = await join();
     const oldId = old.roomId;

@@ -5,7 +5,7 @@ import { Battle } from "./Battle";
 export class BattleRoom extends Room<BattleState> {
   maxClients = 2;
   autoDispose = true;
-  private readonly battle = new Battle();
+  private readonly battle = new Battle(undefined, "andes");
 
   onCreate() {
     this.setState(this.battle.state);
@@ -13,6 +13,14 @@ export class BattleRoom extends Room<BattleState> {
     this.setSimulationInterval((dtMs) => this.battle.step(dtMs), ARENA.stepMs);
     this.onMessage("fire", (client, payload: unknown) => {
       const error = this.battle.fire(client.sessionId, payload);
+      if (error) client.send("actionError", error);
+    });
+    this.onMessage("move", (client, payload: unknown) => {
+      const error = this.battle.move(client.sessionId, payload);
+      if (error) client.send("actionError", error);
+    });
+    this.onMessage("restart", (client, payload: unknown) => {
+      const error = this.battle.restart(client.sessionId, payload);
       if (error) client.send("actionError", error);
     });
     this.onMessage("*", (client) => {
