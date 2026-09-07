@@ -2,9 +2,9 @@
 
 ## Principles
 - Original, tiny 1v1 turn-based artillery prototype for Crafter Station. No copied code or assets.
-- Scope: two players, 100 HP, flat ground, one rocket, gravity, splash damage, small knockback, 15-second turns, invite links and winner.
-- No auth, database, economy, bots, matchmaking, inventories, destructible terrain or future-feature frameworks.
-- Server alone decides physics, damage, positions, turns and winner. Browser sends fire intentions and renders synchronized state.
+- Scope: two players, 100 HP, two irregular maps, one rocket, gravity, splash damage, knockback, 96 units of movement per turn, 15-second turns, invite links, winner and rematch.
+- No auth, database, economy, bots, matchmaking, inventories or future-feature frameworks. Basic height-field craters are an optional local lab control.
+- Server alone decides physics, damage, positions, turns and winner. Multiplayer browsers send move/fire/restart intentions and render synchronized state. `/playground` runs the identical shared engine locally with alternating seats and no network dependency.
 - Keep Phaser client-only and lazy-loaded. React owns the lobby and HUD; Phaser owns the canvas and pointer input.
 - Use Spec Kit's specify → plan → tasks → implement → converge flow, with acceptance criteria verified in tests.
 - Keep agent configuration in `.devin/`. Never commit secrets.
@@ -37,3 +37,14 @@
 - Both players can aim, hold to charge, release to fire, and alternate turns; idle turns expire after 15 seconds.
 - Splash damage can remove all 100 HP through normal fire intentions, after which both browsers display the same winner.
 - Invalid inputs, stale or duplicate shots and out-of-turn actions never change gameplay outcomes.
+
+
+## First playable acceptance
+- Home exposes Playground and Create Game. Playground starts one canvas immediately, even with the game server unavailable.
+- Cuy and Llama are original SVG cutouts with independent joints; render code is split into rig, input, map, effects and camera modules.
+- Both maps support complete matches through normal pointer input, victory and restart. Restart clears projectiles, restores HP and positions, and does not leak canvases or timers.
+- Move is constrained by turn, distance budget, sequence, time, map walls and player separation. Rematch is host-only after a finished game, with both players connected; old fire intents stay stale.
+- Trajectory preview and authoritative rockets share the same launch and swept-collision code. Player gravity continues during flight.
+- Touch aim/charge/release and movement work at portrait and landscape sizes. Pointer cancellation and blur cancel charging.
+- Lab tools: restart, infinite HP, trajectory, collision circles and optional ground destruction. Local options are never registered as multiplayer messages.
+- Regenerate original character assets with `bun apps/web/scripts/character-art.ts`. Joint coordinates and source shapes live in `apps/web/src/game/characters/design.ts`.

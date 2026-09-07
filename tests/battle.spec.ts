@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { aimAtOpponent } from "./gameplay";
 
 async function createRoom(page: Page) {
   await page.goto("/");
@@ -11,36 +12,6 @@ async function createRoom(page: Page) {
   await expect(page.locator("canvas")).toBeVisible();
   await expect(page.locator("canvas")).toHaveCount(1);
   return page.url();
-}
-
-async function aimAtOpponent(page: Page, number: number) {
-  const from = page.getByTestId(`player-${number}`);
-  const to = page.getByTestId(`player-${number === 1 ? 2 : 1}`);
-  const x = Number(await from.getAttribute("data-x"));
-  const target = Number(await to.getAttribute("data-x"));
-  const angle = number === 1 ? -Math.PI / 4 : (-3 * Math.PI) / 4;
-  const dx = target - x - Math.cos(angle) * 20;
-  const dy = -Math.sin(angle) * 20;
-  const speed = Math.sqrt(
-    (420 * dx ** 2) / (2 * Math.cos(angle) ** 2 * (dy - dx * Math.tan(angle))),
-  );
-  const power = Math.max(0, Math.min(1, (speed - 240) / 460));
-  const canvas = await page.locator("canvas").boundingBox();
-  if (!canvas) throw new Error("Arena canvas not visible");
-  await page.mouse.move(
-    canvas.x + ((x + Math.cos(angle) * 130) * canvas.width) / 960,
-    canvas.y + ((422 + Math.sin(angle) * 130) * canvas.height) / 540,
-  );
-  await page.mouse.down();
-  await page.waitForFunction(
-    (targetPower) => {
-      const meter = document.getElementById("power") as HTMLMeterElement | null;
-      return (meter?.value ?? 0) >= targetPower;
-    },
-    Math.round(power * 100) - 1,
-    { polling: "raf" },
-  );
-  await page.mouse.up();
 }
 
 test("invite flow and a complete mouse-controlled 1v1 reach the same winner", async ({
@@ -149,6 +120,33 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
         elements.map((element) => element.getAttribute("data-hp")),
       );
     expect(hpValues).toContain("0");
+    const finalTurn = Number(
+      await page.getByTestId("battle").getAttribute("data-turn"),
+    );
+    await page.getByRole("button", { name: "Play again", exact: true }).click();
+    for (const client of [page, rival]) {
+      await expect(client.getByTestId("battle")).toHaveAttribute(
+        "data-phase",
+        "aiming",
+      );
+      await expect(client.getByTestId("battle")).toHaveAttribute(
+        "data-turn",
+        String(finalTurn + 1),
+      );
+      await expect(client.getByTestId("player-1")).toHaveAttribute(
+        "data-hp",
+        "100",
+      );
+      await expect(client.getByTestId("player-2")).toHaveAttribute(
+        "data-hp",
+        "100",
+      );
+    }
+    await aimAtOpponent(page, 1);
+    await expect(rival.getByTestId("battle")).toHaveAttribute(
+      "data-phase",
+      "flying",
+    );
     expect(errors).toEqual([]);
   } finally {
     await rivalContext.close();
