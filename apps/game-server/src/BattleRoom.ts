@@ -1,13 +1,21 @@
 import { type Client, Room } from "@colyseus/core";
+import { Encoder } from "@colyseus/schema";
 import { ARENA, type BattleState } from "@craft-ones/shared";
 import { Battle } from "./Battle";
+
+// A full 224 × 128 occupancy map is about 30 KB; patches only carry changed rows.
+Encoder.BUFFER_SIZE = 64 * 1024;
 
 export class BattleRoom extends Room<BattleState> {
   maxClients = 2;
   autoDispose = true;
-  private readonly battle = new Battle(undefined, "andes");
+  private battle!: Battle;
 
-  onCreate() {
+  onCreate(options: { mapId?: unknown } = {}) {
+    this.battle = new Battle(
+      undefined,
+      options.mapId === "coast" ? "coast" : "andes",
+    );
     this.setState(this.battle.state);
     this.setPatchRate(ARENA.stepMs * 3);
     this.setSimulationInterval((dtMs) => this.battle.step(dtMs), ARENA.stepMs);
@@ -19,6 +27,11 @@ export class BattleRoom extends Room<BattleState> {
       const error = this.battle.move(client.sessionId, payload);
       if (error) client.send("actionError", error);
     });
+    for (const action of ["jump", "ability"] as const)
+      this.onMessage(action, (client, payload: unknown) => {
+        const error = this.battle[action](client.sessionId, payload);
+        if (error) client.send("actionError", error);
+      });
     this.onMessage("restart", (client, payload: unknown) => {
       const error = this.battle.restart(client.sessionId, payload);
       if (error) client.send("actionError", error);
@@ -28,8 +41,8 @@ export class BattleRoom extends Room<BattleState> {
     });
   }
 
-  async onJoin(client: Client) {
-    this.battle.addPlayer(client.sessionId);
+  async onJoin(client: Client, options: { player?: unknown } = {}) {
+    this.battle.addPlayer(client.sessionId, options.player);
     if (this.state.phase !== "waiting") await this.lock();
   }
 

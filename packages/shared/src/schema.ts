@@ -1,16 +1,33 @@
 import { ArraySchema, defineTypes, Schema } from "@colyseus/schema";
+import type { CoatId, Species, WeaponId } from "./arsenal";
 
 import { ARENA } from "./config";
 
-export type Phase = "waiting" | "aiming" | "flying" | "exploding" | "finished";
+export type Phase =
+  | "waiting"
+  | "aiming"
+  | "flying"
+  | "exploding"
+  | "resolving"
+  | "grappling"
+  | "finished";
 export type MoveAction = {
   direction: -1 | 1;
   turnNumber: number;
   sequence: number;
 };
-export type FireAction = { angle: number; power: number; turnNumber: number };
+export type FireAction = {
+  angle: number;
+  power: number;
+  turnNumber: number;
+  weapon?: WeaponId;
+};
 
 export class Player extends Schema {
+  declare species: Species;
+  declare coat: CoatId;
+  declare abilityReadyTurn: number;
+  declare vx: number;
   declare sessionId: string;
   declare number: number;
   declare x: number;
@@ -23,6 +40,10 @@ export class Player extends Schema {
   constructor() {
     super();
     Object.assign(this, {
+      species: "cuy",
+      coat: "caramel",
+      abilityReadyTurn: 0,
+      vx: 0,
       sessionId: "",
       number: 0,
       x: 0,
@@ -35,6 +56,10 @@ export class Player extends Schema {
   }
 }
 defineTypes(Player, {
+  species: "string",
+  coat: "string",
+  abilityReadyTurn: "number",
+  vx: "number",
   sessionId: "string",
   number: "number",
   x: "number",
@@ -46,6 +71,9 @@ defineTypes(Player, {
 });
 
 export class Projectile extends Schema {
+  declare kind: WeaponId;
+  declare elapsedMs: number;
+  declare bounces: number;
   declare active: boolean;
   declare x: number;
   declare y: number;
@@ -54,10 +82,22 @@ export class Projectile extends Schema {
 
   constructor() {
     super();
-    Object.assign(this, { active: false, x: 0, y: 0, vx: 0, vy: 0 });
+    Object.assign(this, {
+      kind: "rocket",
+      elapsedMs: 0,
+      bounces: 0,
+      active: false,
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+    });
   }
 }
 defineTypes(Projectile, {
+  kind: "string",
+  elapsedMs: "number",
+  bounces: "number",
   active: "boolean",
   x: "number",
   y: "number",
@@ -66,18 +106,29 @@ defineTypes(Projectile, {
 });
 
 export class Explosion extends Schema {
+  declare radius: number;
   declare id: number;
   declare x: number;
   declare y: number;
 
   constructor() {
     super();
-    Object.assign(this, { id: 0, x: 0, y: 0 });
+    Object.assign(this, { radius: ARENA.blastRadius, id: 0, x: 0, y: 0 });
   }
 }
-defineTypes(Explosion, { id: "number", x: "number", y: "number" });
+defineTypes(Explosion, {
+  radius: "number",
+  id: "number",
+  x: "number",
+  y: "number",
+});
 
 export class BattleState extends Schema {
+  declare worldWidth: number;
+  declare worldHeight: number;
+  declare terrainRows: ArraySchema<string>;
+  declare terrainRevision: number;
+  declare lastAction: string;
   declare mapId: string;
   declare terrain: ArraySchema<number>;
   declare players: ArraySchema<Player>;
@@ -93,6 +144,11 @@ export class BattleState extends Schema {
   constructor() {
     super();
     Object.assign(this, {
+      worldWidth: ARENA.width,
+      worldHeight: ARENA.height,
+      terrainRows: new ArraySchema<string>(),
+      terrainRevision: 0,
+      lastAction: "",
       mapId: "flat",
       terrain: new ArraySchema<number>(),
       players: new ArraySchema<Player>(),
@@ -108,6 +164,11 @@ export class BattleState extends Schema {
   }
 }
 defineTypes(BattleState, {
+  worldWidth: "number",
+  worldHeight: "number",
+  terrainRows: ["string"],
+  terrainRevision: "number",
+  lastAction: "string",
   mapId: "string",
   terrain: ["number"],
   players: [Player],
@@ -123,6 +184,10 @@ defineTypes(BattleState, {
 
 export type PlayerView = Pick<
   Player,
+  | "species"
+  | "coat"
+  | "abilityReadyTurn"
+  | "vx"
   | "sessionId"
   | "number"
   | "x"
@@ -133,11 +198,19 @@ export type PlayerView = Pick<
   | "vy"
 >;
 export type BattleView = {
+  worldWidth: number;
+  worldHeight: number;
+  terrainRows: string[];
+  terrainRevision: number;
+  lastAction: string;
   mapId: string;
   terrain: number[];
   players: PlayerView[];
-  projectile: Pick<Projectile, "active" | "x" | "y" | "vx" | "vy">;
-  explosion: Pick<Explosion, "id" | "x" | "y">;
+  projectile: Pick<
+    Projectile,
+    "kind" | "elapsedMs" | "bounces" | "active" | "x" | "y" | "vx" | "vy"
+  >;
+  explosion: Pick<Explosion, "radius" | "id" | "x" | "y">;
   phase: Phase;
   currentPlayer: string;
   turnNumber: number;

@@ -1,8 +1,20 @@
-import { advanceRocket, clamp, launch } from "./ballistics";
+import { isWeapon, WEAPONS } from "./arsenal";
+import { clamp, launch } from "./ballistics";
+import {
+  defaultAppearance,
+  pullTowardAnchor,
+  setAppearance,
+  validateTurn,
+  worldMove,
+} from "./battleActions";
 import { ARENA } from "./config";
 import { settlePlayers } from "./playerMotion";
+import { advanceShot, launchShot } from "./projectiles";
 import { BattleState, type FireAction, Player } from "./schema";
 import { carveCrater, type MapId, makeTerrain, terrainHeight } from "./terrain";
+import { eraseCircle, grounded } from "./terrainGrid";
+import { moveHorizontal, worldBodyStep } from "./worldMotion";
+import { makeWorld, WORLD_HEIGHT, WORLD_MAPS, WORLD_WIDTH } from "./worlds";
 
 const MAX_CATCH_UP_STEPS = 6;
 const EPSILON = 1e-7;
@@ -41,6 +53,7 @@ export class Battle {
   // Local lab options are never exposed by BattleRoom's message handlers.
   infiniteHp = false;
   destructible = false;
+  private resolveDeadline = 0;
 
   constructor(
     private readonly now: () => number = () => performance.now(),
@@ -48,6 +61,12 @@ export class Battle {
   ) {
     this.state.mapId = mapId;
     this.state.terrain.push(...makeTerrain(mapId));
+    this.state.terrainRows.push(...makeWorld(mapId));
+    if (mapId !== "flat") {
+      this.destructible = true;
+      this.state.worldWidth = WORLD_WIDTH;
+      this.state.worldHeight = WORLD_HEIGHT;
+    }
   }
 
   move(sessionId: string, payload: unknown): string | null {
@@ -82,6 +101,14 @@ export class Battle {
       now - this.moveAt < ARENA.moveIntervalMs
     )
       return "Movement unavailable";
+    if (this.state.terrainRows.length) {
+      const error = worldMove(this.state, player, direction);
+      if (!error) {
+        this.moveSequence = sequence as number;
+        this.moveAt = now;
+      }
+      return error;
+    }
     const opponent = this.state.players.find((p) => p.sessionId !== sessionId);
     const radius = ARENA.playerRadius;
     const min =
@@ -127,12 +154,25 @@ export class Battle {
       this.state.terrain.length,
       ...makeTerrain(this.state.mapId as MapId),
     );
+    this.state.terrainRows.splice(
+      0,
+      this.state.terrainRows.length,
+      ...makeWorld(this.state.mapId as MapId),
+    );
+    this.state.terrainRevision++;
     for (const player of this.state.players) {
       player.x = ARENA.width * (player.number === 1 ? 0.25 : 0.75);
       player.y =
         terrainHeight(this.state.terrain, player.x) - ARENA.playerRadius;
+      if (this.state.mapId !== "flat")
+        [player.x, player.y] =
+          WORLD_MAPS[this.state.mapId as "andes" | "coast"].spawns[
+            player.number - 1
+          ];
       player.hp = 100;
       player.vy = 0;
+      player.vx = 0;
+      player.abilityReadyTurn = 0;
     }
     this.bodyAccumulator = 0;
     this.state.winner = "";
@@ -142,7 +182,7 @@ export class Battle {
     return null;
   }
 
-  addPlayer(sessionId: string): Player {
+  addPlayer(sessionId: string, options: unknown = null): Player {
     if (
       !sessionId ||
       this.state.players.some((player) => player.sessionId === sessionId)
@@ -157,6 +197,13 @@ export class Battle {
     player.number = this.state.players.length + 1;
     player.x = ARENA.width * (player.number === 1 ? 0.25 : 0.75);
     player.y = terrainHeight(this.state.terrain, player.x) - ARENA.playerRadius;
+    if (this.state.mapId !== "flat")
+      [player.x, player.y] =
+        WORLD_MAPS[this.state.mapId as "andes" | "coast"].spawns[
+          player.number - 1
+        ];
+    setAppearance(player, defaultAppearance(player.number));
+    if (options) setAppearance(player, options);
     this.state.players.push(player);
     if (this.state.players.length === 2) this.startTurn(0, this.clockNow());
     return player;
@@ -186,7 +233,11 @@ export class Battle {
       this.nextTurn(now);
       return "Turn expired";
     }
-    if (!isFireAction(payload)) return "Invalid fire action";
+    if (
+      !isFireAction(payload) ||
+      (payload.weapon !== undefined && !isWeapon(payload.weapon))
+    )
+      return "Invalid fire action";
     if (this.state.phase !== "aiming") return "Cannot fire in this phase";
     if (sessionId !== this.state.currentPlayer) return "It is not your turn";
     if (payload.turnNumber !== this.state.turnNumber)
@@ -196,17 +247,26 @@ export class Battle {
     );
     if (!player?.connected || player.hp <= 0) return "Player cannot fire";
     const projectile = this.state.projectile;
-    Object.assign(
-      projectile,
-      launch(player, payload.angle, payload.power, this.state.terrain),
-    );
+    const kind = payload.weapon ?? "rocket";
+    if (this.state.terrainRows.length)
+      Object.assign(
+        projectile,
+        launchShot(this.state, player, payload.angle, payload.power, kind),
+      );
+    else
+      Object.assign(
+        projectile,
+        launch(player, payload.angle, payload.power, this.state.terrain),
+        { kind, elapsedMs: 0, bounces: 0 },
+      );
+    this.state.lastAction = kind;
     projectile.active = true;
     this.state.phase = "flying";
     this.state.remainingMs = 0;
     this.accumulator = 0;
     this.flightMs = 0;
     this.bodyAccumulator = 0;
-    this.flightDeadline = now + ARENA.maxFlightMs;
+    this.flightDeadline = now + WEAPONS[kind].fuse;
     return null;
   }
 
@@ -215,26 +275,71 @@ export class Battle {
     const now = this.clockNow();
     if (this.state.phase === "waiting" || this.state.phase === "finished")
       return;
-    if (this.state.phase !== "flying") {
+    if (this.state.phase !== "flying" && this.state.phase !== "grappling") {
       this.bodyAccumulator += Math.min(dtMs, ARENA.stepMs * MAX_CATCH_UP_STEPS);
       while (this.bodyAccumulator + EPSILON >= ARENA.stepMs) {
         this.bodyAccumulator = Math.max(0, this.bodyAccumulator - ARENA.stepMs);
-        settlePlayers(this.state.players, this.state.terrain);
+        this.bodyStep();
       }
     }
     if (this.state.phase === "aiming") {
       if (now >= this.turnDeadline) this.nextTurn(now);
       else this.state.remainingMs = Math.ceil(this.turnDeadline - now);
+      this.finishIfEliminated();
       return;
     }
     if (this.state.phase === "exploding") {
-      if (now + EPSILON >= this.explosionDeadline && !this.finishIfEliminated())
-        this.nextTurn(now);
+      if (
+        now + EPSILON >= this.explosionDeadline &&
+        !this.finishIfEliminated()
+      ) {
+        if (
+          this.state.terrainRows.length &&
+          !this.state.players.every((p) => grounded(this.state, p.x, p.y))
+        )
+          this.resolve(now, 200);
+        else this.nextTurn(now);
+      }
+      return;
+    }
+    if (this.state.phase === "resolving") {
+      if (
+        now >= this.resolveDeadline &&
+        (this.state.players.every(
+          (p) => p.hp <= 0 || grounded(this.state, p.x, p.y),
+        ) ||
+          now >= this.resolveDeadline + 2500)
+      ) {
+        if (!this.finishIfEliminated()) this.nextTurn(now);
+      }
+      return;
+    }
+    if (this.state.phase === "grappling") {
+      const player = this.state.players.find(
+        (p) => p.sessionId === this.state.currentPlayer,
+      );
+      this.accumulator += Math.min(dtMs, ARENA.stepMs * 6);
+      while (this.accumulator + EPSILON >= ARENA.stepMs) {
+        this.accumulator = Math.max(0, this.accumulator - ARENA.stepMs);
+        worldBodyStep(
+          this.state,
+          this.state.players.filter((p) => p !== player),
+        );
+        if (
+          !player ||
+          !pullTowardAnchor(this.state, player) ||
+          now >= this.resolveDeadline
+        ) {
+          this.resolve(now, 200);
+          break;
+        }
+      }
       return;
     }
     if (this.state.phase !== "flying") return;
     if (now >= this.flightDeadline) {
-      this.explode(now);
+      if (this.state.projectile.kind === "grapple") this.resolve(now, 200);
+      else this.explode(now);
       return;
     }
     this.accumulator += Math.min(dtMs, ARENA.stepMs * MAX_CATCH_UP_STEPS);
@@ -278,47 +383,134 @@ export class Battle {
     this.startTurn((current + 1) % this.state.players.length, now);
   }
 
+  private bodyStep() {
+    if (this.state.terrainRows.length)
+      worldBodyStep(this.state, this.state.players);
+    else settlePlayers(this.state.players, this.state.terrain);
+  }
+
   private physicsStep(now: number) {
-    settlePlayers(this.state.players, this.state.terrain);
-    const projectile = this.state.projectile;
-    const hit = advanceRocket(
-      projectile,
-      this.state.players,
-      this.state.terrain,
-    );
+    this.bodyStep();
+    const shot = this.state.projectile;
+    const impact = advanceShot(shot, this.state, this.state.players);
     this.flightMs += ARENA.stepMs;
-    if (hit || this.flightMs + EPSILON >= ARENA.maxFlightMs) this.explode(now);
+    if (impact === "anchor") {
+      shot.active = false;
+      this.state.phase = "grappling";
+      this.resolveDeadline = now + 1800;
+    } else if (impact === "miss") this.resolve(now, 300);
+    else if (impact === "blast" || this.flightMs + EPSILON >= ARENA.maxFlightMs)
+      this.explode(now);
+  }
+
+  private resolve(now: number, duration = 500) {
+    this.state.projectile.active = false;
+    this.state.phase = "resolving";
+    this.state.remainingMs = 0;
+    this.resolveDeadline = now + duration;
+    this.accumulator = 0;
+  }
+
+  jump(sessionId: string, payload: unknown): string | null {
+    const now = this.clockNow();
+    if (this.state.phase === "aiming" && now >= this.turnDeadline) {
+      this.nextTurn(now);
+      return "Turn expired";
+    }
+    const player = validateTurn(this.state, sessionId, payload);
+    const direction = (payload as { direction?: unknown } | null)?.direction;
+    if (
+      !player ||
+      (direction !== -1 && direction !== 1) ||
+      player.movementLeft < 32 ||
+      player.vy < -1 ||
+      !grounded(this.state, player.x, player.y)
+    )
+      return "Jump unavailable";
+    player.vy = -330;
+    player.vx = direction * 180;
+    player.movementLeft -= 32;
+    return null;
+  }
+
+  ability(sessionId: string, payload: unknown): string | null {
+    const now = this.clockNow();
+    if (this.state.phase === "aiming" && now >= this.turnDeadline) {
+      this.nextTurn(now);
+      return "Turn expired";
+    }
+    const player = validateTurn(this.state, sessionId, payload);
+    if (!player || this.state.turnNumber < player.abilityReadyTurn)
+      return "Ability unavailable";
+    if (player.species === "cuy") {
+      if (player.hp >= 100) return "Already at full health";
+      player.hp = Math.min(100, player.hp + 25);
+      this.state.lastAction = "heal";
+    } else {
+      const direction = (payload as { direction?: unknown }).direction;
+      if (
+        (direction !== -1 && direction !== 1) ||
+        !grounded(this.state, player.x, player.y)
+      )
+        return "Land before leaping";
+      player.vx = direction * 360;
+      player.vy = -480;
+      this.state.lastAction = "leap";
+    }
+    player.abilityReadyTurn = this.state.turnNumber + 4;
+    this.resolve(now, 550);
+    return null;
   }
 
   private explode(now: number) {
     const { projectile, explosion } = this.state;
     projectile.active = false;
     explosion.id++;
-    explosion.x = clamp(projectile.x, 0, ARENA.width);
+    explosion.x = clamp(projectile.x, 0, this.state.worldWidth);
     explosion.y = projectile.y;
     this.state.phase = "exploding";
     this.explosionDeadline = now + ARENA.explosionMs;
+    const weapon = WEAPONS[projectile.kind];
+    explosion.radius = weapon.radius;
+    if (this.destructible && this.state.terrainRows.length) {
+      eraseCircle(
+        this.state.terrainRows,
+        explosion.x,
+        explosion.y,
+        weapon.crater,
+      );
+      this.state.terrainRevision++;
+    }
     for (const player of this.state.players) {
       const distance = Math.hypot(
         player.x - explosion.x,
         player.y - explosion.y,
       );
-      if (distance >= ARENA.blastRadius) continue;
-      const strength = 1 - distance / ARENA.blastRadius;
+      if (distance >= weapon.radius) continue;
+      const strength = 1 - distance / weapon.radius;
       player.hp = this.infiniteHp
         ? 100
-        : Math.max(0, player.hp - Math.round(ARENA.maxDamage * strength));
+        : Math.max(0, player.hp - Math.round(weapon.damage * strength));
       const direction =
         Math.sign(player.x - explosion.x) || (player.number === 1 ? -1 : 1);
       player.vy = -140 * strength;
+      if (this.state.terrainRows.length) {
+        moveHorizontal(
+          this.state,
+          player,
+          direction * ARENA.knockback * strength,
+        );
+        player.vx = direction * 100 * strength;
+        continue;
+      }
       player.x = clamp(
         player.x + direction * ARENA.knockback * strength,
         ARENA.playerRadius,
         ARENA.width - ARENA.playerRadius,
       );
     }
-    this.separatePlayers();
-    if (this.destructible)
+    if (!this.state.terrainRows.length) this.separatePlayers();
+    if (this.destructible && !this.state.terrainRows.length)
       carveCrater(
         this.state.terrain,
         explosion.x,

@@ -3,8 +3,10 @@ import {
   ARENA,
   Battle,
   type BattleView,
-  terrainHeight,
-  trajectory,
+  bodyBlocked,
+  grounded,
+  shotTrajectory,
+  solidAt,
 } from "@craft-ones/shared";
 
 function fixture(mapId: "andes" | "coast" = "andes") {
@@ -48,9 +50,8 @@ test.each(["andes", "coast"] as const)(
     const { battle } = fixture(mapId);
     expect(new Set(battle.state.terrain).size).toBeGreaterThan(3);
     for (const player of battle.state.players) {
-      expect(player.y + ARENA.playerRadius).toBe(
-        terrainHeight(battle.state.terrain, player.x),
-      );
+      expect(grounded(battle.state, player.x, player.y)).toBe(true);
+      expect(bodyBlocked(battle.state, player.x, player.y)).toBe(false);
     }
   },
 );
@@ -86,9 +87,9 @@ test.each(["andes", "coast"] as const)(
         );
         const target = battle.state.players.find((p) => p !== shooter);
         if (!shooter || !target) throw new Error("Missing players");
-        const angle = target.x > shooter.x ? -Math.PI / 4 : (-3 * Math.PI) / 4;
-        const dx = target.x - shooter.x - Math.cos(angle) * 20;
-        const dy = target.y - shooter.y - Math.sin(angle) * 20;
+        const angle = target.x > shooter.x ? -Math.PI / 3 : (-2 * Math.PI) / 3;
+        const dx = target.x - shooter.x - Math.cos(angle) * 22;
+        const dy = target.y - shooter.y - Math.sin(angle) * 22;
         const speed = Math.sqrt(
           (420 * dx ** 2) /
             (2 * Math.cos(angle) ** 2 * (dy - dx * Math.tan(angle))),
@@ -96,7 +97,7 @@ test.each(["andes", "coast"] as const)(
         expect(
           battle.fire(shooter.sessionId, {
             angle,
-            power: (speed - 240) / 460,
+            power: Math.max(0, Math.min(1, (speed - 240) / 760)),
             turnNumber: battle.state.turnNumber,
           }),
         ).toBeNull();
@@ -124,7 +125,7 @@ test("movement clamps at map edges and preserves separation", () => {
   const { battle, tick } = fixture();
   const [one, two] = battle.state.players;
   one.x = ARENA.playerRadius;
-  one.y = terrainHeight(battle.state.terrain, one.x) - ARENA.playerRadius;
+  one.y = 606;
   expect(
     battle.move("one", { direction: -1, turnNumber: 1, sequence: 1 }),
   ).toBeNull();
@@ -135,7 +136,7 @@ test("movement clamps at map edges and preserves separation", () => {
   tick();
   expect(
     battle.move("one", { direction: 1, turnNumber: 1, sequence: 2 }),
-  ).toBeNull();
+  ).toBeString();
   expect(two.x - one.x).toBe(2 * ARENA.playerRadius);
 });
 
@@ -144,9 +145,14 @@ test.each(["andes", "coast"] as const)(
   (mapId) => {
     const { battle, tick } = fixture(mapId);
     const snapshot = battle.state.toJSON() as BattleView;
-    const predicted = trajectory(snapshot, snapshot.players[0], -0.8, 0.44).at(
-      -1,
-    );
+    const predicted = shotTrajectory(
+      snapshot,
+      snapshot.players,
+      snapshot.players[0],
+      -0.8,
+      0.44,
+      "rocket",
+    ).at(-1);
     if (!predicted) throw new Error("Missing trajectory");
     battle.fire("one", { angle: -0.8, power: 0.44, turnNumber: 1 });
     for (let i = 0; i < 500 && battle.state.phase === "flying"; i++)
@@ -163,16 +169,16 @@ test("lab craters remove terrain, players fall onto the new surface, infinite HP
   battle.infiniteHp = true;
   const player = battle.state.players[0];
   const oldY = player.y;
-  const terrain = [...battle.state.terrain];
+  const terrain = [...battle.state.terrainRows];
   battle.fire("one", { angle: Math.PI / 2, power: 0, turnNumber: 1 });
   for (let i = 0; i < 150; i++) tick(ARENA.stepMs);
-  expect(battle.state.terrain.some((y, i) => y > terrain[i])).toBe(true);
+  expect(battle.state.terrainRows.some((row, i) => row !== terrain[i])).toBe(
+    true,
+  );
   expect(player.hp).toBe(100);
   expect(player.y).toBeGreaterThan(oldY);
-  expect(player.y).toBeCloseTo(
-    terrainHeight(battle.state.terrain, player.x) - ARENA.playerRadius,
-    5,
-  );
+  expect(grounded(battle.state, player.x, player.y)).toBe(true);
+  expect(solidAt(battle.state, 288, 628)).toBe(false);
 });
 
 test("knockback gravity remains deterministic across tick groupings and continues during flight", () => {

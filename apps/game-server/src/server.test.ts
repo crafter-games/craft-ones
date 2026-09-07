@@ -346,6 +346,66 @@ describe("real Colyseus SDK clients", () => {
     ).rejects.toThrow();
   });
 
+  test("map, appearance, grenade destruction and abilities replicate to both clients", async () => {
+    const one = await new Client(endpoint).create<BattleView>("battle", {
+      mapId: "coast",
+      player: { species: "llama", coat: "rose", hp: 999 },
+    });
+    const two = await new Client(endpoint).joinById<BattleView>(one.roomId, {
+      player: { species: "cuy", coat: "sage" },
+    });
+    for (const room of [one, two]) {
+      clients.add(room);
+      room.onMessage("actionError", () => undefined);
+    }
+    try {
+      await waitFor(
+        () => two.state.phase === "aiming" && one.state.players.length === 2,
+      );
+      expect(two.state.mapId).toBe("coast");
+      expect(two.state.worldWidth).toBe(1792);
+      expect(one.state.players.map((p) => [p.species, p.coat, p.hp])).toEqual([
+        ["llama", "rose", 100],
+        ["cuy", "sage", 100],
+      ]);
+      const pristine = [...two.state.terrainRows];
+      one.send("fire", {
+        weapon: "grenade",
+        angle: Math.PI / 2,
+        power: 0,
+        turnNumber: 1,
+      });
+      await waitFor(() => two.state.projectile.active);
+      expect(two.state.projectile.kind).toBe("grenade");
+      await waitFor(() => two.state.terrainRevision === 1, 4500);
+      expect([...two.state.terrainRows]).toEqual([...one.state.terrainRows]);
+      expect(two.state.terrainRows.some((row, i) => row !== pristine[i])).toBe(
+        true,
+      );
+      await waitFor(() => two.state.phase === "aiming");
+      two.send("fire", {
+        weapon: "dynamite",
+        angle: Math.PI / 2,
+        power: 0,
+        turnNumber: 2,
+      });
+      await waitFor(() => one.state.terrainRevision === 2, 3500);
+      await waitFor(() => one.state.phase === "aiming");
+      one.send("ability", { direction: 1, turnNumber: 3 });
+      await waitFor(() => two.state.phase === "resolving");
+      expect(two.state.lastAction).toBe("leap");
+      expect(two.state.players[0].abilityReadyTurn).toBe(7);
+      const left = two.state.players[0].x;
+      await waitFor(() => two.state.players[0].x > left);
+      expect(one.state.players[0].hp).toBeLessThan(100);
+    } finally {
+      await one.leave();
+      await two.leave();
+      clients.delete(one);
+      clients.delete(two);
+    }
+  }, 15000);
+
   test("oversized WebSocket messages disconnect instead of accepting unbounded intents", async () => {
     const room = await join();
     let closeCode = 0;
