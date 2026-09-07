@@ -1,286 +1,162 @@
-import { ARENA, type BattleView, type FireAction } from "@craft-ones/shared";
+import { ARENA, trajectory } from "@craft-ones/shared";
 import Phaser from "phaser";
+import { ArenaCamera } from "./ArenaCamera";
+import { ArenaInput } from "./ArenaInput";
+import { ArenaMap } from "./ArenaMap";
+import { BattleEffects } from "./BattleEffects";
+import { CharacterRig } from "./characters/CharacterRig";
+import type { GameBridge } from "./GameBridge";
 
-export type GameBridge = {
-  state: BattleView | null;
-  sessionId: string;
-  connected: boolean;
-  fire: (action: FireAction) => void;
-  charge: (power: number) => void;
-};
+export type { GameBridge } from "./GameBridge";
 
 export class ArenaScene extends Phaser.Scene {
   private ink!: Phaser.GameObjects.Graphics;
+  private controls!: ArenaInput;
+  private map!: ArenaMap;
+  private effects!: BattleEffects;
+  private director!: ArenaCamera;
+  private rigs: CharacterRig[] = [];
   private labels: Phaser.GameObjects.Text[] = [];
-  private angle = -Math.PI / 4;
-  private chargeStart = 0;
-  private charging = false;
-  private chargePointer = -1;
-  private lastTurn = -1;
-  private sentTurn = -1;
-  private lastPower = -1;
-  private explosionId = 0;
-  private explodedAt = 0;
-  private trail: { x: number; y: number }[] = [];
+  private lastPhase = "";
+  private generation = -1;
+  private firedAngle = -Math.PI / 4;
 
   constructor(private bridge: GameBridge) {
     super("arena");
   }
-
+  preload() {
+    CharacterRig.preload(this);
+  }
   create() {
-    this.cameras.main.setBackgroundColor("#1c261e");
-    const background = this.add.graphics();
-    background.lineStyle(1, 0xa3aca0, 0.07);
-    for (let x = 0; x < ARENA.width; x += 40)
-      background.lineBetween(x, 0, x, ARENA.groundY);
-    for (let y = 0; y < ARENA.groundY; y += 40)
-      background.lineBetween(0, y, ARENA.width, y);
-    background.fillStyle(0xd2fb78, 0.04).fillCircle(780, 100, 58);
-    background
-      .fillStyle(0x253426)
-      .fillRect(0, ARENA.groundY, ARENA.width, ARENA.height - ARENA.groundY);
-    background
-      .lineStyle(2, 0x657e4e)
-      .lineBetween(0, ARENA.groundY, ARENA.width, ARENA.groundY);
-    this.add.text(24, 24, "THE PROVING GROUND / FLATLAND 01", {
-      fontFamily: "monospace",
-      fontSize: "11px",
-      color: "#a3aca0",
-    });
-    this.ink = this.add.graphics();
-    this.labels = [0, 1].map(() =>
+    this.map = new ArenaMap(this);
+    this.ink = this.add.graphics().setDepth(5);
+    this.controls = new ArenaInput(this, this.bridge);
+    this.effects = new BattleEffects(this);
+    this.director = new ArenaCamera(this.cameras.main);
+    this.rigs = [
+      new CharacterRig(this, "cuy"),
+      new CharacterRig(this, "llama"),
+    ];
+    this.labels = [0, 1].map((i) =>
       this.add
-        .text(0, 0, "", { fontFamily: "monospace", fontSize: "12px" })
-        .setOrigin(0.5),
-    );
-    const canvas = this.game.canvas;
-    canvas.tabIndex = 0;
-    canvas.setAttribute("role", "application");
-    canvas.setAttribute(
-      "aria-label",
-      "Battle arena. Aim with mouse or touch, hold to charge, release to fire. Keyboard: left/right to aim, hold and release Space to fire.",
-    );
-    this.input.on("pointermove", (pointer: Phaser.Input.Pointer) =>
-      this.aim(pointer),
-    );
-    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      if (this.charging || !this.canFire() || !pointer.leftButtonDown()) return;
-      canvas.focus({ preventScroll: true });
-      this.aim(pointer);
-      this.chargePointer = pointer.id;
-      this.beginCharge();
-    });
-    this.input.on("pointerup", (pointer: Phaser.Input.Pointer) => {
-      if (pointer.id === this.chargePointer) this.shoot();
-    });
-    this.input.on("pointerupoutside", () => this.cancel());
-    const cancel = () => this.cancel();
-    const keyDown = (event: KeyboardEvent) => {
-      if (!["ArrowLeft", "ArrowRight", "Space"].includes(event.code)) return;
-      event.preventDefault();
-      if (event.code === "Space" && !event.repeat && this.canFire())
-        this.beginCharge();
-      if (this.canFire() && event.code !== "Space") {
-        this.angle = Phaser.Math.Angle.Wrap(
-          this.angle + (event.code === "ArrowLeft" ? -0.025 : 0.025),
-        );
-      }
-    };
-    const keyUp = (event: KeyboardEvent) => {
-      if (event.code === "Space") {
-        event.preventDefault();
-        this.shoot();
-      }
-    };
-    canvas.addEventListener("keydown", keyDown);
-    canvas.addEventListener("keyup", keyUp);
-    canvas.addEventListener("pointercancel", cancel);
-    canvas.addEventListener("blur", cancel);
-    window.addEventListener("blur", cancel);
-    this.events.once("shutdown", () => {
-      canvas.removeEventListener("keydown", keyDown);
-      canvas.removeEventListener("keyup", keyUp);
-      canvas.removeEventListener("pointercancel", cancel);
-      canvas.removeEventListener("blur", cancel);
-      window.removeEventListener("blur", cancel);
-    });
-  }
-
-  private canFire() {
-    const { state, sessionId, connected } = this.bridge;
-    return (
-      connected &&
-      state?.phase === "aiming" &&
-      state.currentPlayer === sessionId &&
-      state.remainingMs > 0 &&
-      this.sentTurn !== state.turnNumber
+        .text(0, 0, i === 0 ? "CUY" : "LLAMA", {
+          fontFamily: "Arial",
+          fontSize: "11px",
+          fontStyle: "bold",
+          color: "#fff2d3",
+          backgroundColor: "#493d46",
+          padding: { x: 7, y: 4 },
+        })
+        .setOrigin(0.5)
+        .setDepth(12),
     );
   }
-
-  private aim(pointer: Phaser.Input.Pointer) {
-    if (!this.canFire() || (this.charging && pointer.id !== this.chargePointer))
-      return;
-    const player = this.bridge.state?.players.find(
-      (p) => p.sessionId === this.bridge.sessionId,
-    );
-    if (player)
-      this.angle = Math.atan2(
-        pointer.worldY - player.y,
-        pointer.worldX - player.x,
-      );
-  }
-
-  private beginCharge() {
-    if (this.charging) return;
-    this.chargeStart = performance.now();
-    this.charging = true;
-  }
-
-  private power() {
-    return this.charging
-      ? Math.min(1, (performance.now() - this.chargeStart) / 1400)
-      : 0;
-  }
-
-  private shoot() {
-    if (this.charging && this.canFire() && this.bridge.state) {
-      this.sentTurn = this.bridge.state.turnNumber;
-      this.bridge.fire({
-        angle: this.angle,
-        power: this.power(),
-        turnNumber: this.sentTurn,
-      });
-    }
-    this.cancel();
-  }
-
-  private cancel() {
-    this.charging = false;
-    this.chargePointer = -1;
-    this.reportPower(0);
-  }
-
-  private reportPower(value: number) {
-    const rounded = Math.round(value * 100);
-    if (rounded !== this.lastPower) {
-      this.lastPower = rounded;
-      this.bridge.charge(rounded);
-    }
-  }
-
-  update() {
+  update(_time: number, dt: number) {
     const { state, sessionId } = this.bridge;
     if (!state || !this.ink) return;
-    if (state.turnNumber !== this.lastTurn) {
-      this.lastTurn = state.turnNumber;
-      this.cancel();
-      const me = state.players.find((p) => p.sessionId === sessionId);
-      this.angle = me?.number === 2 ? (-3 * Math.PI) / 4 : -Math.PI / 4;
+    if (this.generation !== this.bridge.generation) {
+      this.generation = this.bridge.generation;
+      this.effects.reset(state);
+      this.lastPhase = "";
     }
-    if (!this.canFire() && this.charging) this.cancel();
-    const power = this.power();
-    this.reportPower(power);
+    this.controls.update(dt);
+    this.map.update(state);
+    this.director.update(state, dt);
     const g = this.ink.clear();
+    const power = this.controls.power();
+    if (state.phase === "flying" && this.lastPhase !== "flying") {
+      this.firedAngle = Math.atan2(state.projectile.vy, state.projectile.vx);
+      const i = state.players.findIndex(
+        (p) => p.sessionId === state.currentPlayer,
+      );
+      this.rigs[i]?.recoil();
+    }
+    this.lastPhase = state.phase;
     state.players.forEach((player, i) => {
-      const color = player.number === 1 ? 0xd2fb78 : 0xd7b7ff;
-      if (
-        state.currentPlayer === player.sessionId &&
-        state.phase !== "finished"
-      ) {
-        g.lineStyle(2, color, 0.3).strokeCircle(player.x, player.y, 27);
-        g.fillStyle(color).fillTriangle(
-          player.x - 5,
-          player.y - 42,
-          player.x + 5,
-          player.y - 42,
+      const active = state.currentPlayer === player.sessionId;
+      const angle =
+        active && state.phase === "flying"
+          ? this.firedAngle
+          : player.sessionId === sessionId
+            ? this.controls.angle
+            : player.number === 1
+              ? -Math.PI / 4
+              : (-3 * Math.PI) / 4;
+      this.rigs[i]?.root.setVisible(true);
+      this.rigs[i]?.update(player, angle, active ? power : 0, dt);
+      this.labels[i]?.setPosition(player.x, player.y + 38);
+      g.fillStyle(0x3b2b38, 0.18).fillEllipse(
+        player.x,
+        player.y + ARENA.playerRadius + 3,
+        45,
+        8,
+      );
+      if (active && state.phase !== "finished") {
+        const y =
+          player.y - (i === 0 ? 76 : 103) + Math.sin(this.time.now / 180) * 2;
+        g.fillStyle(i === 0 ? 0xf5c367 : 0x6ad1b7).fillTriangle(
+          player.x - 7,
+          y,
+          player.x + 7,
+          y,
           player.x,
-          player.y - 35,
+          y + 8,
         );
       }
-      g.fillStyle(0x000000, 0.2).fillEllipse(
-        player.x,
-        ARENA.groundY + 5,
-        45,
-        9,
-      );
-      g.fillStyle(color, player.hp > 0 ? 1 : 0.25).fillCircle(
-        player.x,
-        player.y,
-        ARENA.playerRadius,
-      );
-      const aim =
-        player.sessionId === sessionId
-          ? this.angle
-          : player.number === 1
-            ? -Math.PI / 4
-            : (-3 * Math.PI) / 4;
-      g.lineStyle(8, color, player.hp > 0 ? 1 : 0.25).lineBetween(
-        player.x,
-        player.y,
-        player.x + Math.cos(aim) * 28,
-        player.y + Math.sin(aim) * 28,
-      );
-      this.labels[i]
-        ?.setPosition(player.x, ARENA.groundY + 32)
-        .setText(
-          `P${player.number}${player.sessionId === sessionId ? " / YOU" : ""}`,
-        )
-        .setColor(player.number === 1 ? "#d2fb78" : "#d7b7ff");
-      if (player.sessionId === sessionId && this.canFire()) {
-        for (let d = 38; d < 130; d += 12) {
-          g.fillStyle(color, 1 - d / 160).fillCircle(
-            player.x + Math.cos(this.angle) * d,
-            player.y + Math.sin(this.angle) * d,
-            2,
+      if (this.bridge.debug) {
+        g.lineStyle(1, 0xef4263).strokeCircle(
+          player.x,
+          player.y,
+          ARENA.playerRadius,
+        );
+        g.lineBetween(
+          player.x - 4,
+          player.y,
+          player.x + 4,
+          player.y,
+        ).lineBetween(player.x, player.y - 4, player.x, player.y + 4);
+      }
+      if (player.sessionId === sessionId && this.controls.canFire()) {
+        if (this.bridge.showTrajectory) {
+          const points = trajectory(
+            state,
+            player,
+            this.controls.angle,
+            power || 0.5,
           );
+          points.forEach((p, n) => {
+            g.fillStyle(0x403c4b, 0.65 - (n / points.length) * 0.3).fillCircle(
+              p.x,
+              p.y,
+              n % 2 === 0 ? 2.3 : 1.7,
+            );
+          });
+          const end = points.at(-1);
+          if (end) g.lineStyle(2, 0x403c4b, 0.4).strokeCircle(end.x, end.y, 8);
         }
         if (power > 0)
-          g.lineStyle(4, color)
+          g.lineStyle(3, 0xffef9f)
             .beginPath()
             .arc(
               player.x,
               player.y,
-              31,
+              32,
               -Math.PI / 2,
               -Math.PI / 2 + power * Math.PI * 2,
             )
             .strokePath();
       }
     });
-    const rocket = state.projectile;
-    if (rocket.active) {
-      const last = this.trail.at(-1);
-      if (!last || last.x !== rocket.x || last.y !== rocket.y)
-        this.trail.push({ x: rocket.x, y: rocket.y });
-      if (this.trail.length > 14) this.trail.shift();
-      this.trail.forEach((p, i) => {
-        g.fillStyle(0xf4e7b8, (i / this.trail.length) * 0.4).fillCircle(
-          p.x,
-          p.y,
-          2,
-        );
-      });
-      g.fillStyle(0xffe4a3).fillCircle(rocket.x, rocket.y, 5);
-      g.lineStyle(2, 0xffffff).strokeCircle(rocket.x, rocket.y, 5);
-    } else this.trail = [];
-    if (state.explosion.id !== this.explosionId) {
-      this.explosionId = state.explosion.id;
-      this.explodedAt = performance.now();
+    for (let i = state.players.length; i < 2; i++) {
+      this.rigs[i]?.root.setVisible(false);
+      this.labels[i]?.setVisible(false);
     }
-    const progress = (performance.now() - this.explodedAt) / ARENA.explosionMs;
-    if (this.explosionId > 0 && progress < 1) {
-      const { x, y } = state.explosion;
-      g.fillStyle(0xffd48a, (1 - progress) * 0.25).fillCircle(
-        x,
-        y,
-        ARENA.blastRadius * Math.sqrt(progress),
-      );
-      g.lineStyle(3, 0xffd48a, 1 - progress).strokeCircle(
-        x,
-        y,
-        ARENA.blastRadius * Math.sqrt(progress),
-      );
-      g.fillStyle(0xfff1cc, 1 - progress).fillCircle(x, y, 16 * (1 - progress));
-    }
+    for (let i = 0; i < state.players.length; i++)
+      this.labels[i]?.setVisible(true);
+    this.effects.update(state);
+    // Read-only camera diagnostics used by browser acceptance tests and the local lab.
+    const canvas = this.game.canvas;
+    canvas.dataset.cameraZoom = String(this.cameras.main.zoom);
+    canvas.dataset.cameraScrollY = String(this.cameras.main.scrollY);
   }
 }

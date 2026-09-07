@@ -1,116 +1,171 @@
 "use client";
-
-import { useRef, useState } from "react";
-import GameSession from "../../components/GameSession";
-import { createBattle } from "../../lib/connection";
+import { Battle, type BattleView, MAPS } from "@craft-ones/shared";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { BattlePanel } from "../../components/BattlePanel";
+import { createBridge } from "../../game/GameBridge";
 
 export default function Playground() {
-  const creating = useRef(false);
-  const [roomId, setRoomId] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-
-  async function start() {
-    if (creating.current) return;
-    creating.current = true;
-    setBusy(true);
-    setError("");
-
-    if (roomId) setRoomId("");
-
-    try {
-      setRoomId(await createBattle());
-    } catch {
-      setError(
-        "Could not reach the game server. Make sure it is running, then try again.",
-      );
-    } finally {
-      creating.current = false;
-      setBusy(false);
+  const [mapId, setMapId] = useState<"andes" | "coast">("andes");
+  const [revision, setRevision] = useState(0);
+  const [state, setState] = useState<BattleView | null>(null);
+  const [power, setPower] = useState(0);
+  const [infiniteHp, setInfiniteHp] = useState(false);
+  const [showTrajectory, setShowTrajectory] = useState(true);
+  const [debug, setDebug] = useState(false);
+  const [destructible, setDestructible] = useState(false);
+  const battle = useRef<Battle | null>(null);
+  const bridge = useRef(createBridge(setPower));
+  const options = useRef({ infiniteHp, destructible });
+  useEffect(() => {
+    options.current = { infiniteHp, destructible };
+    if (battle.current) {
+      battle.current.infiniteHp = infiniteHp;
+      battle.current.destructible = destructible;
     }
-  }
-
-  const gamePath = roomId ? `/game/${roomId}` : "";
-
+    bridge.current.showTrajectory = showTrajectory;
+    bridge.current.debug = debug;
+  }, [infiniteHp, destructible, showTrajectory, debug]);
+  // One simulation, two local seats. No socket or server needed by this route.
+  useEffect(() => {
+    const engine = new Battle(undefined, mapId);
+    engine.infiniteHp = options.current.infiniteHp;
+    engine.destructible = options.current.destructible;
+    engine.addPlayer("local-cuy");
+    engine.addPlayer("local-llama");
+    battle.current = engine;
+    let sequence = 0;
+    const sync = () => {
+      const snapshot = engine.state.toJSON() as BattleView;
+      bridge.current.state = snapshot;
+      bridge.current.sessionId = engine.state.currentPlayer;
+      setState(snapshot);
+    };
+    bridge.current.generation = revision;
+    bridge.current.connected = true;
+    bridge.current.fire = (action) => {
+      engine.fire(engine.state.currentPlayer, action);
+      sync();
+    };
+    bridge.current.move = (direction) => {
+      engine.move(engine.state.currentPlayer, {
+        direction,
+        sequence: ++sequence,
+        turnNumber: engine.state.turnNumber,
+      });
+      sync();
+    };
+    sync();
+    let previous = performance.now(),
+      reported = previous;
+    const timer = setInterval(() => {
+      const now = performance.now();
+      engine.step(now - previous);
+      previous = now;
+      bridge.current.state = engine.state.toJSON() as BattleView;
+      bridge.current.sessionId = engine.state.currentPlayer;
+      if (now - reported >= 40) {
+        setState(bridge.current.state);
+        reported = now;
+      }
+    }, 1000 / 60);
+    return () => {
+      clearInterval(timer);
+      bridge.current.connected = false;
+      battle.current = null;
+    };
+  }, [mapId, revision]);
+  const reset = () => setRevision((value) => value + 1);
   return (
-    <main className="mx-auto min-h-svh max-w-[1800px] px-4 py-6 sm:px-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-5 border-b border-white/10 pb-6">
-        <div>
-          <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#d2fb78]">
-            Hidden development view
-          </p>
-          <h1 className="text-3xl font-black tracking-[-0.04em] sm:text-4xl">
-            Craft Ones playground
-          </h1>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#a3aca0]">
-            Run both sides of one server-authoritative duel in this browser.
-            Each panel is a real player connection.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={start}
-          disabled={busy}
-          className="rounded-lg bg-[#d2fb78] px-5 py-3 text-sm font-bold text-[#17200f] transition-colors hover:bg-[#e2ffa7]"
-        >
-          {busy
-            ? roomId
-              ? "Resetting…"
-              : "Starting…"
-            : roomId
-              ? "Reset Playground"
-              : "Start Playground"}
+    <main className="game-shell mx-auto min-h-svh max-w-6xl px-3 py-5 sm:px-8">
+      <header className="game-header">
+        <Link href="/" className="brand">
+          CRAFT <span>ONES</span>
+        </Link>
+        <span className="lab-badge">PLAYGROUND · LOCAL</span>
+        <button type="button" onClick={reset} className="secondary-button">
+          Restart
         </button>
       </header>
-
-      {error ? (
-        <div
-          role="alert"
-          data-testid="playground-error"
-          className="mb-6 rounded-lg border border-[#ffae9d]/30 bg-[#ffae9d]/5 p-4 text-sm text-[#ffae9d]"
-        >
-          {error}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-[#b7c4b1]">
+          Two critters. One keyboard. Endless rematches.
+        </p>
+        <label className="flex items-center gap-2 text-xs font-bold text-[#b7c4b1]">
+          MAP
+          <select
+            aria-label="Map"
+            value={mapId}
+            onChange={(event) => {
+              setMapId(event.target.value as "andes" | "coast");
+              reset();
+            }}
+            className="map-select"
+          >
+            {Object.entries(MAPS).map(([id, map]) => (
+              <option key={id} value={id}>
+                {map.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <BattlePanel
+        state={state}
+        sessionId={state?.currentPlayer ?? ""}
+        connected={!!state}
+        bridge={bridge}
+        power={power}
+        local
+        restart={reset}
+      />
+      <details className="lab-tools mt-6">
+        <summary>
+          Lab tools <span className="text-[#82947f]">/ quick experiments</span>
+        </summary>
+        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-4">
+          <label>
+            <input
+              type="checkbox"
+              checked={infiniteHp}
+              onChange={(e) => setInfiniteHp(e.target.checked)}
+            />{" "}
+            Infinite HP
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={showTrajectory}
+              onChange={(e) => setShowTrajectory(e.target.checked)}
+            />{" "}
+            Show trajectory
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={debug}
+              onChange={(e) => setDebug(e.target.checked)}
+            />{" "}
+            Show collisions
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={destructible}
+              onChange={(e) => setDestructible(e.target.checked)}
+            />{" "}
+            Destructible ground
+          </label>
+          <a
+            href="/art/character-reference.svg"
+            target="_blank"
+            rel="noreferrer"
+            className="underline text-[#b7c4b1]"
+          >
+            Character sheet ↗
+          </a>
         </div>
-      ) : null}
-
-      {roomId ? (
-        <section
-          className="grid gap-6 xl:grid-cols-2"
-          aria-label="Two-player playground"
-        >
-          <article className="min-w-0 overflow-hidden rounded-xl border border-[#d2fb78]/25 bg-[#111512]">
-            <p className="border-b border-white/10 px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[#d2fb78]">
-              Player 1 / host view
-            </p>
-            <div data-testid="playground-player-1">
-              <GameSession key={roomId} roomId={roomId} invitePath={gamePath} />
-            </div>
-          </article>
-
-          <article className="min-w-0 overflow-hidden rounded-xl border border-[#d7b7ff]/25 bg-[#111512]">
-            <p className="border-b border-white/10 px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[#d7b7ff]">
-              Player 2 / rival view
-            </p>
-            <iframe
-              key={roomId}
-              src={gamePath}
-              title="Player 2 game"
-              className="block h-[900px] w-full border-0"
-            />
-          </article>
-        </section>
-      ) : (
-        <section className="flex min-h-[55svh] items-center justify-center rounded-xl border border-dashed border-white/15 bg-[#191e19]/40 p-8 text-center">
-          <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#a3aca0]">
-              No active sandbox
-            </p>
-            <p className="mt-3 text-lg font-bold">
-              Start the playground to create both players.
-            </p>
-          </div>
-        </section>
-      )}
+      </details>
     </main>
   );
 }

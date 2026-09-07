@@ -63,3 +63,185 @@ meter::-webkit-meter-optimum-value {
 meter::-moz-meter-bar {
   background: currentColor;
 }
+
+body {
+  background: radial-gradient(ellipse at 50% 0, #283a35 0, #14251f 65%);
+  color: #fff1d6;
+}
+.brand {
+  font-weight: 950;
+  font-size: 19px;
+  letter-spacing: -1px;
+}
+.brand span {
+  color: #f3c677;
+}
+.game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #ffffff12;
+}
+.lab-badge {
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  font-weight: bold;
+  color: #8cd5bb;
+}
+.primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fce3a3;
+  border-radius: 12px;
+  padding: 12px 23px;
+  background: #f3c677;
+  color: #3c3033;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 4px 0 #9d713b;
+  transition:
+    transform 0.12s,
+    background 0.12s;
+}
+.primary-button:hover {
+  background: #ffdf9c;
+  transform: translateY(-1px);
+}
+.secondary-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid #8b9f874f;
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #f4e5c4;
+  background: #ffffff05;
+}
+.secondary-button:hover {
+  background: #ffffff10;
+}
+.battle-panel {
+  overflow: hidden;
+  border: 2px solid #526a53;
+  border-radius: 18px;
+  box-shadow:
+    0 10px 0 #0c1a1660,
+    0 24px 60px #09181350;
+}
+.turn-clock {
+  display: flex;
+  gap: 5px;
+  align-items: baseline;
+  background: #283a35;
+  padding: 8px 15px;
+  border-radius: 12px;
+  border: 1px solid #526a5355;
+}
+.turn-clock span {
+  font-size: 28px;
+  font-family: monospace;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+}
+.turn-clock small {
+  font-size: 9px;
+  color: #a9b7a5;
+}
+.turn-clock.urgent {
+  color: #ffad93;
+  border-color: #ffad9340;
+}
+.move-button {
+  touch-action: none;
+  width: 44px;
+  height: 40px;
+  border: 1px solid #769482;
+  border-radius: 9px;
+  background: #3a5145;
+  font-size: 22px;
+  line-height: 1;
+  font-weight: bold;
+}
+.move-button:active {
+  background: #668a63;
+}
+.result-card {
+  max-width: 340px;
+  border: 2px solid #819f73;
+  border-radius: 18px;
+  background: #24372ff5;
+  padding: 22px;
+  text-align: center;
+  box-shadow: 0 6px 0 #14231c55;
+}
+.map-select {
+  border: 1px solid #6d866555;
+  border-radius: 8px;
+  padding: 9px 28px 9px 12px;
+  background: #283a35;
+  color: #f8e2b8;
+  font-size: 12px;
+}
+.lab-tools {
+  border-top: 1px solid #ffffff10;
+  padding-top: 16px;
+  font-size: 12px;
+  color: #ccd3b8;
+}
+.lab-tools summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+.lab-tools label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+.lab-tools input {
+  accent-color: #8cd5bb;
+  width: 16px;
+  height: 16px;
+}
+@media (max-width: 480px) {
+  .lab-badge {
+    font-size: 8px;
+    letter-spacing: 0.5px;
+  }
+  .game-header {
+    margin-bottom: 20px;
+    gap: 8px;
+  }
+  .secondary-button {
+    padding: 9px 12px;
+  }
+  .brand {
+    font-size: 16px;
+  }
+  .result-card {
+    padding: 14px;
+  }
+}
+
+/* Fit the whole battlefield and its controls in short desktop windows. */
+@media (min-width: 768px) and (min-height: 600px) {
+  .game-shell {
+    max-width: min(72rem, calc((100svh - 360px) * 1.777778 + 64px));
+  }
+  .game-shell .game-header {
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+  }
+}
+@media (orientation: landscape) and (max-height: 599px) {
+  .game-canvas {
+    max-height: calc(100svh - 105px);
+    background: #b6e3df;
+  }
+}
