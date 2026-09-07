@@ -173,6 +173,7 @@ export class Battle {
       player.vy = 0;
       player.vx = 0;
       player.abilityReadyTurn = 0;
+      player.shield = 0;
     }
     this.bodyAccumulator = 0;
     this.state.winner = "";
@@ -445,6 +446,31 @@ export class Battle {
       if (player.hp >= 100) return "Already at full health";
       player.hp = Math.min(100, player.hp + 25);
       this.state.lastAction = "heal";
+    } else if (player.species === "ronsoco") {
+      if (player.shield > 0) return "Shield already active";
+      player.shield = 30;
+      this.state.lastAction = "shield";
+    } else if (player.species === "zorro") {
+      const direction = (payload as { direction?: unknown }).direction;
+      if (
+        (direction !== -1 && direction !== 1) ||
+        !grounded(this.state, player.x, player.y) ||
+        player.vy < 0
+      )
+        return "Land before dashing";
+      const start = player.x;
+      for (let i = 0; i < 40; i++) {
+        const { x, y } = player;
+        const error = worldMove(this.state, player, direction);
+        if (!grounded(this.state, player.x, player.y)) {
+          player.x = x;
+          player.y = y;
+          break;
+        }
+        if (error || Math.abs(player.x - x) < 0.01) break;
+      }
+      if (Math.abs(player.x - start) < 1) return "No room to dash";
+      this.state.lastAction = "dash";
     } else {
       const direction = (payload as { direction?: unknown }).direction;
       if (
@@ -487,9 +513,12 @@ export class Battle {
       );
       if (distance >= weapon.radius) continue;
       const strength = 1 - distance / weapon.radius;
+      const incoming = Math.round(weapon.damage * strength);
+      const absorbed = Math.min(player.shield, incoming);
+      player.shield -= absorbed;
       player.hp = this.infiniteHp
         ? 100
-        : Math.max(0, player.hp - Math.round(weapon.damage * strength));
+        : Math.max(0, player.hp - incoming + absorbed);
       const direction =
         Math.sign(player.x - explosion.x) || (player.number === 1 ? -1 : 1);
       player.vy = -140 * strength;

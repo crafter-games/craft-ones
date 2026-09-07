@@ -27,6 +27,7 @@ export class Player extends Schema {
   declare species: Species;
   declare coat: CoatId;
   declare abilityReadyTurn: number;
+  declare shield: number;
   declare vx: number;
   declare sessionId: string;
   declare number: number;
@@ -43,6 +44,7 @@ export class Player extends Schema {
       species: "cuy",
       coat: "caramel",
       abilityReadyTurn: 0,
+      shield: 0,
       vx: 0,
       sessionId: "",
       number: 0,
@@ -59,6 +61,7 @@ defineTypes(Player, {
   species: "string",
   coat: "string",
   abilityReadyTurn: "number",
+  shield: "number",
   vx: "number",
   sessionId: "string",
   number: "number",
@@ -187,6 +190,7 @@ export type PlayerView = Pick<
   | "species"
   | "coat"
   | "abilityReadyTurn"
+  | "shield"
   | "vx"
   | "sessionId"
   | "number"

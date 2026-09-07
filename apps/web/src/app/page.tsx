@@ -46,7 +46,7 @@ export default function Home() {
           Crafter Station · Play Lab
         </span>
       </header>
-      <section className="grid flex-1 items-center gap-10 pb-12 pt-5 md:grid-cols-[1fr_1fr]">
+      <section className="grid items-center gap-10 pb-8 pt-5 md:grid-cols-[1fr_1fr]">
         <div>
           <p className="mb-6 text-xs font-bold uppercase tracking-[0.18em] text-[#8cd5bb]">
             Made of mischief. Born in Peru.
@@ -57,50 +57,10 @@ export default function Home() {
             <span className="text-[#f3c677]">Big trouble.</span>
           </h1>
           <p className="mt-6 max-w-sm text-base leading-relaxed text-[#b7c4b1]">
-            A cuy. A llama. One very bad idea.
+            Four rivals. Four tricks. One very bad idea.
             <br />
             Aim, charge, and send your friendly rivalry flying.
           </p>
-          <section className="match-setup mt-6" aria-label="Match setup">
-            <h2 className="text-sm font-bold">Choose map & character</h2>
-            <div className="mt-4 grid gap-4">
-              <MapPicker value={mapId} onChange={setMapId} />
-              <CharacterPicker
-                value={player}
-                onChange={setPlayer}
-                label="Your critter"
-              />
-            </div>
-          </section>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href={`/playground?map=${mapId}&species=${player.species}&coat=${player.coat}`}
-              className="primary-button"
-            >
-              Playground{" "}
-              <span aria-hidden="true" className="ml-7">
-                ↗
-              </span>
-            </Link>
-            <button
-              type="button"
-              onClick={create}
-              disabled={busy}
-              className="secondary-button"
-            >
-              {busy ? "Creating game…" : "Create Game"}
-            </button>
-          </div>
-          <p className="mt-5 text-xs leading-relaxed text-[#91a38e]">
-            Play both sides locally, or invite a friend.
-            <br />
-            No sign-up. Just a little competitive chaos.
-          </p>
-          {error ? (
-            <p role="alert" className="mt-5 max-w-sm text-sm text-[#ffae9d]">
-              {error}
-            </p>
-          ) : null}
         </div>
         <div className="overflow-hidden rounded-[26px] border-[3px] border-[#526a53] shadow-2xl">
           <Image
@@ -112,6 +72,46 @@ export default function Home() {
             className="h-auto w-full"
           />
         </div>
+      </section>
+      <section className="match-setup mb-10" aria-label="Match setup">
+        <h2 className="text-sm font-bold">Choose map & character</h2>
+        <div className="mt-4 grid items-center gap-8 md:grid-cols-2">
+          <CharacterPicker
+            value={player}
+            onChange={setPlayer}
+            label="Your critter"
+          />
+          <MapPicker value={mapId} onChange={setMapId} />
+        </div>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link
+            href={`/playground?map=${mapId}&species=${player.species}&coat=${player.coat}`}
+            className="primary-button"
+          >
+            Playground{" "}
+            <span aria-hidden="true" className="ml-7">
+              ↗
+            </span>
+          </Link>
+          <button
+            type="button"
+            onClick={create}
+            disabled={busy}
+            className="secondary-button"
+          >
+            {busy ? "Creating game…" : "Create Game"}
+          </button>
+        </div>
+        <p className="mt-5 text-xs leading-relaxed text-[#91a38e]">
+          Play both sides locally, or invite a friend.
+          <br />
+          No sign-up. Just a little competitive chaos.
+        </p>
+        {error ? (
+          <p role="alert" className="mt-5 max-w-sm text-sm text-[#ffae9d]">
+            {error}
+          </p>
+        ) : null}
       </section>
       <footer className="flex flex-wrap justify-between gap-3 border-t border-white/10 py-6 text-[10px] font-bold uppercase tracking-wider text-[#82947f]">
         <span>Two critters · 100 HP · 15-second turns</span>

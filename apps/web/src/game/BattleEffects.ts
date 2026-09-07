@@ -1,17 +1,16 @@
 import { type BattleView, WEAPONS } from "@craft-ones/shared";
 import type * as Phaser from "phaser";
+import { WEAPON_ART } from "./weapons/design";
 
 export class BattleEffects {
   private ink: Phaser.GameObjects.Graphics;
-  private rocket: Phaser.GameObjects.Container;
-  private throwable: Phaser.GameObjects.Graphics;
+  private projectile: Phaser.GameObjects.Image;
   private fuse: Phaser.GameObjects.Text;
   private trail: { x: number; y: number }[] = [];
   private explosionId = 0;
   private hp = [100, 100];
   constructor(private scene: Phaser.Scene) {
     this.ink = scene.add.graphics().setDepth(15);
-    this.throwable = scene.add.graphics().setDepth(21);
     this.fuse = scene.add
       .text(0, 0, "", {
         fontFamily: "Arial",
@@ -23,17 +22,12 @@ export class BattleEffects {
       })
       .setDepth(22)
       .setOrigin(0.5);
-    const rocket = scene.add.graphics();
-    rocket.fillStyle(0xffbe70).fillTriangle(-8, -4, -18, 0, -8, 4);
-    rocket.fillStyle(0x3b2b38).fillRoundedRect(-10, -5, 20, 10, 4);
-    rocket.fillStyle(0xe6eee0).fillRoundedRect(-8, -3, 14, 6, 2);
-    rocket.fillStyle(0xf18467).fillTriangle(5, -5, 13, 0, 5, 5);
-    rocket.fillStyle(0x719f99).fillTriangle(-7, 0, -13, 8, -3, 4);
-    this.rocket = scene.add
-      .container(0, 0, [rocket])
+    this.projectile = scene.add
+      .image(0, 0, "projectile-rocket")
       .setDepth(20)
       .setVisible(false);
   }
+
   reset(state: BattleView) {
     this.hp = state.players.map((p) => p.hp);
     this.explosionId = state.explosion.id;
@@ -42,33 +36,21 @@ export class BattleEffects {
   update(state: BattleView) {
     const g = this.ink.clear();
     const p = state.projectile;
-    this.rocket.setVisible(
-      p.active && (p.kind === "rocket" || p.kind === "mortar"),
-    );
-    const object = this.throwable.clear();
+    this.projectile.setVisible(p.active);
     this.fuse.setVisible(
       p.active && (p.kind === "grenade" || p.kind === "dynamite"),
     );
     if (p.active) {
-      if (p.kind === "grenade") {
-        object.fillStyle(0x343b39).fillCircle(p.x, p.y, 10);
-        object.fillStyle(0x89a066).fillCircle(p.x, p.y, 7);
-        object.lineStyle(2, 0xd8dba2).lineBetween(p.x - 5, p.y, p.x + 5, p.y);
-        object.lineStyle(3, 0x343b39).strokeCircle(p.x, p.y - 10, 4);
-      }
-      if (p.kind === "dynamite") {
-        object
-          .fillStyle(0x45332d)
-          .fillRoundedRect(p.x - 11, p.y - 7, 22, 14, 3);
-        object.fillStyle(0xd97965).fillRect(p.x - 8, p.y - 5, 16, 10);
-        object.fillStyle(0xf2d695).fillRect(p.x - 2, p.y - 6, 4, 12);
-      }
-      if (p.kind === "grapple")
-        object
-          .lineStyle(3, 0x384b49)
-          .lineBetween(p.x - 9, p.y + 8, p.x + 8, p.y - 9)
-          .lineBetween(p.x + 8, p.y - 9, p.x - 4, p.y - 9)
-          .lineBetween(p.x + 8, p.y - 9, p.x + 8, p.y + 3);
+      const size = WEAPON_ART[p.kind].shotSize;
+      this.projectile
+        .setTexture(`projectile-${p.kind}`)
+        .setDisplaySize(size[0], size[1])
+        .setPosition(p.x, p.y)
+        .setRotation(
+          p.kind === "grenade" || p.kind === "dynamite"
+            ? p.elapsedMs / 180
+            : Math.atan2(p.vy, p.vx),
+        );
       this.fuse
         .setPosition(p.x, p.y - 29)
         .setText(
@@ -85,7 +67,6 @@ export class BattleEffects {
       }
     }
     if (p.active) {
-      this.rocket.setPosition(p.x, p.y).setRotation(Math.atan2(p.vy, p.vx));
       const last = this.trail.at(-1);
       if (!last || last.x !== p.x || last.y !== p.y)
         this.trail.push({ x: p.x, y: p.y });

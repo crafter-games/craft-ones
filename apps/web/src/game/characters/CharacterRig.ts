@@ -2,10 +2,12 @@ import {
   COATS,
   type CoatId,
   type PlayerView,
+  SPECIES,
   type WeaponId,
 } from "@craft-ones/shared";
 import * as Phaser from "phaser";
 import { joints, PARTS, type Part, type Species } from "./design";
+import { armPose, BODY_LAYERS, HEAD_SCALE } from "./pose";
 
 export class CharacterRig {
   readonly root: Phaser.GameObjects.Container;
@@ -28,12 +30,13 @@ export class CharacterRig {
   private previousX: number | null = null;
   private moving = 0;
   private death = 0;
-  private weaponInk!: Phaser.GameObjects.Graphics;
+  private weaponImage: Phaser.GameObjects.Image;
+  private armImages: Phaser.GameObjects.Image[] = [];
   private weaponKind = "";
   private deadEyes: Phaser.GameObjects.Graphics;
 
   static preload(scene: Phaser.Scene) {
-    for (const species of ["cuy", "llama"] as const)
+    for (const species of SPECIES)
       for (const coat of Object.keys(COATS))
         for (const part of PARTS)
           scene.load.svg(
@@ -60,19 +63,20 @@ export class CharacterRig {
       parent.add(container);
       return container;
     };
-    pivot("tail", [0, 0]);
+    const tail = pivot("tail", [0, 0]);
     this.legBack = pivot("legBack", j.hipBack);
     this.footBack = pivot("footBack", j.ankle, this.legBack);
     this.armBack = pivot("armBack", j.shoulderBack);
     this.handBack = pivot("handBack", j.wrist, this.armBack);
-    this.body.add(image("body"));
+    const torso = image("body");
+    this.body.add(torso);
     this.legFront = pivot("legFront", j.hipFront);
     this.footFront = pivot("footFront", j.ankle, this.legFront);
-    this.head = scene.add.container(j.neck[0], j.neck[1]);
+    this.head = scene.add.container(j.neck[0], j.neck[1]).setScale(HEAD_SCALE);
     this.body.add(this.head);
     pivot("earBack", j.earBack, this.head);
-    this.head.add(image("head"));
     this.ear = pivot("earFront", j.earFront, this.head);
+    this.head.add(image("head"));
     this.eyes = image("eyes");
     this.head.add(this.eyes);
     this.deadEyes = scene.add
@@ -83,54 +87,31 @@ export class CharacterRig {
       .setVisible(false);
     this.head.add(this.deadEyes);
     this.weapon = scene.add.container(0, 0);
-    const g = scene.add.graphics();
-    this.weaponInk = g;
-    this.weapon.add(g);
+    this.weaponImage = scene.add
+      .image(0, 0, "weapon-rocket")
+      .setDisplaySize(64, 48);
+    this.weapon.add(this.weaponImage);
     this.body.add(this.weapon);
     this.armFront = pivot("armFront", j.shoulderFront);
     this.handFront = pivot("handFront", j.wrist, this.armFront);
-  }
-
-  private drawWeapon(kind: WeaponId) {
-    const g = this.weaponInk.clear();
-    if (kind === "grenade") {
-      g.fillStyle(0x3b2b38).fillCircle(8, 0, 10);
-      g.fillStyle(0x779657).fillCircle(8, 0, 7);
-      g.lineStyle(2, 0xc0d187)
-        .lineBetween(4, -4, 12, -4)
-        .lineBetween(3, 1, 13, 1);
-      g.lineStyle(3, 0x3b2b38).strokeCircle(8, -10, 4);
-    } else if (kind === "dynamite") {
-      for (const y of [-5, 0, 5]) {
-        g.fillStyle(0x3b2b38).fillRoundedRect(0, y - 3, 20, 6, 2);
-        g.fillStyle(0xd96356).fillRoundedRect(2, y - 2, 16, 4, 2);
-      }
-      g.fillStyle(0xeecf8c).fillRect(7, -8, 4, 16);
-      g.lineStyle(2, 0xf9e7ae).lineBetween(18, -5, 23, -12);
-    } else if (kind === "grapple") {
-      g.lineStyle(4, 0x3b2b38)
-        .lineBetween(-4, 1, 18, 1)
-        .lineBetween(16, 1, 22, -8)
-        .lineBetween(16, 1, 22, 10);
-      g.lineStyle(2, 0xc7e3db)
-        .lineBetween(-3, 0, 18, 0)
-        .lineBetween(17, 0, 21, -7)
-        .lineBetween(17, 0, 21, 8);
-      g.fillStyle(0xbe9967).fillRect(0, -4, 6, 8);
-    } else {
-      g.fillStyle(0x3b2b38).fillRoundedRect(-8, -7, 32, 14, 4);
-      g.fillStyle(kind === "mortar" ? 0x947da2 : 0x607e83).fillRoundedRect(
-        -6,
-        -5,
-        26,
-        10,
-        3,
-      );
-      g.fillStyle(0x9bc9bf).fillRect(-3, -4, 6, 8);
-      g.fillStyle(0xffd277).fillRoundedRect(15, -7, 7, 14, 2);
-      g.fillStyle(0x3b2b38).fillRect(20, -4, 3, 8);
-      g.fillStyle(0xeae4c6).fillRect(6, -4, 4, 2);
-    }
+    this.armImages = [
+      this.armBack.list[0] as Phaser.GameObjects.Image,
+      this.armFront.list[0] as Phaser.GameObjects.Image,
+    ];
+    const layers = {
+      tail,
+      legBack: this.legBack,
+      legFront: this.legFront,
+      armBack: this.armBack,
+      body: torso,
+      weapon: this.weapon,
+      armFront: this.armFront,
+      head: this.head,
+    };
+    BODY_LAYERS.forEach((key, index) => {
+      layers[key].setDepth(index);
+    });
+    this.body.sort("depth");
   }
 
   recoil() {
@@ -146,7 +127,7 @@ export class CharacterRig {
   ) {
     if (this.weaponKind !== kind) {
       this.weaponKind = kind;
-      this.drawWeapon(kind);
+      this.weaponImage.setTexture(`weapon-${kind}`);
     }
     const now = this.scene.time.now;
     const j = joints[this.species];
@@ -188,22 +169,19 @@ export class CharacterRig {
     this.head.setPosition(j.neck[0], j.neck[1] + idle * 0.4);
     this.ear.rotation = Math.sin(now / 440) * 0.04 + recoil * 0.3;
     this.eyes.setVisible(player.hp > 0);
-    this.eyes.scaleY = Math.sin(now / 780 + player.number) > 0.994 ? 0.05 : 0.5;
+    this.eyes.scaleY = Math.sin(now / 780 + player.number) > 0.998 ? 0.32 : 0.5;
     this.deadEyes.setVisible(player.hp <= 0);
     this.weapon
       .setVisible(player.hp > 0)
       .setRotation(localAngle)
       .setPosition(-recoil * 3, 0);
-    // Shoulder and wrist pivots: arms point to two grips along the barrel.
-    for (const [arm, shoulder, grip] of [
-      [this.armBack, j.shoulderBack, 4],
-      [this.armFront, j.shoulderFront, 12],
-    ] as const) {
-      const dx = Math.cos(localAngle) * grip - shoulder[0];
-      const dy = Math.sin(localAngle) * grip + 4 - shoulder[1];
-      arm.rotation = Math.atan2(dy, dx);
-      arm.scaleX = Math.hypot(dx, dy) / 12;
-    }
+    // Scale only the upper arm; paws keep their round shape at every aim angle.
+    [this.armBack, this.armFront].forEach((arm, i) => {
+      const pose = armPose(this.species, i === 1, localAngle, kind);
+      arm.rotation = pose.angle;
+      this.armImages[i].scaleX = 0.5 * pose.length;
+      (i === 1 ? this.handFront : this.handBack).x = 12 * pose.length;
+    });
     this.legBack.rotation = Math.sin(now / 70) * this.moving * 0.45;
     this.legFront.rotation = -this.legBack.rotation;
     this.root.alpha = player.hp > 0 ? 1 : 0.7;

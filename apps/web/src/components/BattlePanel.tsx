@@ -1,6 +1,7 @@
 "use client";
 import {
   type BattleView,
+  CHARACTERS,
   type PlayerView,
   WORLD_MAPS,
 } from "@craft-ones/shared";
@@ -42,14 +43,16 @@ function Health({
     >
       <div className="mb-2 flex items-center justify-between gap-2 text-xs sm:text-sm">
         <span className="truncate font-black" style={{ color }}>
-          {player?.species === "llama" ? "Llama" : "Cuy"}{" "}
+          {player ? CHARACTERS[player.species].name : "Player"}{" "}
           <span className="font-normal text-[#b5bfb3]">
             / P{number}
             {you ? " (you)" : player ? "" : " — waiting"}
           </span>
         </span>
         <span className="shrink-0 font-mono text-xs">
-          {player ? `${player.hp} HP` : "—"}
+          {player
+            ? `${player.hp} HP${player.shield ? ` +${player.shield} shield` : ""}`
+            : "—"}
         </span>
       </div>
       <meter
@@ -100,7 +103,7 @@ export function BattlePanel({
           : "It's a draw!"
         : aiming
           ? local
-            ? `${current?.species === "llama" ? "Llama" : "Cuy"}'s turn. Let it fly!`
+            ? `${current ? CHARACTERS[current.species].name : "Player"}'s turn. Let it fly!`
             : myTurn
               ? "Your turn. Make it count."
               : `Player ${current?.number}'s turn`

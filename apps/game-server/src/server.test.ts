@@ -307,7 +307,9 @@ describe("real Colyseus SDK clients", () => {
       sequence: 1,
       turnNumber: one.state.turnNumber,
     });
-    await waitFor(() => two.state.players[0].x > x);
+    await waitFor(
+      () => two.state.players[0].x > x && one.state.players[0].x > x,
+    );
     expect(two.state.players[0].x).toBe(one.state.players[0].x);
     expect(two.state.currentPlayer).toBe(one.sessionId);
     expect(two.state.turnNumber).toBe(1);
@@ -408,6 +410,52 @@ describe("real Colyseus SDK clients", () => {
       clients.delete(two);
     }
   }, 15000);
+
+  test("Zorro dash and Ronsoco shield replicate through authoritative ability intents", async () => {
+    const one = await new Client(endpoint).create<BattleView>("battle", {
+      mapId: "andes",
+      player: { species: "zorro", coat: "caramel" },
+    });
+    const two = await new Client(endpoint).joinById<BattleView>(one.roomId, {
+      player: { species: "ronsoco", coat: "slate" },
+    });
+    for (const room of [one, two]) {
+      clients.add(room);
+      room.onMessage("actionError", () => undefined);
+    }
+    try {
+      await waitFor(
+        () => one.state.players.length === 2 && two.state.phase === "aiming",
+      );
+      expect(two.state.players[0].species).toBe("zorro");
+      expect(one.state.players[1].species).toBe("ronsoco");
+      const start = two.state.players[0].x;
+      one.send("ability", { direction: 1, turnNumber: 1 });
+      await waitFor(
+        () => two.state.turnNumber === 2 && one.state.turnNumber === 2,
+      );
+      expect(two.state.players[0].x).toBeGreaterThan(start);
+      expect(two.state.players[0].x).toBe(one.state.players[0].x);
+      two.send("ability", { turnNumber: 2 });
+      await waitFor(
+        () =>
+          one.state.players[1].shield === 30 &&
+          two.state.players[1].shield === 30,
+      );
+      expect(one.state.lastAction).toBe("shield");
+      expect(one.state.players[1].abilityReadyTurn).toBe(6);
+      await waitFor(
+        () => one.state.turnNumber === 3 && two.state.turnNumber === 3,
+      );
+      expect(one.state.currentPlayer).toBe(one.sessionId);
+      expect(two.state.players[1].shield).toBe(30);
+    } finally {
+      await one.leave();
+      await two.leave();
+      clients.delete(one);
+      clients.delete(two);
+    }
+  });
 
   test("oversized WebSocket messages disconnect instead of accepting unbounded intents", async () => {
     const room = await join();

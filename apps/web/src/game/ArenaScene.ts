@@ -1,4 +1,4 @@
-import { ARENA, shotTrajectory, trajectory } from "@craft-ones/shared";
+import { ARENA, shotTrajectory, trajectory, WEAPONS } from "@craft-ones/shared";
 import * as Phaser from "phaser";
 import { ArenaCamera } from "./ArenaCamera";
 import { ArenaInput } from "./ArenaInput";
@@ -28,6 +28,13 @@ export class ArenaScene extends Phaser.Scene {
   preload() {
     CharacterRig.preload(this);
     ArenaMap.preload(this);
+    for (const kind of Object.keys(WEAPONS)) {
+      this.load.svg(`weapon-${kind}`, `/art/weapons/${kind}.svg`);
+      this.load.svg(
+        `projectile-${kind}`,
+        `/art/weapons/${kind}-projectile.svg`,
+      );
+    }
   }
   create() {
     this.map = new ArenaMap(this);
@@ -115,6 +122,13 @@ export class ArenaScene extends Phaser.Scene {
         45,
         8,
       );
+      if (player.shield > 0)
+        g.lineStyle(2, 0xb4d9d2, 0.8).strokeEllipse(
+          player.x,
+          player.y - 15,
+          64,
+          83,
+        );
       if (active && state.phase !== "finished") {
         const y =
           player.y -

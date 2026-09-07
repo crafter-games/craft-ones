@@ -1,6 +1,44 @@
 import { expect, test } from "@playwright/test";
 import { aimAtOpponent, aimWorld, overview } from "./gameplay";
 
+test("radial roster explains each ability and keeps new characters and coats in local play", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const picker = page.getByRole("group", { name: "Your critter", exact: true });
+  for (const [name, ability] of [
+    ["Cuy", "Second wind"],
+    ["Llama", "Andean leap"],
+    ["Zorro", "Quickstep"],
+    ["Ronsoco", "Iron hide"],
+  ]) {
+    const button = picker.getByRole("button", { name, exact: true });
+    await button.click();
+    await expect(button).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      picker.getByRole("heading", { name: ability, exact: true }),
+    ).toBeVisible();
+    await expect(picker.getByText("UNIQUE ABILITY · 1 TURN")).toBeVisible();
+  }
+  await picker
+    .getByRole("button", { name: "Your critter: Slate", exact: true })
+    .click();
+  await page.getByRole("link", { name: "Playground" }).click();
+  await expect(page.getByTestId("player-1")).toHaveAttribute(
+    "data-species",
+    "ronsoco",
+  );
+  await expect(page.getByTestId("player-1")).toHaveAttribute(
+    "data-coat",
+    "slate",
+  );
+  await page
+    .getByRole("button", { name: "Iron hide · 1 turn", exact: true })
+    .click();
+  await expect(page.getByTestId("player-1")).toContainText("+30 shield");
+  await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "2");
+});
+
 for (const mapId of ["andes", "coast"]) {
   test(`offline playground: ${mapId} completes a real pointer-controlled match and restarts`, async ({
     page,

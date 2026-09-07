@@ -69,17 +69,42 @@ export type WeaponId = keyof typeof WEAPONS;
 export function isWeapon(value: unknown): value is WeaponId {
   return typeof value === "string" && Object.hasOwn(WEAPONS, value);
 }
+export const SPECIES = ["cuy", "llama", "zorro", "ronsoco"] as const;
+export const CHARACTERS = {
+  cuy: { name: "Cuy", role: "Survivor", tagline: "Too stubborn to quit." },
+  llama: {
+    name: "Llama",
+    role: "High ground",
+    tagline: "Always looking down on trouble.",
+  },
+  zorro: { name: "Zorro", role: "Flanker", tagline: "One step ahead. Always." },
+  ronsoco: {
+    name: "Ronsoco",
+    role: "Defender",
+    tagline: "Immovable. Unimpressed.",
+  },
+} as const;
 export const ABILITIES = {
   cuy: {
     name: "Second wind",
     description: "Recover 25 HP. Costs this turn; 2-turn cooldown.",
+  },
+  zorro: {
+    name: "Quickstep",
+    description:
+      "Dash up to 320 units along the ground toward your aim. Stops at walls, ledges and other critters. Costs this turn; 2-turn cooldown.",
+  },
+  ronsoco: {
+    name: "Iron hide",
+    description:
+      "Absorb the next 30 blast damage. Shield lasts until used and cannot stack. Costs this turn; 2-turn cooldown.",
   },
   llama: {
     name: "Andean leap",
     description: "Leap toward your aim. Costs this turn; 2-turn cooldown.",
   },
 } as const;
-export type Species = keyof typeof ABILITIES;
+export type Species = (typeof SPECIES)[number];
 export const COATS = {
   caramel: {
     name: "Caramel",
@@ -98,7 +123,8 @@ export function validPlayerOptions(value: unknown): value is PlayerOptions {
   if (!value || typeof value !== "object") return false;
   const { species, coat } = value as Record<string, unknown>;
   return (
-    (species === "cuy" || species === "llama") &&
+    typeof species === "string" &&
+    Object.hasOwn(CHARACTERS, species) &&
     typeof coat === "string" &&
     Object.hasOwn(COATS, coat)
   );
