@@ -9,7 +9,7 @@ import {
   solidAt,
 } from "@craft-ones/shared";
 
-function fixture(mapId: "andes" | "coast" = "andes") {
+function fixture(mapId: "flat" | "andes" | "coast" = "andes") {
   let now = 0;
   const battle = new Battle(() => now, mapId);
   battle.addPlayer("one");
@@ -23,8 +23,8 @@ function fixture(mapId: "andes" | "coast" = "andes") {
   };
 }
 
-test("movement is turn-bound, rate-limited and consumes a finite distance budget", () => {
-  const { battle, tick } = fixture();
+test("legacy flat movement is turn-bound, rate-limited and consumes a finite distance budget", () => {
+  const { battle, tick } = fixture("flat");
   const intent = { direction: 1, turnNumber: 1, sequence: 1 };
   const player = battle.state.players[0];
   const x = player.x;

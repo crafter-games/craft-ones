@@ -61,8 +61,8 @@ export default function Home() {
             <br />
             Aim, charge, and send your friendly rivalry flying.
           </p>
-          <details className="match-setup mt-6">
-            <summary>Choose map & character</summary>
+          <section className="match-setup mt-6" aria-label="Match setup">
+            <h2 className="text-sm font-bold">Choose map & character</h2>
             <div className="mt-4 grid gap-4">
               <MapPicker value={mapId} onChange={setMapId} />
               <CharacterPicker
@@ -71,9 +71,12 @@ export default function Home() {
                 label="Your critter"
               />
             </div>
-          </details>
+          </section>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/playground" className="primary-button">
+            <Link
+              href={`/playground?map=${mapId}&species=${player.species}&coat=${player.coat}`}
+              className="primary-button"
+            >
               Playground{" "}
               <span aria-hidden="true" className="ml-7">
                 ↗

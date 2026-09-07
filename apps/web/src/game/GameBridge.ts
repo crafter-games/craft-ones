@@ -9,7 +9,7 @@ export type GameBridge = {
   weapon: WeaponId;
   focus: boolean;
   direction: -1 | 1;
-  jump: () => void;
+  jump: (direction?: -1 | 0 | 1) => void;
   ability: () => void;
   fire: (action: FireAction) => void;
   move: (direction: -1 | 1) => void;

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Playground from "./Playground";
 
 export const metadata: Metadata = {
@@ -10,5 +11,9 @@ export const metadata: Metadata = {
 };
 
 export default function PlaygroundPage() {
-  return <Playground />;
+  return (
+    <Suspense fallback={<main className="p-8">Opening playground…</main>}>
+      <Playground />
+    </Suspense>
+  );
 }

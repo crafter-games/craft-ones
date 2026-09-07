@@ -106,14 +106,6 @@ export function ArsenalControls({
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            className="tool-button"
-            onClick={() => bridge.current.jump()}
-            disabled={disabled || (me?.movementLeft ?? 0) < 32}
-          >
-            Jump · W
-          </button>
-          <button
-            type="button"
             className="tool-button ability-button"
             title={ability.description}
             disabled={

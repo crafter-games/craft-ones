@@ -6,28 +6,34 @@ export function MovementControls({
   bridge,
   disabled,
   budget,
+  limited = false,
 }: {
   bridge: RefObject<GameBridge>;
   disabled: boolean;
   budget: number;
+  limited?: boolean;
 }) {
+  const heldDirection = useRef<-1 | 0 | 1>(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const stop = () => {
+    heldDirection.current = 0;
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
   };
   useEffect(() => {
-    if (budget <= 0 && timer.current) {
+    if (limited && budget <= 0 && timer.current) {
       clearInterval(timer.current);
       timer.current = null;
     }
-  }, [budget]);
+  }, [budget, limited]);
   useEffect(() => {
     if (disabled && timer.current) {
       clearInterval(timer.current);
       timer.current = null;
+      heldDirection.current = 0;
     }
     const cancel = () => {
+      heldDirection.current = 0;
       if (timer.current) clearInterval(timer.current);
       timer.current = null;
     };
@@ -44,12 +50,13 @@ export function MovementControls({
           key={direction}
           type="button"
           aria-label={direction === -1 ? "Move left" : "Move right"}
-          disabled={disabled || budget <= 0}
+          disabled={disabled || (limited && budget <= 0)}
           className="move-button"
           onPointerDown={(event) => {
             event.preventDefault();
             event.currentTarget.setPointerCapture(event.pointerId);
             stop();
+            heldDirection.current = direction;
             bridge.current.move(direction);
             timer.current = setInterval(
               () => bridge.current.move(direction),
@@ -69,11 +76,29 @@ export function MovementControls({
           {direction === -1 ? "←" : "→"}
         </button>
       ))}
-      <span className="text-xs text-[#b5bfb3]">
-        Move{" "}
-        <strong className="text-[#f2dc9e]" data-testid="movement-left">
-          {Math.round(budget)}
-        </strong>
+      <button
+        type="button"
+        className="move-button jump-button"
+        aria-label="Jump"
+        title="W jumps; hold A or D for direction. Uses time, keeps your shot."
+        disabled={disabled}
+        onClick={() => bridge.current.jump(heldDirection.current)}
+      >
+        ↥ <span>Jump</span>
+      </button>
+      <span className="text-[10px] leading-tight text-[#b5bfb3]">
+        {limited ? (
+          <>
+            Move{" "}
+            <strong data-testid="movement-left">{Math.round(budget)}</strong>
+          </>
+        ) : (
+          <>
+            Move & jump
+            <br />
+            <strong className="text-[#d8dda5]">Keeps your shot</strong>
+          </>
+        )}
       </span>
     </div>
   );

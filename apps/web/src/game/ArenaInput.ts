@@ -58,7 +58,7 @@ export class ArenaInput {
         this.canFire() &&
         !this.charging
       )
-        this.bridge.jump();
+        this.bridge.jump(this.direction);
       if (event.code === "KeyA") this.direction = -1;
       if (event.code === "KeyD") this.direction = 1;
       if (event.code === "ArrowLeft") this.angleDirection = -1;
@@ -69,7 +69,7 @@ export class ArenaInput {
         event.preventDefault();
         this.shoot();
       }
-      if (["KeyA", "KeyD", "KeyW"].includes(event.code)) this.direction = 0;
+      if (["KeyA", "KeyD"].includes(event.code)) this.direction = 0;
       if (["ArrowLeft", "ArrowRight"].includes(event.code))
         this.angleDirection = 0;
     };
@@ -167,9 +167,10 @@ export class ArenaInput {
       );
       if (
         this.direction &&
-        (this.bridge.state?.players.find(
-          (p) => p.sessionId === this.bridge.sessionId,
-        )?.movementLeft ?? 0) > 0 &&
+        (this.bridge.state?.terrainRows.length ||
+          (this.bridge.state?.players.find(
+            (p) => p.sessionId === this.bridge.sessionId,
+          )?.movementLeft ?? 0) > 0) &&
         performance.now() >= this.moveAt &&
         !this.charging
       ) {

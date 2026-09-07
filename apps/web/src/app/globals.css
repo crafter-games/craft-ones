@@ -392,3 +392,15 @@ body {
     margin-bottom: 14px;
   }
 }
+
+.jump-button {
+  width: auto;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 23px;
+}
+.jump-button span {
+  font-size: 11px;
+}

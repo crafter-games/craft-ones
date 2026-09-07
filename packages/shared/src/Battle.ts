@@ -97,7 +97,7 @@ export class Battle {
     if (
       !player?.connected ||
       player.hp <= 0 ||
-      player.movementLeft <= 0 ||
+      (!this.state.terrainRows.length && player.movementLeft <= 0) ||
       now - this.moveAt < ARENA.moveIntervalMs
     )
       return "Movement unavailable";
@@ -421,15 +421,14 @@ export class Battle {
     const direction = (payload as { direction?: unknown } | null)?.direction;
     if (
       !player ||
-      (direction !== -1 && direction !== 1) ||
-      player.movementLeft < 32 ||
+      (direction !== -1 && direction !== 0 && direction !== 1) ||
       player.vy < -1 ||
       !grounded(this.state, player.x, player.y)
     )
       return "Jump unavailable";
     player.vy = -330;
     player.vx = direction * 180;
-    player.movementLeft -= 32;
+
     return null;
   }
 

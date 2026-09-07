@@ -69,19 +69,20 @@ for (const mapId of ["andes", "coast"]) {
   });
 }
 
-test("movement budget, lab options, high-shot camera and restarting during flight", async ({
+test("free movement, lab options, high-shot camera and restarting during flight", async ({
   page,
 }) => {
   await page.goto("/playground");
   await expect(page.locator("canvas")).toBeVisible();
   await page.locator("canvas").focus();
   await page.keyboard.down("KeyD");
-  await expect(page.getByTestId("player-1")).toHaveAttribute(
-    "data-movement",
-    "0",
-  );
+  await expect
+    .poll(async () =>
+      Number(await page.getByTestId("player-1").getAttribute("data-x")),
+    )
+    .toBeGreaterThan(384);
   await page.keyboard.up("KeyD");
-  await expect(page.getByTestId("player-1")).toHaveAttribute("data-x", "384");
+  await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "1");
   await page.getByText("Lab tools", { exact: false }).click();
   await page.getByLabel("Infinite HP", { exact: true }).check();
   await page.getByLabel("Show collisions", { exact: true }).check();
@@ -254,4 +255,49 @@ test("character colors, every weapon, turn camera and crater feedback are playab
   );
   await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "3");
   expect(errors).toEqual([]);
+});
+
+test("home selections carry into local play and basic jump preserves the shot", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Amber Hollows" }).click();
+  await page.getByRole("button", { name: "Llama", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Your critter: Sage", exact: true })
+    .click();
+  await page.getByRole("link", { name: "Playground" }).click();
+  await expect(page.getByTestId("battle")).toHaveAttribute("data-map", "coast");
+  await expect(page.getByTestId("player-1")).toHaveAttribute(
+    "data-species",
+    "llama",
+  );
+  await expect(page.getByTestId("player-1")).toHaveAttribute(
+    "data-coat",
+    "sage",
+  );
+  const y = Number(await page.getByTestId("player-1").getAttribute("data-y"));
+  await page.getByRole("button", { name: "Jump", exact: true }).click();
+  await expect
+    .poll(async () =>
+      Number(await page.getByTestId("player-1").getAttribute("data-y")),
+    )
+    .toBeLessThan(y - 15);
+  await expect(page.getByTestId("battle")).toHaveAttribute(
+    "data-phase",
+    "aiming",
+  );
+  await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "1");
+  await expect
+    .poll(async () =>
+      Math.abs(
+        Number(await page.getByTestId("player-1").getAttribute("data-y")) - y,
+      ),
+    )
+    .toBeLessThan(1);
+  await aimAtOpponent(page, 1);
+  await expect(page.getByTestId("battle")).toHaveAttribute(
+    "data-phase",
+    "flying",
+  );
 });

@@ -154,13 +154,13 @@ test("cuy heal caps health, consumes a turn and enforces its cooldown", () => {
   expect(battle.ability("one", { turnNumber: s.turnNumber })).toBeNull();
   expect(p.hp).toBe(75);
 });
-test("llama leap moves physically and spends its turn; jump only spends movement", () => {
+test("llama leap spends its turn; basic jumping preserves the attack", () => {
   const { battle, tick, until } = fixture(),
     s = battle.state;
   const one = s.players[0],
     start = one.x;
   expect(battle.jump("one", { direction: 1, turnNumber: 1 })).toBeNull();
-  expect(one.movementLeft).toBe(ARENA.moveBudget - 32);
+  expect(one.movementLeft).toBe(ARENA.moveBudget);
   expect(battle.jump("one", { direction: 1, turnNumber: 1 })).toBeString();
   for (let i = 0; i < 20; i++) tick();
   expect(one.x).toBeGreaterThan(start);
@@ -189,7 +189,7 @@ test("unsupported weapons, forged character fields and stale ability intents can
     null,
     [],
     { turnNumber: 0, direction: 1 },
-    { turnNumber: 1, direction: 0 },
+    { turnNumber: 1, direction: 2 },
     { turnNumber: 1, direction: Infinity },
   ])
     expect(battle.jump("one", payload)).toBeString();
@@ -220,4 +220,47 @@ test("a void fall eliminates a player and restart regenerates pristine terrain a
   expect(s.players[0].hp).toBe(100);
   expect(grounded(s, s.players[0].x, s.players[0].y)).toBe(true);
   expect(s.terrainRows[80]).toContain("1");
+});
+
+test("walking beyond the old movement budget still allows jumping and firing in the same turn", () => {
+  const { battle, tick } = fixture(),
+    s = battle.state,
+    p = s.players[0],
+    x = p.x;
+  for (let sequence = 1; sequence <= 18; sequence++) {
+    expect(
+      battle.move("one", { direction: 1, turnNumber: 1, sequence }),
+    ).toBeNull();
+    tick(100);
+  }
+  expect(p.x - x).toBeGreaterThan(ARENA.moveBudget);
+  expect(s.turnNumber).toBe(1);
+  expect(s.currentPlayer).toBe("one");
+  expect(battle.jump("one", { direction: -1, turnNumber: 1 })).toBeNull();
+  expect(
+    battle.fire("one", { angle: -1, power: 0.5, turnNumber: 1 }),
+  ).toBeNull();
+  expect(s.phase).toBe("flying");
+});
+test("vertical jumps can repeat after landing, use time only, and cannot bypass the turn deadline", () => {
+  const { battle, tick, until } = fixture(),
+    s = battle.state,
+    p = s.players[0],
+    x = p.x;
+  for (let jump = 0; jump < 2; jump++) {
+    expect(battle.jump("one", { direction: 0, turnNumber: 1 })).toBeNull();
+    tick();
+    expect(p.y).toBeLessThan(606);
+    expect(battle.jump("one", { direction: 0, turnNumber: 1 })).toBeString();
+    until(() => p.vy === 0 && grounded(s, p.x, p.y));
+    expect(p.x).toBe(x);
+    expect(s.turnNumber).toBe(1);
+  }
+  expect(s.remainingMs).toBeLessThan(ARENA.turnMs - 2000);
+  expect(p.movementLeft).toBe(ARENA.moveBudget);
+  tick(ARENA.turnMs);
+  const y = p.y;
+  expect(battle.jump("one", { direction: 0, turnNumber: 1 })).toBeString();
+  expect(p.y).toBe(y);
+  expect(s.currentPlayer).toBe("two");
 });

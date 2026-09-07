@@ -54,10 +54,11 @@ export default function GameSession({
             turnNumber: bridge.current.state?.turnNumber,
           });
         for (const action of ["jump", "ability"] as const)
-          bridge.current[action] = () =>
+          bridge.current[action] = (direction?: -1 | 0 | 1) =>
             room.send(action, {
               turnNumber: bridge.current.state?.turnNumber,
-              direction: bridge.current.direction,
+              direction:
+                action === "jump" ? (direction ?? 0) : bridge.current.direction,
             });
         restart.current = () =>
           room.send("restart", {

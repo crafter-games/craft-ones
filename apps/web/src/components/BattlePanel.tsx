@@ -205,6 +205,7 @@ export function BattlePanel({
             bridge={bridge}
             disabled={!aiming || !myTurn || !connected || power > 0}
             budget={myTurn ? (me?.movementLeft ?? 0) : 0}
+            limited={!!state && !state.terrainRows.length}
           />
           <div className="flex items-center gap-3">
             <label htmlFor="power" className="text-xs font-bold text-[#bdc9bc]">

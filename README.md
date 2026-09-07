@@ -12,13 +12,13 @@ bun dev
 Open [Craft Ones](http://localhost:3000). **Playground** immediately starts a local match; you control both characters in alternating turns. It also works with only `bun dev:web` running. **Create Game** creates a server-authoritative room; choose its map/character on home, then copy its invite to a second browser. Guests choose their character and select **Join Game**. After a completed duel, Player 1 can choose **Play again** while both players are connected.
 
 - Mouse or touch: point/drag to aim, hold to charge, release to fire. Full charge takes 2.8 seconds. The idle dotted arc previews 50% power; while charging, it follows your actual power.
-- A / D or the two arrow buttons: move, up to 96 world units each turn.
+- A / D or the two arrow buttons: move, while your 15-second turn clock is running. Walking and basic jumping do not spend your attack.
 - Focus the arena to use keyboard aiming (left/right arrows) and charging (hold/release Space).
-- W or **Jump** hops toward the aim direction and consumes 32 movement units.
+- W or **Jump** jumps vertically. Hold A/D while pressing W (or hold a movement button while tapping Jump on touch) for a directional hop. Landing is required before another jump; there is no jump-point cost.
 - Use the arsenal buttons to choose a rocket, bouncing grenade (3 s), mortar, dynamite (2 s) or grappling hook. Every shot/tool uses the turn; ammunition is unlimited. Hooks have an 880-unit range and pull toward the first terrain anchor, stopping at obstacles.
 - **Second wind** restores 25 HP to the Cuy. **Andean leap** launches the Llama toward its aim. Each ability spends the turn; it is available again on the character’s second subsequent turn. Full-health healing is disabled.
 - The camera focuses the active critter briefly, then pulls back. **Focus character** keeps a close view; **View whole map** restores overview. Camera motion pauses during charging.
-- Open **Match setup** in the playground to pick a map, either species for either seat, and five coat colors. Changes start a fresh match; **Restart** also works mid-flight.
+- Open **Match setup** in the playground to pick a map, either species for either seat, and five coat colors. The home selectors are visible and carry into both local play and room creation. Changes start a fresh match; **Restart** also works mid-flight.
 - Both 1792 × 1024 maps have floating platforms, caves, cliffs and open voids. Rocket/grenade/mortar/dynamite explosions excavate terrain; falling beyond the bottom eliminates a player. Expand **Lab tools** for infinite HP, trajectory, collision circles and the destruction toggle. Terrain resets on rematch.
 
 On a phone on the same network, open `http://<computer-LAN-IP>:3000/playground`. For multiplayer, start the server with `WEB_ORIGIN=http://<computer-LAN-IP>:3000 bun dev:server`; the browser derives the WebSocket host from the page hostname. No authentication, bots or reconnect/persistence are included.
@@ -49,4 +49,6 @@ Unit tests cover malformed/stale actions, fixed-step physics, both maps, complet
 
 ### Verification status for the expanded arena
 
-107 unit and real-server tests, typecheck and lint pass. Production compilation was validated with `bun run --cwd apps/web build --webpack`; the default Turbopack build encounters an environment port-binding restriction. Browser acceptance cases have been updated for map/character selection, the larger camera transform, arsenal controls and crater feedback, but have not yet been rerun: automatic approval review blocked the previous browser interaction/E2E attempt. Visual inspection of the final browser build and final E2E results remain pending authorization. This is not a browser-verified release.
+109 unit and real-server tests, typecheck and lint pass. Production compilation was validated with `bun run --cwd apps/web build --webpack`; the default Turbopack build encounters an environment port-binding restriction. Browser acceptance cases have been updated for map/character selection, the larger camera transform, arsenal controls and crater feedback, but have not yet been rerun: automatic approval review blocked the previous browser interaction/E2E attempt. Visual inspection of the final browser build and final E2E results remain pending authorization. This is not a browser-verified release.
+
+Movement reference: [Gamezebo’s Wild Ones walkthrough](https://www.gamezebo.com/walkthroughs/wild-ones-walkthrough/) describes walking, jumping and shooting in the same timed turn, and W/Space as jump. Craft Ones uses W for jump and retains Space for charging. Basic movement follows the timer; character abilities and the current grappling tool remain turn-consuming actions. Post-shot retreat is not implemented.

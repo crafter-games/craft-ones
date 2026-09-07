@@ -3,15 +3,24 @@ import {
   Battle,
   type BattleView,
   type PlayerOptions,
+  validPlayerOptions,
 } from "@craft-ones/shared";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BattlePanel } from "../../components/BattlePanel";
 import { CharacterPicker, MapPicker } from "../../components/MatchSetup";
 import { createBridge } from "../../game/GameBridge";
 
 export default function Playground() {
-  const [mapId, setMapId] = useState<"andes" | "coast">("andes");
+  const search = useSearchParams();
+  const initialProfile = {
+    species: search.get("species"),
+    coat: search.get("coat"),
+  };
+  const [mapId, setMapId] = useState<"andes" | "coast">(
+    search.get("map") === "coast" ? "coast" : "andes",
+  );
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState<BattleView | null>(null);
   const [power, setPower] = useState(0);
@@ -19,10 +28,14 @@ export default function Playground() {
   const [showTrajectory, setShowTrajectory] = useState(true);
   const [debug, setDebug] = useState(false);
   const [destructible, setDestructible] = useState(true);
-  const [one, setOne] = useState<PlayerOptions>({
-    species: "cuy",
-    coat: "caramel",
-  });
+  const [one, setOne] = useState<PlayerOptions>(
+    validPlayerOptions(initialProfile)
+      ? initialProfile
+      : {
+          species: "cuy",
+          coat: "caramel",
+        },
+  );
   const [two, setTwo] = useState<PlayerOptions>({
     species: "llama",
     coat: "cream",
@@ -72,11 +85,12 @@ export default function Playground() {
       sync();
     };
     for (const action of ["jump", "ability"] as const)
-      bridge.current[action] = () => {
+      bridge.current[action] = (direction?: -1 | 0 | 1) => {
         setError(
           engine[action](engine.state.currentPlayer, {
             turnNumber: engine.state.turnNumber,
-            direction: bridge.current.direction,
+            direction:
+              action === "jump" ? (direction ?? 0) : bridge.current.direction,
           }) ?? "",
         );
         sync();

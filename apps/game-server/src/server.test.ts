@@ -309,9 +309,8 @@ describe("real Colyseus SDK clients", () => {
     });
     await waitFor(() => two.state.players[0].x > x);
     expect(two.state.players[0].x).toBe(one.state.players[0].x);
-    expect(two.state.players[0].movementLeft).toBe(
-      ARENA.moveBudget - ARENA.moveStep,
-    );
+    expect(two.state.currentPlayer).toBe(one.sessionId);
+    expect(two.state.turnNumber).toBe(1);
     const moved = two.state.players[0].x;
     const errors: string[] = [];
     one.onMessage("actionError", (error: string) => errors.push(error));
@@ -377,7 +376,11 @@ describe("real Colyseus SDK clients", () => {
       });
       await waitFor(() => two.state.projectile.active);
       expect(two.state.projectile.kind).toBe("grenade");
-      await waitFor(() => two.state.terrainRevision === 1, 4500);
+      await waitFor(
+        () =>
+          one.state.terrainRevision === 1 && two.state.terrainRevision === 1,
+        4500,
+      );
       expect([...two.state.terrainRows]).toEqual([...one.state.terrainRows]);
       expect(two.state.terrainRows.some((row, i) => row !== pristine[i])).toBe(
         true,

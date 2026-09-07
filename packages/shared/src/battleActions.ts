@@ -44,12 +44,7 @@ export function worldMove(
   if (player.vy < -1 || !grounded(state, player.x, player.y))
     return "Land before moving";
   const before = { x: player.x, y: player.y };
-  const moved = moveHorizontal(
-    state,
-    player,
-    direction * Math.min(ARENA.moveStep, player.movementLeft),
-    true,
-  );
+  moveHorizontal(state, player, direction * ARENA.moveStep, true);
   if (
     state.players.some(
       (p) =>
@@ -62,7 +57,6 @@ export function worldMove(
     player.y = before.y;
     return "Another player is in the way";
   }
-  player.movementLeft = Math.max(0, player.movementLeft - moved);
   return null;
 }
 
