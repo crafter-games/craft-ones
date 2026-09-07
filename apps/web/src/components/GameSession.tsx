@@ -1,11 +1,12 @@
 "use client";
 
-import type { BattleView } from "@craft-ones/shared";
+import type { BattleView, PlayerOptions } from "@craft-ones/shared";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createBridge } from "../game/GameBridge";
-import { acquireBattle } from "../lib/connection";
+import { acquireBattle, hasBattle } from "../lib/connection";
 import { BattlePanel } from "./BattlePanel";
+import { CharacterPicker } from "./MatchSetup";
 
 export default function GameSession({
   roomId,
@@ -23,11 +24,20 @@ export default function GameSession({
   const [manualLink, setManualLink] = useState("");
   const bridge = useRef(createBridge(setPower));
   const restart = useRef(() => {});
+  const [joined, setJoined] = useState<boolean | null>(null);
+  useEffect(() => setJoined(hasBattle(roomId)), [roomId]);
+  const [profile, setProfile] = useState<PlayerOptions>({
+    species: "llama",
+    coat: "cream",
+  });
+  const selectedProfile = useRef(profile);
+  selectedProfile.current = profile;
 
   useEffect(() => {
+    if (!joined) return;
     let active = true;
     let unsubscribe = () => {};
-    const connection = acquireBattle(roomId);
+    const connection = acquireBattle(roomId, selectedProfile.current);
     void connection.promise
       .then((room) => {
         if (!active) return;
@@ -43,6 +53,12 @@ export default function GameSession({
             sequence: ++sequence,
             turnNumber: bridge.current.state?.turnNumber,
           });
+        for (const action of ["jump", "ability"] as const)
+          bridge.current[action] = () =>
+            room.send(action, {
+              turnNumber: bridge.current.state?.turnNumber,
+              direction: bridge.current.direction,
+            });
         restart.current = () =>
           room.send("restart", {
             turnNumber: bridge.current.state?.turnNumber,
@@ -90,7 +106,7 @@ export default function GameSession({
       unsubscribe();
       connection.release();
     };
-  }, [roomId]);
+  }, [roomId, joined]);
 
   async function copyInvite() {
     const url = invitePath
@@ -109,6 +125,29 @@ export default function GameSession({
     state?.phase === "finished" &&
     state.players[0]?.sessionId === sessionId &&
     state.players.every((p) => p.connected);
+  if (joined === null)
+    return <main className="mx-auto max-w-lg px-5 py-12">Opening arena…</main>;
+  if (!joined)
+    return (
+      <main className="mx-auto max-w-lg px-5 py-12">
+        <Link href="/" className="brand">
+          CRAFT <span>ONES</span>
+        </Link>
+        <h1 className="my-6 text-3xl font-black">Join the rivalry</h1>
+        <CharacterPicker
+          label="Your critter"
+          value={profile}
+          onChange={setProfile}
+        />
+        <button
+          type="button"
+          className="primary-button mt-6 w-full"
+          onClick={() => setJoined(true)}
+        >
+          Join Game
+        </button>
+      </main>
+    );
   return (
     <main className="game-shell mx-auto min-h-svh max-w-6xl px-3 py-5 sm:px-8">
       <header className="game-header">

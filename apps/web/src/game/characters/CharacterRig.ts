@@ -1,5 +1,10 @@
-import type { PlayerView } from "@craft-ones/shared";
-import Phaser from "phaser";
+import {
+  COATS,
+  type CoatId,
+  type PlayerView,
+  type WeaponId,
+} from "@craft-ones/shared";
+import * as Phaser from "phaser";
 import { joints, PARTS, type Part, type Species } from "./design";
 
 export class CharacterRig {
@@ -23,24 +28,33 @@ export class CharacterRig {
   private previousX: number | null = null;
   private moving = 0;
   private death = 0;
+  private weaponInk!: Phaser.GameObjects.Graphics;
+  private weaponKind = "";
   private deadEyes: Phaser.GameObjects.Graphics;
 
   static preload(scene: Phaser.Scene) {
     for (const species of ["cuy", "llama"] as const)
-      for (const part of PARTS)
-        scene.load.svg(`${species}-${part}`, `/art/${species}/${part}.svg`);
+      for (const coat of Object.keys(COATS))
+        for (const part of PARTS)
+          scene.load.svg(
+            `${species}-${coat}-${part}`,
+            `/art/${species}/${coat}/${part}.svg`,
+          );
   }
 
   constructor(
     private scene: Phaser.Scene,
     private species: Species,
+    coat: CoatId,
   ) {
     const j = joints[species];
     this.root = scene.add.container(0, 0).setDepth(10);
     this.body = scene.add.container(0, 0);
     this.root.add(this.body);
     const image = (part: Part) =>
-      scene.add.image(0, 0, `${species}-${part}`).setDisplaySize(80, 100);
+      scene.add
+        .image(0, 0, `${species}-${coat}-${part}`)
+        .setDisplaySize(80, 100);
     const pivot = (part: Part, xy: number[], parent = this.body) => {
       const container = scene.add.container(xy[0], xy[1], [image(part)]);
       parent.add(container);
@@ -70,23 +84,70 @@ export class CharacterRig {
     this.head.add(this.deadEyes);
     this.weapon = scene.add.container(0, 0);
     const g = scene.add.graphics();
-    g.fillStyle(0x3b2b38).fillRoundedRect(-8, -7, 30, 14, 4);
-    g.fillStyle(0x607e83).fillRoundedRect(-6, -5, 25, 10, 3);
-    g.fillStyle(0x9bc9bf).fillRect(-3, -4, 6, 8);
-    g.fillStyle(0xffd277).fillRoundedRect(15, -7, 7, 14, 2);
-    g.fillStyle(0x3b2b38).fillRect(20, -4, 3, 8);
-    g.fillStyle(0xeae4c6).fillRect(6, -4, 4, 2);
+    this.weaponInk = g;
     this.weapon.add(g);
     this.body.add(this.weapon);
     this.armFront = pivot("armFront", j.shoulderFront);
     this.handFront = pivot("handFront", j.wrist, this.armFront);
   }
 
+  private drawWeapon(kind: WeaponId) {
+    const g = this.weaponInk.clear();
+    if (kind === "grenade") {
+      g.fillStyle(0x3b2b38).fillCircle(8, 0, 10);
+      g.fillStyle(0x779657).fillCircle(8, 0, 7);
+      g.lineStyle(2, 0xc0d187)
+        .lineBetween(4, -4, 12, -4)
+        .lineBetween(3, 1, 13, 1);
+      g.lineStyle(3, 0x3b2b38).strokeCircle(8, -10, 4);
+    } else if (kind === "dynamite") {
+      for (const y of [-5, 0, 5]) {
+        g.fillStyle(0x3b2b38).fillRoundedRect(0, y - 3, 20, 6, 2);
+        g.fillStyle(0xd96356).fillRoundedRect(2, y - 2, 16, 4, 2);
+      }
+      g.fillStyle(0xeecf8c).fillRect(7, -8, 4, 16);
+      g.lineStyle(2, 0xf9e7ae).lineBetween(18, -5, 23, -12);
+    } else if (kind === "grapple") {
+      g.lineStyle(4, 0x3b2b38)
+        .lineBetween(-4, 1, 18, 1)
+        .lineBetween(16, 1, 22, -8)
+        .lineBetween(16, 1, 22, 10);
+      g.lineStyle(2, 0xc7e3db)
+        .lineBetween(-3, 0, 18, 0)
+        .lineBetween(17, 0, 21, -7)
+        .lineBetween(17, 0, 21, 8);
+      g.fillStyle(0xbe9967).fillRect(0, -4, 6, 8);
+    } else {
+      g.fillStyle(0x3b2b38).fillRoundedRect(-8, -7, 32, 14, 4);
+      g.fillStyle(kind === "mortar" ? 0x947da2 : 0x607e83).fillRoundedRect(
+        -6,
+        -5,
+        26,
+        10,
+        3,
+      );
+      g.fillStyle(0x9bc9bf).fillRect(-3, -4, 6, 8);
+      g.fillStyle(0xffd277).fillRoundedRect(15, -7, 7, 14, 2);
+      g.fillStyle(0x3b2b38).fillRect(20, -4, 3, 8);
+      g.fillStyle(0xeae4c6).fillRect(6, -4, 4, 2);
+    }
+  }
+
   recoil() {
     this.firedAt = this.scene.time.now;
   }
 
-  update(player: PlayerView, angle: number, power: number, dt: number) {
+  update(
+    player: PlayerView,
+    angle: number,
+    power: number,
+    dt: number,
+    kind: WeaponId = "rocket",
+  ) {
+    if (this.weaponKind !== kind) {
+      this.weaponKind = kind;
+      this.drawWeapon(kind);
+    }
     const now = this.scene.time.now;
     const j = joints[this.species];
     if (player.hp < this.lastHp) this.hitAt = now;

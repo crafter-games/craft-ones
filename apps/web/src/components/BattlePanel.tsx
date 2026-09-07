@@ -1,8 +1,13 @@
 "use client";
-import { type BattleView, MAPS, type PlayerView } from "@craft-ones/shared";
+import {
+  type BattleView,
+  type PlayerView,
+  WORLD_MAPS,
+} from "@craft-ones/shared";
 import dynamic from "next/dynamic";
 import type { RefObject } from "react";
 import type { GameBridge } from "../game/GameBridge";
+import { ArsenalControls } from "./ArsenalControls";
 import { MovementControls } from "./MovementControls";
 
 const ArenaCanvas = dynamic(() => import("./ArenaCanvas"), {
@@ -32,10 +37,12 @@ function Health({
       data-x={player?.x ?? ""}
       data-y={player?.y ?? ""}
       data-movement={player?.movementLeft ?? ""}
+      data-species={player?.species}
+      data-coat={player?.coat}
     >
       <div className="mb-2 flex items-center justify-between gap-2 text-xs sm:text-sm">
         <span className="truncate font-black" style={{ color }}>
-          {number === 1 ? "Cuy" : "Llama"}{" "}
+          {player?.species === "llama" ? "Llama" : "Cuy"}{" "}
           <span className="font-normal text-[#b5bfb3]">
             / P{number}
             {you ? " (you)" : player ? "" : " — waiting"}
@@ -93,13 +100,17 @@ export function BattlePanel({
           : "It's a draw!"
         : aiming
           ? local
-            ? `${current?.number === 1 ? "Cuy" : "Llama"}'s turn. Let it fly!`
+            ? `${current?.species === "llama" ? "Llama" : "Cuy"}'s turn. Let it fly!`
             : myTurn
               ? "Your turn. Make it count."
               : `Player ${current?.number}'s turn`
           : state.phase === "flying"
-            ? "Rocket in flight…"
-            : "Impact!";
+            ? `${state.projectile.kind === "grapple" ? "Hook" : "Projectile"} in flight…`
+            : state.phase === "grappling"
+              ? "Hold tight!"
+              : state.phase === "resolving"
+                ? "Making a move…"
+                : "Impact!";
   return (
     <>
       <div className="mb-4 flex items-center justify-between gap-4">
@@ -107,7 +118,7 @@ export function BattlePanel({
           <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#9daa9b]">
             {finished
               ? "A tiny rivalry, settled."
-              : `${local ? "Pass & play" : "Friendly duel"} · Round ${Math.max(1, Math.ceil((state?.turnNumber ?? 1) / 2))} · ${state?.mapId === "coast" ? MAPS.coast.name : MAPS.andes.name}`}
+              : `${local ? "Pass & play" : "Friendly duel"} · Round ${Math.max(1, Math.ceil((state?.turnNumber ?? 1) / 2))} · ${state?.mapId === "coast" ? WORLD_MAPS.coast.name : WORLD_MAPS.andes.name}`}
           </p>
           <h1
             data-testid="match-status"
@@ -139,6 +150,7 @@ export function BattlePanel({
         data-connected={connected}
         data-map={state?.mapId ?? ""}
         data-explosion={state?.explosion.id ?? 0}
+        data-terrain-revision={state?.terrainRevision ?? 0}
       >
         <div className="flex items-center gap-4 bg-[#283a35] p-4 sm:gap-12 sm:px-6">
           <Health
@@ -208,11 +220,16 @@ export function BattlePanel({
             <span className="w-9 font-mono text-xs">{power}%</span>
           </div>
         </div>
+        <ArsenalControls
+          bridge={bridge}
+          state={state}
+          disabled={!aiming || !myTurn || !connected || power > 0}
+        />
       </section>
       <p className="mt-3 text-center text-xs leading-relaxed text-[#a9b7a5]">
         Aim · hold to charge · release to fire{" "}
         <span className="hidden sm:inline">
-          / A D move · ← → aim · hold Space
+          / A D move · W jump · ← → aim · hold Space
         </span>
       </p>
       {local ? (

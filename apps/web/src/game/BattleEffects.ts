@@ -1,14 +1,28 @@
-import { ARENA, type BattleView } from "@craft-ones/shared";
-import type Phaser from "phaser";
+import { type BattleView, WEAPONS } from "@craft-ones/shared";
+import type * as Phaser from "phaser";
 
 export class BattleEffects {
   private ink: Phaser.GameObjects.Graphics;
   private rocket: Phaser.GameObjects.Container;
+  private throwable: Phaser.GameObjects.Graphics;
+  private fuse: Phaser.GameObjects.Text;
   private trail: { x: number; y: number }[] = [];
   private explosionId = 0;
   private hp = [100, 100];
   constructor(private scene: Phaser.Scene) {
     this.ink = scene.add.graphics().setDepth(15);
+    this.throwable = scene.add.graphics().setDepth(21);
+    this.fuse = scene.add
+      .text(0, 0, "", {
+        fontFamily: "Arial",
+        fontSize: "16px",
+        fontStyle: "bold",
+        color: "#fff4c8",
+        stroke: "#45332d",
+        strokeThickness: 4,
+      })
+      .setDepth(22)
+      .setOrigin(0.5);
     const rocket = scene.add.graphics();
     rocket.fillStyle(0xffbe70).fillTriangle(-8, -4, -18, 0, -8, 4);
     rocket.fillStyle(0x3b2b38).fillRoundedRect(-10, -5, 20, 10, 4);
@@ -28,7 +42,48 @@ export class BattleEffects {
   update(state: BattleView) {
     const g = this.ink.clear();
     const p = state.projectile;
-    this.rocket.setVisible(p.active);
+    this.rocket.setVisible(
+      p.active && (p.kind === "rocket" || p.kind === "mortar"),
+    );
+    const object = this.throwable.clear();
+    this.fuse.setVisible(
+      p.active && (p.kind === "grenade" || p.kind === "dynamite"),
+    );
+    if (p.active) {
+      if (p.kind === "grenade") {
+        object.fillStyle(0x343b39).fillCircle(p.x, p.y, 10);
+        object.fillStyle(0x89a066).fillCircle(p.x, p.y, 7);
+        object.lineStyle(2, 0xd8dba2).lineBetween(p.x - 5, p.y, p.x + 5, p.y);
+        object.lineStyle(3, 0x343b39).strokeCircle(p.x, p.y - 10, 4);
+      }
+      if (p.kind === "dynamite") {
+        object
+          .fillStyle(0x45332d)
+          .fillRoundedRect(p.x - 11, p.y - 7, 22, 14, 3);
+        object.fillStyle(0xd97965).fillRect(p.x - 8, p.y - 5, 16, 10);
+        object.fillStyle(0xf2d695).fillRect(p.x - 2, p.y - 6, 4, 12);
+      }
+      if (p.kind === "grapple")
+        object
+          .lineStyle(3, 0x384b49)
+          .lineBetween(p.x - 9, p.y + 8, p.x + 8, p.y - 9)
+          .lineBetween(p.x + 8, p.y - 9, p.x - 4, p.y - 9)
+          .lineBetween(p.x + 8, p.y - 9, p.x + 8, p.y + 3);
+      this.fuse
+        .setPosition(p.x, p.y - 29)
+        .setText(
+          `${Math.max(0, (WEAPONS[p.kind].fuse - p.elapsedMs) / 1000).toFixed(1)}s`,
+        );
+    }
+    if ((p.active && p.kind === "grapple") || state.phase === "grappling") {
+      const owner = state.players.find(
+        (player) => player.sessionId === state.currentPlayer,
+      );
+      if (owner) {
+        g.lineStyle(4, 0x4c473b).lineBetween(owner.x, owner.y, p.x, p.y);
+        g.lineStyle(1, 0xe9cf9f).lineBetween(owner.x, owner.y, p.x, p.y);
+      }
+    }
     if (p.active) {
       this.rocket.setPosition(p.x, p.y).setRotation(Math.atan2(p.vy, p.vx));
       const last = this.trail.at(-1);
@@ -45,20 +100,25 @@ export class BattleEffects {
     } else this.trail = [];
     if (state.explosion.id !== this.explosionId) {
       this.explosionId = state.explosion.id;
-      this.burst(state.explosion.x, state.explosion.y);
+      this.burst(state.explosion.x, state.explosion.y, state.explosion.radius);
     }
     state.players.forEach((player, i) => {
       const damage = (this.hp[i] ?? 100) - player.hp;
-      if (damage > 0) {
+      if (damage !== 0) {
         const text = this.scene.add
-          .text(player.x, player.y - 68, `−${damage}`, {
-            fontFamily: "Arial",
-            fontSize: "25px",
-            fontStyle: "bold",
-            color: "#fff9db",
-            stroke: "#713e49",
-            strokeThickness: 5,
-          })
+          .text(
+            player.x,
+            player.y - 68,
+            damage > 0 ? `−${damage}` : `+${-damage}`,
+            {
+              fontFamily: "Arial",
+              fontSize: "25px",
+              fontStyle: "bold",
+              color: "#fff9db",
+              stroke: damage > 0 ? "#713e49" : "#3c805e",
+              strokeThickness: 5,
+            },
+          )
           .setOrigin(0.5)
           .setDepth(40);
         this.scene.tweens.add({
@@ -73,7 +133,7 @@ export class BattleEffects {
       this.hp[i] = player.hp;
     });
   }
-  private burst(x: number, y: number) {
+  private burst(x: number, y: number, radius: number) {
     this.scene.cameras.main.shake(140, 0.003);
     const ring = this.scene.add
       .circle(x, y, 10, 0xffedac, 0.7)
@@ -81,7 +141,7 @@ export class BattleEffects {
       .setDepth(25);
     this.scene.tweens.add({
       targets: ring,
-      scale: ARENA.blastRadius / 10,
+      scale: radius / 10,
       alpha: 0,
       duration: 420,
       ease: "Cubic.Out",

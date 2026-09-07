@@ -1,5 +1,5 @@
-import { ARENA, trajectory } from "@craft-ones/shared";
-import Phaser from "phaser";
+import { ARENA, shotTrajectory, trajectory } from "@craft-ones/shared";
+import * as Phaser from "phaser";
 import { ArenaCamera } from "./ArenaCamera";
 import { ArenaInput } from "./ArenaInput";
 import { ArenaMap } from "./ArenaMap";
@@ -15,6 +15,7 @@ export class ArenaScene extends Phaser.Scene {
   private map!: ArenaMap;
   private effects!: BattleEffects;
   private director!: ArenaCamera;
+  private rigKeys: string[] = [];
   private rigs: CharacterRig[] = [];
   private labels: Phaser.GameObjects.Text[] = [];
   private lastPhase = "";
@@ -26,6 +27,7 @@ export class ArenaScene extends Phaser.Scene {
   }
   preload() {
     CharacterRig.preload(this);
+    ArenaMap.preload(this);
   }
   create() {
     this.map = new ArenaMap(this);
@@ -33,10 +35,6 @@ export class ArenaScene extends Phaser.Scene {
     this.controls = new ArenaInput(this, this.bridge);
     this.effects = new BattleEffects(this);
     this.director = new ArenaCamera(this.cameras.main);
-    this.rigs = [
-      new CharacterRig(this, "cuy"),
-      new CharacterRig(this, "llama"),
-    ];
     this.labels = [0, 1].map((i) =>
       this.add
         .text(0, 0, i === 0 ? "CUY" : "LLAMA", {
@@ -57,11 +55,18 @@ export class ArenaScene extends Phaser.Scene {
     if (this.generation !== this.bridge.generation) {
       this.generation = this.bridge.generation;
       this.effects.reset(state);
+      this.map.invalidate();
+      this.director.reset();
       this.lastPhase = "";
     }
     this.controls.update(dt);
     this.map.update(state);
-    this.director.update(state, dt);
+    this.director.update(
+      state,
+      dt,
+      this.bridge.focus,
+      this.controls.power() > 0,
+    );
     const g = this.ink.clear();
     const power = this.controls.power();
     if (state.phase === "flying" && this.lastPhase !== "flying") {
@@ -73,6 +78,15 @@ export class ArenaScene extends Phaser.Scene {
     }
     this.lastPhase = state.phase;
     state.players.forEach((player, i) => {
+      const key = `${player.species}-${player.coat}`;
+      if (this.rigKeys[i] !== key) {
+        this.rigs[i]?.root.destroy();
+        this.rigs[i] = new CharacterRig(this, player.species, player.coat);
+        this.rigKeys[i] = key;
+      }
+      this.labels[i]?.setText(
+        `${player.species.toUpperCase()} · P${player.number}`,
+      );
       const active = state.currentPlayer === player.sessionId;
       const angle =
         active && state.phase === "flying"
@@ -83,7 +97,17 @@ export class ArenaScene extends Phaser.Scene {
               ? -Math.PI / 4
               : (-3 * Math.PI) / 4;
       this.rigs[i]?.root.setVisible(true);
-      this.rigs[i]?.update(player, angle, active ? power : 0, dt);
+      this.rigs[i]?.update(
+        player,
+        angle,
+        active ? power : 0,
+        dt,
+        active && state.phase !== "aiming"
+          ? state.projectile.kind
+          : active
+            ? this.bridge.weapon
+            : "rocket",
+      );
       this.labels[i]?.setPosition(player.x, player.y + 38);
       g.fillStyle(0x3b2b38, 0.18).fillEllipse(
         player.x,
@@ -93,7 +117,9 @@ export class ArenaScene extends Phaser.Scene {
       );
       if (active && state.phase !== "finished") {
         const y =
-          player.y - (i === 0 ? 76 : 103) + Math.sin(this.time.now / 180) * 2;
+          player.y -
+          (player.species === "cuy" ? 76 : 103) +
+          Math.sin(this.time.now / 180) * 2;
         g.fillStyle(i === 0 ? 0xf5c367 : 0x6ad1b7).fillTriangle(
           player.x - 7,
           y,
@@ -118,12 +144,16 @@ export class ArenaScene extends Phaser.Scene {
       }
       if (player.sessionId === sessionId && this.controls.canFire()) {
         if (this.bridge.showTrajectory) {
-          const points = trajectory(
-            state,
-            player,
-            this.controls.angle,
-            power || 0.5,
-          );
+          const points = state.terrainRows.length
+            ? shotTrajectory(
+                state,
+                state.players,
+                player,
+                this.controls.angle,
+                power || 0.5,
+                this.bridge.weapon,
+              )
+            : trajectory(state, player, this.controls.angle, power || 0.5);
           points.forEach((p, n) => {
             g.fillStyle(0x403c4b, 0.65 - (n / points.length) * 0.3).fillCircle(
               p.x,
@@ -158,5 +188,11 @@ export class ArenaScene extends Phaser.Scene {
     const canvas = this.game.canvas;
     canvas.dataset.cameraZoom = String(this.cameras.main.zoom);
     canvas.dataset.cameraScrollY = String(this.cameras.main.scrollY);
+    canvas.dataset.cameraCenterX = String(
+      this.cameras.main.scrollX + ARENA.width / 2,
+    );
+    canvas.dataset.cameraCenterY = String(
+      this.cameras.main.scrollY + ARENA.height / 2,
+    );
   }
 }

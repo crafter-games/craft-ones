@@ -1,7 +1,7 @@
 "use client";
 
 import { ARENA } from "@craft-ones/shared";
-import Phaser from "phaser";
+import * as Phaser from "phaser";
 import { type RefObject, useEffect, useRef } from "react";
 import { ArenaScene, type GameBridge } from "../game/ArenaScene";
 

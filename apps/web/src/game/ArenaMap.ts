@@ -1,155 +1,171 @@
-import {
-  ARENA,
-  type BattleView,
-  MAPS,
-  terrainHeight,
-} from "@craft-ones/shared";
-import type Phaser from "phaser";
+import { ARENA, type BattleView, CELL, MAPS } from "@craft-ones/shared";
+import type * as Phaser from "phaser";
 
 export class ArenaMap {
-  private background: Phaser.GameObjects.Graphics;
-  private ground: Phaser.GameObjects.Graphics;
-  private title: Phaser.GameObjects.Text;
+  private background: Phaser.GameObjects.Image;
+  private terrain: Phaser.GameObjects.Image;
+  private texture: Phaser.Textures.CanvasTexture;
   private key = "";
-  constructor(scene: Phaser.Scene) {
-    this.background = scene.add.graphics().setDepth(-30);
-    this.ground = scene.add.graphics().setDepth(-10);
-    this.title = scene.add
-      .text(26, 26, "", {
-        fontFamily: "Arial",
-        fontSize: "13px",
-        fontStyle: "bold",
-        color: "#3b4948",
-      })
-      .setDepth(-5);
+  constructor(private scene: Phaser.Scene) {
+    this.background = scene.add
+      .image(0, 0, "map-andes")
+      .setOrigin(0)
+      .setDepth(-30);
+    scene.textures.remove("live-terrain");
+    const texture = scene.textures.createCanvas("live-terrain", 1792, 1024);
+    if (!texture) throw new Error("Terrain texture unavailable");
+    this.texture = texture;
+    this.terrain = scene.add
+      .image(0, 0, "live-terrain")
+      .setOrigin(0)
+      .setDepth(-10);
+  }
+  static preload(scene: Phaser.Scene) {
+    for (const id of ["andes", "coast"])
+      scene.load.svg(`map-${id}`, `/art/maps/${id}.svg`);
   }
   update(state: BattleView) {
-    const key = `${state.mapId}:${state.terrain.join(",")}`;
+    const key = `${state.mapId}:${state.terrainRevision}:${state.terrainRows.length}`;
     if (key === this.key) return;
     this.key = key;
     const coast = state.mapId === "coast";
-    const palette = coast ? MAPS.coast : MAPS.andes;
-    this.title.setText(
-      `${palette.name.toUpperCase()}  /  ${coast ? "02" : "01"}`,
-    );
-    const bg = this.background.clear();
-    bg.fillStyle(palette.sky).fillRect(-1000, -1200, 3000, 2000);
-    bg.fillStyle(0xfff6c9, 0.8).fillCircle(778, 102, 44);
-    bg.fillStyle(0xfff6c9, 0.2).fillCircle(778, 102, 58);
-    for (const [x, y, scale] of [
-      [135, 95, 1],
-      [480, 65, 0.75],
-      [665, 166, 0.6],
-      [910, 44, 0.7],
-    ]) {
-      bg.fillStyle(0xffffff, 0.65)
-        .fillEllipse(x, y, 110 * scale, 25 * scale)
-        .fillCircle(x - 12 * scale, y - 10 * scale, 23 * scale)
-        .fillCircle(x + 20 * scale, y - 7 * scale, 17 * scale);
+    this.scene.cameras.main.setBackgroundColor(coast ? "#edbd9c" : "#bcdfce");
+    this.background
+      .setTexture(coast ? "map-coast" : "map-andes")
+      .setDisplaySize(state.worldWidth, state.worldHeight);
+    const ctx = this.texture.context,
+      w = state.worldWidth,
+      h = state.worldHeight;
+    ctx.clearRect(0, 0, 1792, 1024);
+    const earth = coast ? "#a56b50" : "#78513f",
+      shade = coast ? "#825443" : "#543e36",
+      light = coast ? "#c28a61" : "#956447";
+    ctx.fillStyle = earth;
+    const rows = state.terrainRows;
+    if (!rows.length) {
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      state.terrain.forEach((y, i) => {
+        ctx.lineTo(i * ARENA.terrainStep, y);
+      });
+      ctx.lineTo(w, h);
+      ctx.closePath();
+      ctx.fill();
+    } else
+      for (let y = 0; y < rows.length; y++) {
+        let start = -1;
+        for (let x = 0; x <= rows[y].length; x++) {
+          if (rows[y][x] === "1" && start < 0) start = x;
+          if (rows[y][x] !== "1" && start >= 0) {
+            ctx.fillRect(start * CELL, y * CELL, (x - start) * CELL, CELL);
+            start = -1;
+          }
+        }
+      }
+    // Clip broad bands and faceted stones into the authoritative occupancy silhouette.
+    ctx.globalCompositeOperation = "source-atop";
+    for (let y = 300; y < h + 160; y += 96) {
+      ctx.fillStyle = shade;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      for (let x = 0; x <= w; x += 128)
+        ctx.lineTo(x, y + (((x / 128) * 37 + y) % 61));
+      ctx.lineTo(w, y + 54);
+      for (let x = w; x >= 0; x -= 128)
+        ctx.lineTo(x, y + 33 + (((x / 128) * 23 + y) % 51));
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = light;
+      ctx.beginPath();
+      ctx.moveTo(0, y + 68);
+      for (let x = 0; x <= w; x += 160)
+        ctx.lineTo(x, y + 60 + ((x * 7 + y) % 31));
+      ctx.lineTo(w, y + 81);
+      ctx.lineTo(0, y + 89);
+      ctx.closePath();
+      ctx.fill();
     }
-    if (coast) {
-      bg.fillStyle(0xd5ad87).fillPoints(
-        [
-          { x: -100, y: 380 },
-          { x: 0, y: 238 },
-          { x: 175, y: 258 },
-          { x: 236, y: 351 },
-          { x: 420, y: 300 },
-          { x: 510, y: 366 },
-          { x: 790, y: 255 },
-          { x: 1000, y: 280 },
-          { x: 1100, y: 540 },
-          { x: -100, y: 540 },
-        ],
-        true,
-      );
-      bg.fillStyle(0xca9775).fillPoints(
-        [
-          { x: -100, y: 380 },
-          { x: 100, y: 330 },
-          { x: 192, y: 366 },
-          { x: 397, y: 354 },
-          { x: 507, y: 428 },
-          { x: 702, y: 370 },
-          { x: 836, y: 312 },
-          { x: 1100, y: 338 },
-          { x: 1100, y: 540 },
-          { x: -100, y: 540 },
-        ],
-        true,
-      );
-      bg.lineStyle(4, 0xf4d5a1, 0.5)
-        .lineBetween(23, 275, 150, 290)
-        .lineBetween(806, 290, 943, 299);
+    for (let i = 0; i < 210; i++) {
+      const x = (i * 157 + 32) % w,
+        y = 400 + ((i * 83) % (h - 390)),
+        r = 5 + (i % 12);
+      ctx.fillStyle = i % 2 ? shade : light;
+      ctx.beginPath();
+      ctx.moveTo(x - r, y);
+      ctx.lineTo(x - r / 2, y - r / 2);
+      ctx.lineTo(x + r * 0.6, y - r * 0.6);
+      ctx.lineTo(x + r, y + 2);
+      ctx.lineTo(x + r * 0.4, y + r * 0.4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = earth;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x - r / 2, y - r / 2);
+      ctx.lineTo(x + r * 0.6, y - r * 0.6);
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation = "source-over";
+    if (rows.length) {
+      // Every rim follows actual terrain, including newly exposed crater and cave walls.
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      const edges = (
+        top: boolean,
+        color: string,
+        width: number,
+        offset: number,
+      ) => {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.beginPath();
+        for (let row = 0; row < rows.length; row++)
+          for (let col = 0; col < rows[row].length; col++) {
+            if (rows[row][col] !== "1") continue;
+            const neighbor = rows[row + (top ? -1 : 1)]?.[col];
+            if (neighbor !== "1") {
+              const y = (row + (top ? 0 : 1)) * CELL + offset;
+              ctx.moveTo(col * CELL, y);
+              ctx.lineTo((col + 1) * CELL, y);
+            }
+          }
+        ctx.stroke();
+      };
+      edges(true, "#493b33", 9, 3);
+      edges(false, "#48372f", 6, -2);
+      edges(true, coast ? "#dba56d" : "#77914c", 7, 0);
+      edges(true, coast ? "#f3cc8e" : "#b1ce74", 2, -2);
+      // Tiny foliage tufts only along stable upward faces, never floating over holes.
+      ctx.strokeStyle = coast ? "#a1a365" : "#577e42";
+      ctx.lineWidth = 3;
+      for (let col = 4; col < w / CELL; col += 11)
+        for (let row = 32; row < rows.length - 1; row++) {
+          if (rows[row][col] !== "1" || rows[row - 1]?.[col] === "1") continue;
+          const x = col * CELL + 4,
+            y = row * CELL;
+          ctx.beginPath();
+          ctx.moveTo(x - 6, y - 2);
+          ctx.lineTo(x - 11, y - 13);
+          ctx.lineTo(x - 1, y - 6);
+          ctx.lineTo(x + 1, y - 18);
+          ctx.lineTo(x + 5, y - 5);
+          ctx.lineTo(x + 12, y - 11);
+          ctx.stroke();
+        }
     } else {
-      bg.fillStyle(0x88bcb6).fillPoints(
-        [
-          { x: -100, y: 420 },
-          { x: 112, y: 166 },
-          { x: 259, y: 350 },
-          { x: 435, y: 124 },
-          { x: 670, y: 382 },
-          { x: 880, y: 170 },
-          { x: 1100, y: 400 },
-          { x: 1100, y: 540 },
-          { x: -100, y: 540 },
-        ],
-        true,
-      );
-      bg.fillStyle(0xe4f0d9).fillTriangle(370, 204, 435, 124, 508, 207);
-      bg.fillStyle(0x6f9f92).fillPoints(
-        [
-          { x: -100, y: 440 },
-          { x: 128, y: 310 },
-          { x: 275, y: 389 },
-          { x: 587, y: 257 },
-          { x: 824, y: 391 },
-          { x: 1000, y: 301 },
-          { x: 1100, y: 540 },
-          { x: -100, y: 540 },
-        ],
-        true,
-      );
-      bg.fillStyle(0x89af83)
-        .fillEllipse(220, 453, 680, 175)
-        .fillEllipse(910, 454, 660, 146);
+      ctx.strokeStyle = `#${MAPS[coast ? "coast" : "andes"].grass.toString(16)}`;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      state.terrain.forEach((y, i) => {
+        if (i) ctx.lineTo(i * ARENA.terrainStep, y);
+        else ctx.moveTo(0, y);
+      });
+      ctx.stroke();
     }
-    const g = this.ground.clear();
-    const points = Array.from(state.terrain, (y, i) => ({
-      x: i * ARENA.terrainStep,
-      y,
-    }));
-    g.fillStyle(palette.earth).fillPoints(
-      [...points, { x: ARENA.width, y: 850 }, { x: 0, y: 850 }],
-      true,
-    );
-    g.lineStyle(9, 0x453e43, 0.7).strokePoints(points);
-    g.lineStyle(6, palette.grass).strokePoints(points);
-    g.lineStyle(2, coast ? 0xffd99a : 0xb5d881).strokePoints(
-      points.map((p) => ({ x: p.x, y: p.y - 2 })),
-    );
-    for (let x = 22; x < ARENA.width; x += 67) {
-      const y = terrainHeight(state.terrain, x);
-      g.fillStyle(coast ? 0x8a5f53 : 0x523f3f, 0.35).fillRoundedRect(
-        x,
-        y + 28 + (x % 23),
-        20,
-        7,
-        3,
-      );
-      g.fillStyle(coast ? 0xe4a271 : 0xa07856, 0.55).fillCircle(
-        x + 24,
-        y + 64,
-        3,
-      );
-    }
-    for (const x of [40, 115, 344, 590, 834, 914]) {
-      const y = terrainHeight(state.terrain, x);
-      g.lineStyle(3, coast ? 0x789376 : 0x4d784f)
-        .lineBetween(x, y - 3, x - 4, y - 17)
-        .lineBetween(x, y - 3, x + 5, y - 23)
-        .lineBetween(x, y - 3, x + 12, y - 14);
-      if (!coast) g.fillStyle(0xf8d997).fillCircle(x + 5, y - 23, 3);
-    }
+    this.texture.refresh();
+    this.terrain.setVisible(true);
+  }
+  invalidate() {
+    this.key = "";
   }
 }

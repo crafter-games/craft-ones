@@ -1,5 +1,5 @@
 import { ARENA } from "@craft-ones/shared";
-import Phaser from "phaser";
+import * as Phaser from "phaser";
 import type { GameBridge } from "./GameBridge";
 
 export class ArenaInput {
@@ -44,7 +44,7 @@ export class ArenaInput {
     };
     const keydown = (event: KeyboardEvent) => {
       if (
-        !["ArrowLeft", "ArrowRight", "Space", "KeyA", "KeyD"].includes(
+        !["ArrowLeft", "ArrowRight", "Space", "KeyA", "KeyD", "KeyW"].includes(
           event.code,
         )
       )
@@ -52,6 +52,13 @@ export class ArenaInput {
       event.preventDefault();
       if (event.code === "Space" && !event.repeat && this.canFire())
         this.begin();
+      if (
+        event.code === "KeyW" &&
+        !event.repeat &&
+        this.canFire() &&
+        !this.charging
+      )
+        this.bridge.jump();
       if (event.code === "KeyA") this.direction = -1;
       if (event.code === "KeyD") this.direction = 1;
       if (event.code === "ArrowLeft") this.angleDirection = -1;
@@ -62,7 +69,7 @@ export class ArenaInput {
         event.preventDefault();
         this.shoot();
       }
-      if (["KeyA", "KeyD"].includes(event.code)) this.direction = 0;
+      if (["KeyA", "KeyD", "KeyW"].includes(event.code)) this.direction = 0;
       if (["ArrowLeft", "ArrowRight"].includes(event.code))
         this.angleDirection = 0;
     };
@@ -125,6 +132,7 @@ export class ArenaInput {
       this.bridge.fire({
         angle: this.angle,
         power: this.power(),
+        weapon: this.bridge.weapon,
         turnNumber: this.bridge.state.turnNumber,
       });
     }
@@ -169,6 +177,7 @@ export class ArenaInput {
         this.moveAt = performance.now() + 100;
       }
     }
+    this.bridge.direction = Math.cos(this.angle) >= 0 ? 1 : -1;
     this.reportPower(this.power());
   }
 }

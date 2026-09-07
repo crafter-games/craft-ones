@@ -1,8 +1,13 @@
 "use client";
-import { Battle, type BattleView, MAPS } from "@craft-ones/shared";
+import {
+  Battle,
+  type BattleView,
+  type PlayerOptions,
+} from "@craft-ones/shared";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { BattlePanel } from "../../components/BattlePanel";
+import { CharacterPicker, MapPicker } from "../../components/MatchSetup";
 import { createBridge } from "../../game/GameBridge";
 
 export default function Playground() {
@@ -13,7 +18,18 @@ export default function Playground() {
   const [infiniteHp, setInfiniteHp] = useState(false);
   const [showTrajectory, setShowTrajectory] = useState(true);
   const [debug, setDebug] = useState(false);
-  const [destructible, setDestructible] = useState(false);
+  const [destructible, setDestructible] = useState(true);
+  const [one, setOne] = useState<PlayerOptions>({
+    species: "cuy",
+    coat: "caramel",
+  });
+  const [two, setTwo] = useState<PlayerOptions>({
+    species: "llama",
+    coat: "cream",
+  });
+  const [error, setError] = useState("");
+  const profiles = useRef({ one, two });
+  profiles.current = { one, two };
   const battle = useRef<Battle | null>(null);
   const bridge = useRef(createBridge(setPower));
   const options = useRef({ infiniteHp, destructible });
@@ -31,8 +47,8 @@ export default function Playground() {
     const engine = new Battle(undefined, mapId);
     engine.infiniteHp = options.current.infiniteHp;
     engine.destructible = options.current.destructible;
-    engine.addPlayer("local-cuy");
-    engine.addPlayer("local-llama");
+    engine.addPlayer("local-cuy", profiles.current.one);
+    engine.addPlayer("local-llama", profiles.current.two);
     battle.current = engine;
     let sequence = 0;
     const sync = () => {
@@ -44,7 +60,7 @@ export default function Playground() {
     bridge.current.generation = revision;
     bridge.current.connected = true;
     bridge.current.fire = (action) => {
-      engine.fire(engine.state.currentPlayer, action);
+      setError(engine.fire(engine.state.currentPlayer, action) ?? "");
       sync();
     };
     bridge.current.move = (direction) => {
@@ -55,6 +71,17 @@ export default function Playground() {
       });
       sync();
     };
+    for (const action of ["jump", "ability"] as const)
+      bridge.current[action] = () => {
+        setError(
+          engine[action](engine.state.currentPlayer, {
+            turnNumber: engine.state.turnNumber,
+            direction: bridge.current.direction,
+          }) ?? "",
+        );
+        sync();
+      };
+    setError("");
     sync();
     let previous = performance.now(),
       reported = previous;
@@ -87,29 +114,46 @@ export default function Playground() {
           Restart
         </button>
       </header>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-[#b7c4b1]">
-          Two critters. One keyboard. Endless rematches.
-        </p>
-        <label className="flex items-center gap-2 text-xs font-bold text-[#b7c4b1]">
-          MAP
-          <select
-            aria-label="Map"
+      <details className="match-setup mb-4">
+        <summary>
+          Match setup <span>Maps · critters · colors</span>
+        </summary>
+        <div className="setup-grid">
+          <MapPicker
             value={mapId}
-            onChange={(event) => {
-              setMapId(event.target.value as "andes" | "coast");
+            onChange={(id) => {
+              setMapId(id);
               reset();
             }}
-            className="map-select"
-          >
-            {Object.entries(MAPS).map(([id, map]) => (
-              <option key={id} value={id}>
-                {map.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <CharacterPicker
+              value={one}
+              label="Player 1"
+              onChange={(value) => {
+                setOne(value);
+                reset();
+              }}
+            />
+            <CharacterPicker
+              value={two}
+              label="Player 2"
+              onChange={(value) => {
+                setTwo(value);
+                reset();
+              }}
+            />
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-[#a9b7a5]">
+          Changing a map or critter starts a fresh match.
+        </p>
+      </details>
+      {error ? (
+        <p role="alert" className="mb-3 text-xs text-[#ffc69b]">
+          {error}
+        </p>
+      ) : null}
       <BattlePanel
         state={state}
         sessionId={state?.currentPlayer ?? ""}

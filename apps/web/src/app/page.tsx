@@ -1,9 +1,11 @@
 "use client";
 
+import type { PlayerOptions } from "@craft-ones/shared";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { CharacterPicker, MapPicker } from "../components/MatchSetup";
 import { createBattle } from "../lib/connection";
 
 export default function Home() {
@@ -11,6 +13,11 @@ export default function Home() {
   const creating = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [mapId, setMapId] = useState<"andes" | "coast">("andes");
+  const [player, setPlayer] = useState<PlayerOptions>({
+    species: "cuy",
+    coat: "caramel",
+  });
 
   async function create() {
     if (creating.current) return;
@@ -18,7 +25,7 @@ export default function Home() {
     setBusy(true);
     setError("");
     try {
-      const id = await createBattle();
+      const id = await createBattle(mapId, player);
       router.push(`/game/${id}`);
     } catch {
       setError(
@@ -54,6 +61,17 @@ export default function Home() {
             <br />
             Aim, charge, and send your friendly rivalry flying.
           </p>
+          <details className="match-setup mt-6">
+            <summary>Choose map & character</summary>
+            <div className="mt-4 grid gap-4">
+              <MapPicker value={mapId} onChange={setMapId} />
+              <CharacterPicker
+                value={player}
+                onChange={setPlayer}
+                label="Your critter"
+              />
+            </div>
+          </details>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/playground" className="primary-button">
               Playground{" "}

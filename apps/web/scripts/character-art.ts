@@ -1,4 +1,5 @@
 import { mkdir } from "node:fs/promises";
+import { COATS, type CoatId } from "@craft-ones/shared";
 import {
   PARTS,
   partMarkup,
@@ -16,6 +17,18 @@ for (const [i, species] of (["cuy", "llama"] as Species[]).entries()) {
       new URL(`${species}/${part}.svg`, root),
       partSvg(species, part),
     );
+  for (const coat of Object.keys(COATS) as CoatId[]) {
+    await mkdir(new URL(`${species}/${coat}/`, root), { recursive: true });
+    for (const part of PARTS)
+      await Bun.write(
+        new URL(`${species}/${coat}/${part}.svg`, root),
+        partSvg(species, part, coat),
+      );
+    await Bun.write(
+      new URL(`${species}/${coat}/portrait.svg`, root),
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-65 -105 130 135"><title>${coat} ${species}</title><g transform="translate(-3 0)">${referenceCharacter(species, coat)}</g></svg>`,
+    );
+  }
   const y = 210 + i * 320;
   rows.push(
     `<text x="60" y="${y - (i === 1 ? 135 : 80)}" fill="#3b2b38" font-size="24" font-weight="bold">${species.toUpperCase()}</text><g transform="translate(140 ${y + 45}) scale(2.2)">${referenceCharacter(species)}</g>`,
@@ -28,7 +41,7 @@ for (const [i, species] of (["cuy", "llama"] as Species[]).entries()) {
 }
 await Bun.write(
   new URL("character-reference.svg", root),
-  `<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="780" viewBox="0 0 1040 780"><title>Craft Ones original character reference and cutouts</title><rect width="1040" height="780" rx="28" fill="#f8eedb"/><g font-family="Arial, sans-serif"><text x="55" y="55" font-size="30" font-weight="bold" fill="#3b2b38">CRAFT ONES / CHARACTER WORKSHOP</text><text x="55" y="83" font-size="14" fill="#77616b">Original vector cutouts · warm ink · no external shadows · red dots = pivots</text>${rows.join("")}<text x="55" y="745" font-size="13" fill="#77616b">Cuy: caramel potato, tiny paws, brave teeth. Llama: long ears, cloud fleece, mint neckerchief.</text></g></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="780" viewBox="0 0 1040 780"><title>Craft Ones original character reference and cutouts</title><rect width="1040" height="780" rx="28" fill="#f8eedb"/><g font-family="Arial, sans-serif"><text x="55" y="55" font-size="30" font-weight="bold" fill="#3b2b38">CRAFT ONES / CHARACTER WORKSHOP</text><text x="55" y="83" font-size="14" fill="#77616b">Original vector cutouts · warm ink · no external shadows · red dots = pivots</text>${rows.join("")}<text x="55" y="745" font-size="13" fill="#77616b">Cuy: caramel potato, tiny paws, brave teeth. Llama: long ears, cloud fleece, no clothing.</text></g></svg>`,
 );
 await Bun.write(
   new URL("duel-poster.svg", root),

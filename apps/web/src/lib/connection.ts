@@ -1,4 +1,4 @@
-import type { BattleState } from "@craft-ones/shared";
+import type { BattleState, PlayerOptions } from "@craft-ones/shared";
 import { Client, type Room } from "colyseus.js";
 
 export type BattleRoom = Room<BattleState>;
@@ -25,18 +25,24 @@ function scheduleRelease(id: string, entry: Connection, delay: number) {
   }, delay);
 }
 
-export async function createBattle() {
-  const room = await client().create<BattleState>("battle");
+export async function createBattle(
+  mapId: "andes" | "coast" = "andes",
+  player: PlayerOptions = { species: "cuy", coat: "caramel" },
+) {
+  const room = await client().create<BattleState>("battle", { mapId, player });
   const entry = { promise: Promise.resolve(room), users: 0 };
   connections.set(room.roomId, entry);
   scheduleRelease(room.roomId, entry, 30_000);
   return room.roomId;
 }
 
-export function acquireBattle(id: string) {
+export function acquireBattle(id: string, player?: PlayerOptions) {
   let entry = connections.get(id);
   if (!entry) {
-    entry = { promise: client().joinById<BattleState>(id), users: 0 };
+    entry = {
+      promise: client().joinById<BattleState>(id, { player }),
+      users: 0,
+    };
     connections.set(id, entry);
   }
   clearTimeout(entry.cleanup);
@@ -49,4 +55,8 @@ export function acquireBattle(id: string) {
       if (connection.users === 0) scheduleRelease(id, connection, 100);
     },
   };
+}
+
+export function hasBattle(id: string) {
+  return connections.has(id);
 }

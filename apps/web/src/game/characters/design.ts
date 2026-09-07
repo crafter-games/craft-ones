@@ -1,3 +1,4 @@
+import { COATS, type CoatId } from "@craft-ones/shared";
 /** Original vector cutouts. Coordinates are relative to each named joint.
  * Transparent 80 × 100 viewbox: pivot (40, 50), consistent scale and lighting.
  * Keep this source and regenerate assets with bun apps/web/scripts/character-art.ts.
@@ -46,11 +47,13 @@ export const joints = {
   },
 } satisfies Record<Species, Record<string, number[]>>;
 
-export function partMarkup(species: Species, part: Part): string {
+export function partMarkup(
+  species: Species,
+  part: Part,
+  coat?: CoatId,
+): string {
   const cuy = species === "cuy";
-  const fur = cuy ? "#d88b51" : "#fff0ce";
-  const light = cuy ? "#ffe0a1" : "#fff9e7";
-  const shade = cuy ? "#a45e47" : "#d6baa0";
+  const { fur, light, shade } = COATS[coat ?? (cuy ? "caramel" : "cream")];
   const limb = part.endsWith("Back") ? shade : fur;
   const stroke = `stroke="${INK}" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"`;
   const shape = (s: string) => `<g ${stroke}>${s}</g>`;
@@ -63,14 +66,14 @@ export function partMarkup(species: Species, part: Part): string {
   if (part === "body")
     return shape(
       cuy
-        ? `<path fill="${fur}" d="M-16-9Q-21 1-14 13Q0 20 16 11Q22-1 12-12Q0-19-16-9Z"/><ellipse fill="${light}" stroke="none" cx="3" cy="4" rx="11" ry="10"/><path stroke="#a45e47" d="M-12 0l3 2m-4 3 3 2"/>`
-        : `<path fill="${fur}" d="M-10-30L8-30L11-12Q22-7 16 10Q13 18-9 15Q-21 10-17-3L-9-14Z"/><path fill="${light}" stroke="none" d="M-5-23H5L7 3Q2 12-8 7Z"/><path fill="#579e96" d="M-11-17Q0-12 12-17L13-9Q0-5-12-9Z"/><path fill="#78c5b1" d="M5-10L13-9L17 3L9 2Z"/>`,
+        ? `<path fill="${fur}" d="M-16-9Q-21 1-14 13Q0 20 16 11Q22-1 12-12Q0-19-16-9Z"/><ellipse fill="${light}" stroke="none" cx="3" cy="4" rx="11" ry="10"/><path stroke="${shade}" d="M-12 0l3 2m-4 3 3 2"/>`
+        : `<path fill="${fur}" d="M-10-30L8-30L11-12Q22-7 16 10Q13 18-9 15Q-21 10-17-3L-9-14Z"/><path fill="${light}" stroke="none" d="M-5-23H5L7 3Q2 12-8 7Z"/>`,
     );
   if (part === "head")
     return shape(
       cuy
         ? `<path fill="${fur}" d="M-19-20Q-8-30 8-24Q24-23 24-10Q32-1 24 8Q10 16-11 10Q-26 6-24-9Z"/><path fill="${light}" stroke="none" d="M4-23Q18-20 17-8Q29-1 21 7Q10 13-1 6Q-7-3 1-7Z"/><ellipse fill="#efb895" stroke="none" cx="16" cy="2" rx="7" ry="4"/><path fill="${INK}" d="M22-2l5 1-3 3Z"/><path fill="none" d="M20 7q-5 3-8-1"/><path fill="#fff9e7" stroke-width="1.2" d="M14 7h5v5h-5z"/>`
-        : `<path fill="${fur}" d="M-17-17Q-16-26-6-26L-1-29L5-26L10-28L13-23Q21-22 19-9L26-6Q32-1 26 7Q16 13 4 8Q-14 11-19 0Z"/><path fill="${light}" stroke="none" d="M2-22Q14-20 13-9L23-3Q25 5 14 6L0 1Z"/><path fill="#d6baa0" d="M15-5Q32-8 30 1Q29 9 16 7Q9 4 15-5Z"/><path fill="${INK}" stroke="none" d="M24-3l4 1-3 3Z"/><path fill="none" d="M18 3q2 3 5 1"/>`,
+        : `<path fill="${fur}" d="M-17-17Q-16-26-6-26L-1-29L5-26L10-28L13-23Q21-22 19-9L26-6Q32-1 26 7Q16 13 4 8Q-14 11-19 0Z"/><path fill="${light}" stroke="none" d="M2-22Q14-20 13-9L23-3Q25 5 14 6L0 1Z"/><path fill="${shade}" d="M15-5Q32-8 30 1Q29 9 16 7Q9 4 15-5Z"/><path fill="${INK}" stroke="none" d="M24-3l4 1-3 3Z"/><path fill="none" d="M18 3q2 3 5 1"/>`,
     );
   if (part === "eyes")
     return shape(
@@ -93,14 +96,14 @@ export function partMarkup(species: Species, part: Part): string {
     : shape(`<path fill="${fur}" d="M-14 1Q-31-5-24-12Q-13-11-10-5Z"/>`);
 }
 
-export function partSvg(species: Species, part: Part) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -50 80 100" width="160" height="200"><title>${species} ${part}</title>${partMarkup(species, part)}</svg>`;
+export function partSvg(species: Species, part: Part, coat?: CoatId) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-40 -50 80 100" width="160" height="200"><title>${species} ${part}</title>${partMarkup(species, part, coat)}</svg>`;
 }
 
-export function referenceCharacter(species: Species) {
+export function referenceCharacter(species: Species, coat?: CoatId) {
   const j = joints[species];
   const at = (part: Part, x = 0, y = 0, rotation = 0) =>
-    `<g transform="translate(${x} ${y}) rotate(${rotation})">${partMarkup(species, part)}</g>`;
+    `<g transform="translate(${x} ${y}) rotate(${rotation})">${partMarkup(species, part, coat)}</g>`;
   return (
     at("tail") +
     at("legBack", ...j.hipBack) +
