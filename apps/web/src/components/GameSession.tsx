@@ -56,7 +56,13 @@ function Health({
   );
 }
 
-export default function GameSession({ roomId }: { roomId: string }) {
+export default function GameSession({
+  roomId,
+  invitePath,
+}: {
+  roomId: string;
+  invitePath?: string;
+}) {
   const [state, setState] = useState<BattleView | null>(null);
   const [sessionId, setSessionId] = useState("");
   const [connected, setConnected] = useState(false);
@@ -130,7 +136,9 @@ export default function GameSession({ roomId }: { roomId: string }) {
   }, [roomId]);
 
   async function copyInvite() {
-    const url = window.location.href;
+    const url = invitePath
+      ? new URL(invitePath, window.location.origin).href
+      : window.location.href;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
