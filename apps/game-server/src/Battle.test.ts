@@ -164,6 +164,28 @@ describe("untrusted fire intents", () => {
     expect(battle.fire("one", action(battle, angle))).toBeNull();
   });
 
+  test.each([
+    [Math.PI / 2, "y"],
+    [0, "x"],
+  ] as const)(
+    "keeps the launched rocket inside the arena for muzzle angle %s",
+    (angle, axis) => {
+      const { battle, frames } = setup();
+      const shooter = battle.state.players[0];
+      if (axis === "x") shooter.x = ARENA.width - ARENA.playerRadius;
+      expect(battle.fire("one", action(battle, angle, 0))).toBeNull();
+      const projectile = battle.state.projectile;
+      expect(projectile.x).toBeGreaterThanOrEqual(0);
+      expect(projectile.x).toBeLessThanOrEqual(ARENA.width);
+      expect(projectile.y).toBeLessThanOrEqual(ARENA.groundY);
+      expect(projectile.y).toBeGreaterThanOrEqual(-ARENA.height);
+      frames(1);
+      expect(battle.state.phase).toBe("exploding");
+      expect(battle.state.explosion.x).toBe(projectile.x);
+      expect(battle.state.explosion.y).toBe(projectile.y);
+    },
+  );
+
   test.each([0, 1])(
     "maps power endpoint %s to authoritative launch speed",
     (power) => {
@@ -427,6 +449,38 @@ describe("explosion, damage and knockback", () => {
     expect(battle.state.currentPlayer).toBe("two");
     expect(battle.state.turnNumber).toBe(2);
     expect(battle.state.remainingMs).toBe(ARENA.turnMs);
+  });
+
+  test("a disconnect mid-explosion keeps the resolved elimination and freezes it", () => {
+    const { battle, frames, advance } = setup();
+    const target = battle.state.players[1];
+    target.hp = 5;
+    placeProjectile(battle, target.x, target.y);
+    frames(1);
+    expect(battle.state.phase).toBe("exploding");
+    expect(target.hp).toBe(0);
+    battle.removePlayer("one");
+    expect(battle.state.phase).toBe("finished");
+    expect(battle.state.winner).toBe("one");
+    expect(battle.state.finishReason).toBe("elimination");
+    const frozen = snapshot(battle);
+    advance(ARENA.explosionMs + ARENA.turnMs);
+    expect(snapshot(battle)).toEqual(frozen);
+  });
+
+  test("a disconnect mid-explosion forfeits and never grants the pending turn", () => {
+    const { battle, frames, advance } = setup();
+    placeProjectile(battle, 480, ARENA.groundY);
+    frames(1);
+    expect(battle.state.phase).toBe("exploding");
+    battle.removePlayer("two");
+    expect(battle.state.phase).toBe("finished");
+    expect(battle.state.winner).toBe("one");
+    expect(battle.state.finishReason).toBe("forfeit");
+    const frozen = snapshot(battle);
+    advance(ARENA.explosionMs + ARENA.turnMs);
+    expect(snapshot(battle)).toEqual(frozen);
+    expect(battle.state.turnNumber).toBe(1);
   });
 
   test("lethal damage clamps HP to zero and ends after the explosion", () => {

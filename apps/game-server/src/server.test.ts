@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { request } from "node:http";
 import { fileURLToPath } from "node:url";
 import { ARENA, type BattleView } from "@craft-ones/shared";
 import { Client, type Room } from "colyseus.js";
@@ -146,6 +147,55 @@ describe("HTTP readiness and explicit CORS", () => {
     expect(response.status).toBe(413);
   });
 
+  test("bounds streamed matchmaking bodies that declare no Content-Length", async () => {
+    const body = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        for (let chunk = 0; chunk < 8; chunk++) {
+          controller.enqueue(new TextEncoder().encode("x".repeat(1_024)));
+          await Bun.sleep(5);
+        }
+        controller.close();
+      },
+    });
+    const response = await fetch(`${endpoint}/matchmake/joinOrCreate/battle`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      duplex: "half",
+    } as RequestInit & { duplex: "half" });
+    expect(response.status).toBe(413);
+    expect(await response.json()).toHaveProperty("error");
+    expect((await fetch(`${endpoint}/health`)).status).toBe(200);
+  });
+
+  test.each(["http://evil.local:3000", "null"])(
+    "refuses the WebSocket upgrade itself for disallowed origin %s",
+    async (origin) => {
+      const status = await new Promise<number | undefined>((resolve) => {
+        const upgrade = request(`${endpoint}/upgrade-probe`, {
+          headers: {
+            Connection: "Upgrade",
+            Upgrade: "websocket",
+            "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
+            "Sec-WebSocket-Version": "13",
+            Origin: origin,
+          },
+        });
+        upgrade.on("upgrade", (_response, socket) => {
+          socket.destroy();
+          resolve(101);
+        });
+        upgrade.on("response", (response) => {
+          response.resume();
+          resolve(response.statusCode);
+        });
+        upgrade.on("error", () => resolve(undefined));
+        upgrade.end();
+      });
+      expect(status).toBe(403);
+    },
+  );
+
   test("validates configured origins instead of silently producing wrong CORS", () => {
     expect(parseWebOrigins(undefined).has("http://localhost:3000")).toBe(true);
     expect(
@@ -192,6 +242,15 @@ describe("real Colyseus SDK clients", () => {
     });
     await waitFor(() => typeof error === "string");
     expect(one.state.projectile.active).toBe(false);
+    const samples: number[][][] = [[], []];
+    [one, two].forEach((room, index) => {
+      room.onStateChange((state) => {
+        if (state.projectile.active) {
+          const { x, y, vx, vy } = state.projectile;
+          samples[index].push([x, y, vx, vy]);
+        }
+      });
+    });
 
     one.send("fire", {
       angle: -Math.PI / 4,
@@ -205,6 +264,11 @@ describe("real Colyseus SDK clients", () => {
     expect(two.state.projectile.vy).toBeLessThan(0);
     await waitFor(
       () => one.state.phase === "exploding" && two.state.explosion.id === 1,
+    );
+    expect(samples[0].length).toBeGreaterThan(10);
+    expect(samples[1]).toEqual(samples[0]);
+    expect(two.state.players.map((p) => [p.x, p.y, p.hp])).toEqual(
+      one.state.players.map((p) => [p.x, p.y, p.hp]),
     );
     await waitFor(
       () => one.state.phase === "aiming" && one.state.turnNumber === 2,

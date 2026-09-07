@@ -127,15 +127,19 @@ export class Battle {
     const player = this.state.players.find(
       (entry) => entry.sessionId === sessionId,
     );
-    if (!player || !player.connected || player.hp <= 0)
-      return "Player cannot fire";
+    if (!player?.connected || player.hp <= 0) return "Player cannot fire";
     const speed =
       ARENA.minSpeed + payload.power * (ARENA.maxSpeed - ARENA.minSpeed);
     const directionX = Math.cos(payload.angle);
     const directionY = Math.sin(payload.angle);
     const projectile = this.state.projectile;
-    projectile.x = player.x + directionX * (ARENA.playerRadius + 2);
-    projectile.y = player.y + directionY * (ARENA.playerRadius + 2);
+    const muzzle = ARENA.playerRadius + 2;
+    projectile.x = clamp(player.x + directionX * muzzle, 0, ARENA.width);
+    projectile.y = clamp(
+      player.y + directionY * muzzle,
+      -ARENA.height,
+      ARENA.groundY,
+    );
     projectile.vx = directionX * speed;
     projectile.vy = directionY * speed;
     projectile.active = true;
