@@ -2,9 +2,9 @@
 
 ## Principles
 - Original, tiny 1v1 turn-based artillery prototype for Crafter Station. No copied code or assets.
-- Scope: two players, 100 HP, two irregular maps, one rocket, gravity, splash damage, knockback, 96 units of movement per turn, 15-second turns, invite links, winner and rematch.
-- No auth, database, economy, bots, matchmaking, inventories or future-feature frameworks. Basic height-field craters are an optional local lab control.
-- Server alone decides physics, damage, positions, turns and winner. Multiplayer browsers send move/fire/restart intentions and render synchronized state. `/playground` runs the identical shared engine locally with alternating seats and no network dependency.
+- Scope: two players, 100 HP, two 1792 × 1024 maps with platforms/caves, five default weapons/tools, turn-cost character abilities, gravity, splash damage, knockback, 96 units of movement per turn, 15-second turns, invite links, winner and rematch.
+- No auth, database, economy, bots, matchmaking, inventories or future-feature frameworks. Terrain destruction is enabled in both local and multiplayer matches; local lab controls can disable it.
+- Server alone decides physics, damage, positions, turns and winner. Multiplayer browsers send move/jump/fire/ability/restart intentions and render synchronized state. `/playground` runs the identical shared engine locally with alternating seats and no network dependency.
 - Keep Phaser client-only and lazy-loaded. React owns the lobby and HUD; Phaser owns the canvas and pointer input.
 - Use Spec Kit's specify → plan → tasks → implement → converge flow, with acceptance criteria verified in tests.
 - Keep agent configuration in `.devin/`. Never commit secrets.
@@ -33,7 +33,7 @@
 ## Milestone acceptance
 - Creating a room from home retains Player 1's connection through navigation to `/game/[roomId]`.
 - Copying the invitation and opening it in another browser joins Player 2; a lone player waits and a third player is rejected.
-- Both browsers render the same authoritative rocket, HP, positions, turn and winner.
+- Both browsers render the same authoritative projectiles, terrain, HP, positions, turn and winner.
 - Both players can aim, hold to charge, release to fire, and alternate turns; idle turns expire after 15 seconds.
 - Splash damage can remove all 100 HP through normal fire intentions, after which both browsers display the same winner.
 - Invalid inputs, stale or duplicate shots and out-of-turn actions never change gameplay outcomes.
@@ -46,5 +46,15 @@
 - Move is constrained by turn, distance budget, sequence, time, map walls and player separation. Rematch is host-only after a finished game, with both players connected; old fire intents stay stale.
 - Trajectory preview and authoritative rockets share the same launch and swept-collision code. Player gravity continues during flight.
 - Touch aim/charge/release and movement work at portrait and landscape sizes. Pointer cancellation and blur cancel charging.
-- Lab tools: restart, infinite HP, trajectory, collision circles and optional ground destruction. Local options are never registered as multiplayer messages.
+- Lab tools: restart, infinite HP, trajectory, collision circles and ground destruction toggle. Local options are never registered as multiplayer messages.
 - Regenerate original character assets with `bun apps/web/scripts/character-art.ts`. Joint coordinates and source shapes live in `apps/web/src/game/characters/design.ts`.
+
+## Expanded arena acceptance
+- Original cartoon art uses flat colored shapes, contours and inset shadow planes. No realistic scenery, photographs, clothing or borrowed game assets.
+- Both species can occupy either seat with one of five validated coat palettes. Host selects the map before creation; invite guests choose their character before joining.
+- Maps have suspended islands, obstacles, enclosed caves and open voids. Explosions remove occupancy cells; bodies fall onto new surfaces or lose when falling out of the world.
+- Rocket, grenade, mortar, dynamite and grappling hook are available by default. Each shot/tool spends a turn; grenade/dynamite fuse and bounce are authoritative. Hooks pull along a collision-checked line.
+- Jump consumes 32 movement units and rejects repeated airborne jumps. Cuy heals 25 HP; Llama leaps toward aim. Abilities spend a turn and become available four global turn numbers later.
+- Turn camera briefly focuses the active character, pulls back to the map, and includes high projectiles. Manual focus is available; charging freezes camera movement.
+- Shared occupancy collision drives previews, damage craters and physical movement. Flat terrain remains an internal baseline for regression tests, not a player-facing map.
+- Regenerate original layered backgrounds/previews with `bun apps/web/scripts/map-art.ts`; character generation also creates all coat variants and portraits.

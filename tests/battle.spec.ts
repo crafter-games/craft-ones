@@ -32,6 +32,7 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
   rival.on("pageerror", (error) => errors.push(error.message));
   try {
     await rival.goto(invite);
+    await rival.getByRole("button", { name: "Join Game", exact: true }).click();
     for (const client of [page, rival]) {
       await expect(client.getByTestId("battle")).toHaveAttribute(
         "data-phase",
@@ -53,6 +54,7 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
     }
     const third = await browser.newPage();
     await third.goto(invite);
+    await third.getByRole("button", { name: "Join Game", exact: true }).click();
     await expect(third.locator('main [role="alert"]')).toContainText(
       "This room is full",
     );
@@ -162,6 +164,7 @@ test("idle timeout passes the turn and disconnect awards the remaining player", 
   const rival = await context.newPage();
   try {
     await rival.goto(invite);
+    await rival.getByRole("button", { name: "Join Game", exact: true }).click();
     await expect(page.getByTestId("battle")).toHaveAttribute(
       "data-current-player",
       "1",
@@ -196,6 +199,7 @@ test("mobile touch charges and fires without scrolling the arena", async ({
   try {
     const invite = await createRoom(page);
     await rival.goto(invite);
+    await rival.getByRole("button", { name: "Join Game", exact: true }).click();
     await expect(page.getByTestId("battle")).toHaveAttribute(
       "data-phase",
       "aiming",
@@ -250,6 +254,7 @@ test("mobile touch charges and fires without scrolling the arena", async ({
 
 test("missing rooms show a recoverable error", async ({ page }) => {
   await page.goto("/game/missing-room");
+  await page.getByRole("button", { name: "Join Game", exact: true }).click();
   await expect(page.locator('main [role="alert"]')).toContainText(
     "no longer exists",
   );

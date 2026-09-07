@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { aimAtOpponent } from "./gameplay";
+import { aimAtOpponent, aimWorld, overview } from "./gameplay";
 
 for (const mapId of ["andes", "coast"]) {
   test(`offline playground: ${mapId} completes a real pointer-controlled match and restarts`, async ({
@@ -10,7 +10,13 @@ for (const mapId of ["andes", "coast"]) {
     await page.route("**/matchmake/**", (route) => route.abort());
     await page.goto("/");
     await page.getByRole("link", { name: "Playground" }).click();
-    await page.getByLabel("Map", { exact: true }).selectOption(mapId);
+    await page.getByText("Match setup", { exact: false }).click();
+    await page
+      .getByRole("button", {
+        name: mapId === "andes" ? "Cloudbreak Valley" : "Amber Hollows",
+      })
+      .click();
+    await page.getByText("Match setup", { exact: false }).click();
     await expect(page.getByTestId("battle")).toHaveAttribute(
       "data-phase",
       "aiming",
@@ -75,17 +81,15 @@ test("movement budget, lab options, high-shot camera and restarting during fligh
     "0",
   );
   await page.keyboard.up("KeyD");
-  await expect(page.getByTestId("player-1")).toHaveAttribute("data-x", "336");
+  await expect(page.getByTestId("player-1")).toHaveAttribute("data-x", "384");
   await page.getByText("Lab tools", { exact: false }).click();
   await page.getByLabel("Infinite HP", { exact: true }).check();
   await page.getByLabel("Show collisions", { exact: true }).check();
   await page.getByLabel("Destructible ground", { exact: true }).check();
   await page.getByRole("button", { name: "Restart", exact: true }).click();
   const canvas = page.locator("canvas");
-  await canvas.click({ trial: true });
-  const box = await canvas.boundingBox();
-  if (!box) throw new Error("Missing canvas");
-  await page.mouse.move(box.x + box.width * 0.25, box.y + box.height * 0.15);
+  await overview(page);
+  await aimWorld(page, 288, 100);
   await page.mouse.down();
   await expect
     .poll(async () =>
@@ -107,7 +111,7 @@ test("movement budget, lab options, high-shot camera and restarting during fligh
   );
   await expect
     .poll(async () => Number(await canvas.getAttribute("data-camera-zoom")))
-    .toBeGreaterThan(0.998);
+    .toBeGreaterThan(0.9);
 });
 
 test("mobile local movement and touch aim survive portrait-to-landscape resize", async ({
@@ -124,7 +128,7 @@ test("mobile local movement and touch aim survive portrait-to-landscape resize",
     await page.goto("/playground");
     await expect(page.locator("canvas")).toBeVisible();
     await page.getByRole("button", { name: "Move right", exact: true }).tap();
-    await expect(page.getByTestId("player-1")).toHaveAttribute("data-x", "248");
+    await expect(page.getByTestId("player-1")).toHaveAttribute("data-x", "296");
     const canvas = page.locator("canvas");
     await page.bringToFront();
     await canvas.tap({ trial: true });
@@ -170,4 +174,84 @@ test("mobile local movement and touch aim survive portrait-to-landscape resize",
   } finally {
     await context.close();
   }
+});
+
+test("character colors, every weapon, turn camera and crater feedback are playable", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/playground");
+  await expect(page.locator("canvas")).toBeVisible();
+  await page.getByText("Match setup", { exact: false }).click();
+  await page
+    .getByRole("group", { name: "Player 1", exact: true })
+    .getByRole("button", { name: "Llama", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Player 1: Rose", exact: true })
+    .click();
+  await expect(page.getByTestId("player-1")).toHaveAttribute(
+    "data-species",
+    "llama",
+  );
+  await expect(page.getByTestId("player-1")).toHaveAttribute(
+    "data-coat",
+    "rose",
+  );
+  await page.screenshot({
+    path: "test-results/match-setup.png",
+    fullPage: true,
+  });
+  await page.getByText("Match setup", { exact: false }).click();
+  await page
+    .getByRole("button", { name: "Focus character", exact: true })
+    .click();
+  await expect
+    .poll(async () =>
+      Number(await page.locator("canvas").getAttribute("data-camera-zoom")),
+    )
+    .toBeGreaterThan(1.1);
+  await page.screenshot({
+    path: "test-results/character-focus.png",
+    fullPage: true,
+  });
+  await page
+    .getByRole("button", { name: "View whole map", exact: true })
+    .click();
+  await overview(page);
+  for (const name of ["Rocket", "Mortar", "Dynamite", "Grapple", "Grenade"]) {
+    const weapon = page.getByRole("button", { name, exact: true });
+    await weapon.click();
+    await expect(weapon).toHaveAttribute("aria-pressed", "true");
+  }
+  await aimWorld(page, 450, 570);
+  await page.mouse.down();
+  await page.waitForFunction(
+    () => Number(document.querySelector("#power")?.getAttribute("value")) >= 10,
+  );
+  await page.mouse.up();
+  await expect(page.getByTestId("battle")).toHaveAttribute(
+    "data-phase",
+    "flying",
+  );
+  await expect(page.getByTestId("battle")).toHaveAttribute(
+    "data-terrain-revision",
+    "1",
+  );
+  await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "2");
+  await overview(page);
+  await page.screenshot({
+    path: "test-results/layered-arena-crater.png",
+    fullPage: true,
+  });
+  await page
+    .getByRole("button", { name: "Andean leap · 1 turn", exact: true })
+    .click();
+  await expect(page.getByTestId("battle")).toHaveAttribute(
+    "data-phase",
+    "resolving",
+  );
+  await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "3");
+  expect(errors).toEqual([]);
 });
