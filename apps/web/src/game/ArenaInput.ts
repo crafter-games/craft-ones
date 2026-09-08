@@ -203,11 +203,14 @@ export class ArenaInput {
       this.angle = Phaser.Math.Angle.Wrap(
         this.angle + this.angleDirection * dt * 0.001,
       );
+      const me = this.bridge.state?.players.find(
+        (p) => p.sessionId === this.bridge.sessionId,
+      );
+      // Range left, or a step back toward the origin, which always refills it.
+      const home = me ? Math.sign(me.originX - me.x) : 0;
       if (
         this.direction &&
-        (this.bridge.state?.players.find(
-          (p) => p.sessionId === this.bridge.sessionId,
-        )?.movementLeft ?? 0) > 0 &&
+        ((me?.movementLeft ?? 0) > 0 || this.direction === home) &&
         performance.now() >= this.moveAt &&
         !this.charging
       ) {

@@ -158,6 +158,28 @@ export class ArenaScene extends Phaser.Scene {
         ).lineBetween(player.x, player.y - 4, player.x, player.y + 4);
       }
       if (player.sessionId === sessionId && this.controls.canFire()) {
+        // The walking range is anchored where the turn began, so show the
+        // anchor and both edges: stepping back toward it hands the range back.
+        const range = Math.max(0, ARENA.moveBudget - player.movementSpent);
+        const feet = player.y + ARENA.playerRadius + 9;
+        g.lineStyle(2, 0xf7e4ab, 0.16).lineBetween(
+          player.originX - range,
+          feet,
+          player.originX + range,
+          feet,
+        );
+        for (const side of [-1, 1]) {
+          const edge = player.originX + side * range;
+          g.lineStyle(2, 0xf7e4ab, 0.3).lineBetween(edge, feet - 9, edge, feet);
+        }
+        g.fillStyle(0xf7e4ab, 0.4).fillTriangle(
+          player.originX - 4,
+          feet + 5,
+          player.originX + 4,
+          feet + 5,
+          player.originX,
+          feet - 2,
+        );
         if (this.bridge.showTrajectory) {
           const points = state.terrainRows.length
             ? shotTrajectory(

@@ -7,10 +7,13 @@ export function MovementControls({
   bridge,
   disabled,
   budget,
+  home,
 }: {
   bridge: RefObject<GameBridge>;
   disabled: boolean;
   budget: number;
+  /** The way back to where the turn began, which always has range to spare. */
+  home: -1 | 0 | 1;
 }) {
   const heldDirection = useRef<-1 | 0 | 1>(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -20,11 +23,11 @@ export function MovementControls({
     timer.current = null;
   };
   useEffect(() => {
-    if (budget <= 0 && timer.current) {
+    if (budget <= 0 && heldDirection.current !== home && timer.current) {
       clearInterval(timer.current);
       timer.current = null;
     }
-  }, [budget]);
+  }, [budget, home]);
   useEffect(() => {
     if (disabled && timer.current) {
       clearInterval(timer.current);
@@ -49,7 +52,7 @@ export function MovementControls({
           key={direction}
           type="button"
           aria-label={direction === -1 ? "Move left" : "Move right"}
-          disabled={disabled || budget <= 0}
+          disabled={disabled || (budget <= 0 && direction !== home)}
           className="move-button"
           onPointerDown={(event) => {
             event.preventDefault();
@@ -79,7 +82,7 @@ export function MovementControls({
         type="button"
         className="move-button jump-button"
         aria-label="Jump"
-        title={`W jumps; A/D sets direction. Jump costs ${ARENA.jumpCost} + horizontal travel. Keeps your shot.`}
+        title={`W jumps; A/D sets direction. Jump spends ${ARENA.jumpCost} of your range for good. Keeps your shot.`}
         disabled={disabled || budget < ARENA.jumpCost}
         onPointerDown={(event) => {
           event.preventDefault();
@@ -98,13 +101,13 @@ export function MovementControls({
       </button>
       <div className="min-w-24 flex-1 text-[10px] leading-tight text-[#b5bfb3]">
         <div className="mb-1 flex justify-between gap-2">
-          <span>MOVE</span>
+          <span>RANGE</span>
           <strong data-testid="movement-left">
             {Math.ceil(budget)} / {ARENA.moveBudget}
           </strong>
         </div>
         <meter
-          aria-label="Movement remaining"
+          aria-label="Range remaining"
           min={0}
           max={ARENA.moveBudget}
           value={budget}
@@ -112,8 +115,8 @@ export function MovementControls({
         />
         <span className="mt-1 block">
           {budget <= 0
-            ? "Movement spent · shot preserved"
-            : `Jump ${ARENA.jumpCost} + travel · keeps your shot`}
+            ? "At the edge · walk back to refill"
+            : `Range from where your turn began · jump costs ${ARENA.jumpCost}`}
         </span>
       </div>
     </div>

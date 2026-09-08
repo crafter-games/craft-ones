@@ -127,6 +127,7 @@ test("movement clamps at map edges and preserves separation", () => {
   const [one, two] = battle.state.players;
   one.x = ARENA.playerRadius;
   one.y = WORLD_MAPS.andes.spawns[0][1];
+  one.originX = one.x;
   expect(
     battle.move("one", { direction: -1, turnNumber: 1, sequence: 1 }),
   ).toBeNull();

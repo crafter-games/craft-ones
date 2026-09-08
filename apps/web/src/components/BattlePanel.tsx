@@ -211,6 +211,11 @@ export function BattlePanel({
             bridge={bridge}
             disabled={!aiming || !myTurn || !connected || power > 0}
             budget={current?.movementLeft ?? 0}
+            home={
+              current
+                ? (Math.sign(current.originX - current.x) as -1 | 0 | 1)
+                : 0
+            }
           />
           <div className="flex items-center gap-3">
             <label htmlFor="power" className="text-xs font-bold text-[#bdc9bc]">

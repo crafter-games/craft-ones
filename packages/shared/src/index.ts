@@ -7,4 +7,5 @@ export * from "./schema";
 export * from "./terrain";
 export * from "./terrainContours";
 export * from "./terrainGrid";
+export * from "./worldMotion";
 export * from "./worlds";

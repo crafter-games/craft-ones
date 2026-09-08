@@ -554,16 +554,10 @@ test("movement budget and sticky fuse replicate to both seats through normal int
       () => one.state.players.length === 2 && two.state.phase === "aiming",
     );
     const start = one.state.players[0].x;
-    for (
-      let sequence = 1;
-      sequence <= ARENA.moveBudget / ARENA.moveStep;
-      sequence++
-    ) {
-      one.send("move", {
-        direction: sequence % 2 ? 1 : -1,
-        sequence,
-        turnNumber: 1,
-      });
+    const steps = ARENA.moveBudget / ARENA.moveStep;
+    // Walking away drains the range, and the other seat sees the same number.
+    for (let sequence = 1; sequence <= steps; sequence++) {
+      one.send("move", { direction: 1, sequence, turnNumber: 1 });
       await waitFor(
         () =>
           two.state.players[0].movementLeft ===
@@ -572,7 +566,7 @@ test("movement budget and sticky fuse replicate to both seats through normal int
       await Bun.sleep(90);
     }
     expect(two.state.players[0].movementLeft).toBe(0);
-    expect(one.state.players[0].x).toBe(start);
+    expect(one.state.players[0].x).toBe(start + ARENA.moveBudget);
     one.send("move", {
       direction: 1,
       sequence: 99,
@@ -581,8 +575,20 @@ test("movement budget and sticky fuse replicate to both seats through normal int
     });
     one.send("jump", { direction: 1, turnNumber: 1 });
     await Bun.sleep(150);
-    expect(one.state.players[0].x).toBe(start);
+    expect(one.state.players[0].x).toBe(start + ARENA.moveBudget);
     expect(two.state.players[0].movementLeft).toBe(0);
+    // Walking home hands the range back on both seats.
+    for (let sequence = 100; sequence < 100 + steps; sequence++) {
+      one.send("move", { direction: -1, sequence, turnNumber: 1 });
+      await waitFor(
+        () =>
+          two.state.players[0].movementLeft ===
+          (sequence - 99) * ARENA.moveStep,
+      );
+      await Bun.sleep(90);
+    }
+    expect(one.state.players[0].x).toBe(start);
+    expect(two.state.players[0].movementLeft).toBe(ARENA.moveBudget);
     for (const [seat, room] of [one, two].entries()) {
       const turnNumber = seat + 1;
       const intent = {

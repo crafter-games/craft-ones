@@ -13,7 +13,13 @@ import { advanceShot, launchShot } from "./projectiles";
 import { BattleState, type FireAction, Player } from "./schema";
 import { carveCrater, type MapId, makeTerrain, terrainHeight } from "./terrain";
 import { eraseCircle, grounded } from "./terrainGrid";
-import { moveHorizontal, worldBodyStep } from "./worldMotion";
+import {
+  moveHorizontal,
+  movementRoom,
+  resetMovement,
+  syncMovement,
+  worldBodyStep,
+} from "./worldMotion";
 import {
   makeWorld,
   type PlayableMapId,
@@ -101,29 +107,26 @@ export class Battle {
     )
       return "Cannot move now";
     const player = this.state.players.find((p) => p.sessionId === sessionId);
+    // Walking back toward the origin is always allowed: it hands range back.
+    const room = player ? movementRoom(player, direction) : 0;
     if (
       !player?.connected ||
       player.hp <= 0 ||
-      player.movementLeft <= 0 ||
+      room <= 0 ||
       now - this.moveAt < ARENA.moveIntervalMs
     )
       return "Movement unavailable";
     if (this.state.terrainRows.length) {
-      const before = player.x;
       const airborne =
         player.vy < -1 || !grounded(this.state, player.x, player.y);
       const error = worldMove(
         this.state,
         player,
         direction,
-        Math.min(ARENA.moveStep, player.movementLeft),
+        Math.min(ARENA.moveStep, room),
       );
       if (!error && airborne) this.controlledMotion.add(player);
-      if (!error && !airborne)
-        player.movementLeft = Math.max(
-          0,
-          player.movementLeft - Math.abs(player.x - before),
-        );
+      if (!error && !airborne) syncMovement(player);
       if (!error) {
         this.moveSequence = sequence as number;
         this.moveAt = now;
@@ -139,17 +142,14 @@ export class Battle {
         ? opponent.x - radius * 2
         : ARENA.width - radius;
     const x = clamp(
-      player.x + direction * Math.min(ARENA.moveStep, player.movementLeft),
+      player.x + direction * Math.min(ARENA.moveStep, room),
       min,
       max,
     );
     const y = terrainHeight(this.state.terrain, x) - radius;
     if (player.y - y > 12) return "Slope too steep";
-    player.movementLeft = Math.max(
-      0,
-      player.movementLeft - Math.abs(x - player.x),
-    );
     player.x = x;
+    syncMovement(player);
     player.y = y;
     player.vy = 0;
     this.moveSequence = sequence as number;
@@ -195,7 +195,7 @@ export class Battle {
       player.vx = 0;
       player.abilityReadyTurn = 0;
       player.shield = 0;
-      player.movementLeft = ARENA.moveBudget;
+      resetMovement(player);
     }
     this.controlledMotion.clear();
     this.state.projectile.stuck = false;
@@ -228,6 +228,7 @@ export class Battle {
         WORLD_MAPS[this.state.mapId as PlayableMapId].spawns[player.number - 1];
     setAppearance(player, defaultAppearance(player.number));
     if (options) setAppearance(player, options);
+    resetMovement(player);
     this.state.players.push(player);
     if (this.state.players.length === 2) this.startTurn(0, this.clockNow());
     return player;
@@ -403,7 +404,7 @@ export class Battle {
     this.state.phase = "aiming";
     this.state.currentPlayer = this.state.players[index].sessionId;
     this.state.turnNumber++;
-    this.state.players[index].movementLeft = ARENA.moveBudget;
+    resetMovement(this.state.players[index]);
     this.moveSequence = 0;
     this.moveAt = -Infinity;
     this.state.remainingMs = ARENA.turnMs;
@@ -462,7 +463,8 @@ export class Battle {
       !grounded(this.state, player.x, player.y)
     )
       return "Jump unavailable";
-    player.movementLeft -= ARENA.jumpCost;
+    player.movementSpent += ARENA.jumpCost;
+    syncMovement(player);
     this.controlledMotion.add(player);
     player.vy = -330;
     player.vx = direction * 180;

@@ -2,6 +2,37 @@ import { ARENA } from "./config";
 import type { Player } from "./schema";
 import { bodyBlocked, type Geometry, grounded } from "./terrainGrid";
 
+/**
+ * The movement budget is a range around the spot where the turn started, not a
+ * path length: walking back toward that spot gives the range back. Jumps also
+ * spend part of the range outright, and that part never returns.
+ */
+export function movementRange(player: Player) {
+  return Math.max(0, ARENA.moveBudget - player.movementSpent);
+}
+
+/** How far the player may still travel in `direction` before leaving the range. */
+export function movementRoom(player: Player, direction: number) {
+  if (!direction) return 0;
+  const edge = player.originX + Math.sign(direction) * movementRange(player);
+  return Math.max(0, (edge - player.x) * Math.sign(direction));
+}
+
+/** Publish the range left, so clients and controls read one authoritative number. */
+export function syncMovement(player: Player) {
+  player.movementLeft = Math.max(
+    0,
+    movementRange(player) - Math.abs(player.x - player.originX),
+  );
+}
+
+/** Anchor the range on where the player stands now. */
+export function resetMovement(player: Player) {
+  player.originX = player.x;
+  player.movementSpent = 0;
+  player.movementLeft = ARENA.moveBudget;
+}
+
 export function moveHorizontal(
   world: Geometry,
   player: Player,
@@ -44,17 +75,14 @@ export function worldBodyStep(
   for (const player of players) {
     if (player.hp <= 0) continue;
     const budgeted = controlled?.has(player);
+    const room = budgeted ? movementRoom(player, Math.sign(player.vx)) : 0;
     const delta = budgeted
-      ? Math.sign(player.vx) *
-        Math.min(Math.abs(player.vx * dt), player.movementLeft)
+      ? Math.sign(player.vx) * Math.min(Math.abs(player.vx * dt), room)
       : player.vx * dt;
-    const moved = moveHorizontal(world, player, delta);
+    moveHorizontal(world, player, delta);
     if (budgeted) {
-      player.movementLeft = Math.max(0, player.movementLeft - moved);
-      if (player.movementLeft < 0.001) {
-        player.movementLeft = 0;
-        player.vx = 0;
-      }
+      syncMovement(player);
+      if (room < 0.001) player.vx = 0;
     }
     const dy = player.vy * dt + 0.5 * ARENA.gravity * dt * dt;
     player.vy += ARENA.gravity * dt;

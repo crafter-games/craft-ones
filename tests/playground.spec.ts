@@ -464,7 +464,7 @@ test("movement bar empties, blocks walk and jump, and keeps sticky bombs availab
   await page.goto("/playground");
   const canvas = page.locator("canvas");
   await expect(canvas).toBeFocused();
-  const meter = page.getByRole("meter", { name: "Movement remaining" });
+  const meter = page.getByRole("meter", { name: "Range remaining" });
   await expect(meter).toHaveAttribute("value", "240");
   await page.keyboard.down("KeyD");
   await expect(meter).toHaveAttribute("value", "0");
@@ -472,9 +472,13 @@ test("movement bar empties, blocks walk and jump, and keeps sticky bombs availab
   const player = page.getByTestId("player-1");
   const x = Number(await player.getAttribute("data-x"));
   const y = Number(await player.getAttribute("data-y"));
+  // At the edge only the way out is closed; the way home stays open.
   await expect(
     page.getByRole("button", { name: "Move right", exact: true }),
   ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Move left", exact: true }),
+  ).toBeEnabled();
   await expect(
     page.getByRole("button", { name: "Jump", exact: true }),
   ).toBeDisabled();
@@ -502,4 +506,36 @@ test("movement bar empties, blocks walk and jump, and keeps sticky bombs availab
     path: "test-results/movement-sticky.png",
     fullPage: true,
   });
+});
+
+// ARENA.moveBudget; these specs run without the workspace package resolved.
+const BUDGET = 240;
+
+test("walking range drains away from the origin and refills on the way back", async ({
+  page,
+}) => {
+  await page.goto("/playground");
+  await expect(page.locator("canvas")).toBeVisible();
+  await expect(page.locator("canvas")).toBeFocused();
+  const player = page.getByTestId("player-1");
+  const left = async () => Number(await player.getAttribute("data-movement"));
+  const at = async () => Number(await player.getAttribute("data-x"));
+  const start = await at();
+  await page.keyboard.down("KeyD");
+  await expect.poll(left).toBe(0);
+  await page.keyboard.up("KeyD");
+  expect(await at()).toBeCloseTo(start + BUDGET, 0);
+  await expect(page.getByTestId("movement-left")).toHaveText(`0 / ${BUDGET}`);
+  // Every step home buys the range back, so the walk out is never a dead end.
+  await page.keyboard.down("KeyA");
+  await expect.poll(left).toBeGreaterThan(BUDGET / 2);
+  expect(await at()).toBeLessThan(start + BUDGET);
+  await expect.poll(left).toBeGreaterThan(BUDGET - 24);
+  await page.keyboard.up("KeyA");
+  expect(Math.abs((await at()) - start)).toBeLessThan(24);
+  // Crossing the origin starts spending again on the other side.
+  await page.keyboard.down("KeyA");
+  await expect.poll(left).toBeLessThan(BUDGET - 24);
+  await page.keyboard.up("KeyA");
+  expect(await at()).toBeLessThan(start);
 });
