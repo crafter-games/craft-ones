@@ -16,6 +16,18 @@ import {
 import { weaponMarkup, weaponSvg } from "../src/game/weapons/design";
 
 const root = new URL("../public/art/", import.meta.url);
+const portraitFrames = {
+  cuy: "-45 -61 90 90",
+  llama: "-56 -83 112 112",
+  zorro: "-52 -75 104 104",
+  ronsoco: "-40 -55 86 86",
+};
+const characterNotes = {
+  cuy: "Knitted brows / clenched teeth / raised paw",
+  llama: "Slanted brows / stubborn pout / split hooves",
+  zorro: "Sharp glare / tense muzzle / dark angular paws",
+  ronsoco: "Heavy scowl / compressed mouth / broad fists",
+};
 const rows: string[] = [];
 for (const [i, species] of SPECIES.entries()) {
   await mkdir(new URL(`${species}/`, root), { recursive: true });
@@ -33,22 +45,27 @@ for (const [i, species] of SPECIES.entries()) {
       );
     await Bun.write(
       new URL(`${species}/${coat}/portrait.svg`, root),
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-65 -105 130 135"><title>${coat} ${species}</title><g transform="translate(-3 0)">${referenceCharacter(species, coat)}</g></svg>`,
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${portraitFrames[species]}" width="250" height="250"><title>${COATS[coat].name} ${species} / original articulated character</title>${referenceCharacter(species, coat)}</svg>`,
     );
   }
-  const y = 210 + i * 320;
+  const y = 132 + i * 350;
   rows.push(
-    `<text x="60" y="${y - (i === 1 ? 135 : 80)}" fill="#3b2b38" font-size="24" font-weight="bold">${species.toUpperCase()}</text><g transform="translate(140 ${y + 45}) scale(2.2)">${referenceCharacter(species)}</g>`,
+    `<path d="M36 ${y}H1244" stroke="#dfceb4"/><text x="42" y="${y + 32}" fill="#49332f" font-size="25" font-weight="bold">${String(i + 1).padStart(2, "0")} / ${species.toUpperCase()}</text><text x="42" y="${y + 54}" fill="#8b6b5a" font-size="11">${characterNotes[species]}</text><g transform="translate(150 ${y + 242}) scale(2.2)">${referenceCharacter(species)}</g>`,
   );
+  Object.entries(COATS).forEach(([coat, palette], n) => {
+    rows.push(
+      `<g transform="translate(${62 + n * 45} ${y + 309})"><circle r="8" fill="${palette.fur}" stroke="#49332f" stroke-width="1.5"/><text y="22" text-anchor="middle" font-size="9" fill="#8b6b5a">${coat}</text></g>`,
+    );
+  });
   PARTS.forEach((part, n) => {
     rows.push(
-      `<g transform="translate(${335 + (n % 7) * 99} ${y - 40 + Math.floor(n / 7) * 140})">${partMarkup(species, part)}<circle r="2" fill="#f47666"/><text y="45" x="-32" font-size="10" fill="#77616b">${part}</text></g>`,
+      `<g transform="translate(${366 + (n % 7) * 134} ${y + 100 + Math.floor(n / 7) * 144})"><rect x="-42" y="-53" width="84" height="106" rx="8" fill="#fff8e9" stroke="#e5d6bf"/>${partMarkup(species, part)}<circle r="2" fill="#df6c50" stroke="#fff8e9" stroke-width=".8"/><text y="71" text-anchor="middle" font-size="11" fill="#8b6b5a">${part}${part === "tail" && (species === "cuy" || species === "ronsoco") ? " (none)" : ""}</text></g>`,
     );
   });
 }
 await Bun.write(
   new URL("character-reference.svg", root),
-  `<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1420" viewBox="0 0 1040 1420"><title>Craft Ones original character reference and cutouts</title><rect width="1040" height="1420" rx="28" fill="#f8eedb"/><g font-family="Arial, sans-serif"><text x="55" y="55" font-size="30" font-weight="bold" fill="#3b2b38">CRAFT ONES / CHARACTER WORKSHOP</text><text x="55" y="83" font-size="14" fill="#77616b">Original vector cutouts · warm ink · no external shadows · red dots = pivots</text>${rows.join("")}<text x="55" y="1395" font-size="13" fill="#77616b">Four original rivals · hidden limb roots · distinct silhouettes · no clothing.</text></g></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1580" viewBox="0 0 1280 1580"><title>Craft Ones original character reference and cutouts</title><rect width="1280" height="1580" rx="28" fill="#f8eedb"/><g font-family="Arial, sans-serif"><text x="42" y="51" font-size="30" font-weight="bold" fill="#49332f">CRAFT ONES / CHARACTER WORKSHOP</text><text x="42" y="80" font-size="14" fill="#8b6b5a">Four original vector critters · warm contours · cream markings · inset color planes</text><text x="42" y="105" font-size="12" fill="#8b6b5a">80 × 100 transparent cutouts / coral dots mark the shared pivots / five coat palettes</text>${rows.join("")}<text x="42" y="1552" font-size="12" fill="#8b6b5a">Same source shapes in the arena and the gallery. Independent ears, eyes, hands and feet. No clothing or cast-shadow textures.</text></g></svg>`,
 );
 await Bun.write(
   new URL("duel-poster.svg", root),
@@ -63,16 +80,23 @@ for (const kind of Object.keys(WEAPONS) as WeaponId[])
       weaponSvg(kind, projectile),
     );
 const proofs: string[] = [];
+const poses = [
+  { kind: "rocket", angle: -1.25, stride: 0, facing: 1 },
+  { kind: "grapple", angle: -0.35, stride: 18, facing: 1 },
+  { kind: "grenade", angle: 0.7, stride: 0, facing: -1 },
+  { kind: "mortar", angle: -0.8, stride: 0, facing: 1 },
+  { kind: "dynamite", angle: 0.35, stride: -18, facing: -1 },
+  { kind: "sticky", angle: -0.4, stride: 0, facing: 1 },
+] as const;
 for (const [row, species] of SPECIES.entries())
-  for (const [col, angle] of [-1.25, -0.35, 0.7].entries()) {
-    const kind = (["rocket", "grapple", "grenade"] as const)[col];
+  for (const [col, pose] of poses.entries()) {
     proofs.push(
-      `<g transform="translate(${150 + col * 290} ${200 + row * 250}) scale(${col === 2 ? -2 : 2} 2)">${referenceCharacter(species, species === "llama" ? "cream" : "caramel", kind, angle, col === 1 ? 18 : 0)}</g><text x="${65 + col * 290}" y="${270 + row * 250}">${species.toUpperCase()} · ${kind}</text>`,
+      `<g transform="translate(${150 + col * 290} ${220 + row * 250}) scale(${pose.facing * 2} 2)">${referenceCharacter(species, undefined, pose.kind, pose.angle, pose.stride)}</g><text x="${150 + col * 290}" y="${292 + row * 250}" text-anchor="middle">${species.toUpperCase()} / ${pose.kind}</text><text x="${150 + col * 290}" y="${312 + row * 250}" text-anchor="middle" font-size="11" font-weight="normal">${Math.round((pose.angle * 180) / Math.PI)}° aim · ${pose.facing === 1 ? "right" : "left"} facing${pose.stride ? " · stride" : ""}</text>`,
     );
   }
 await Bun.write(
   new URL("pose-review.svg", root),
-  `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1090" viewBox="0 0 900 1090"><title>Character joints and aim poses</title><rect width="900" height="1090" fill="#e6e2c9"/><g font-family="Arial" font-size="13" font-weight="bold" fill="#354137"><text x="36" y="35">CRAFT ONES / JOINTS + AIM REVIEW</text>${proofs.join("")}</g></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="1750" height="1110" viewBox="0 0 1750 1110"><title>Character joints and all six weapon grips</title><rect width="1750" height="1110" fill="#f8eedb"/><g font-family="Arial" font-size="13" font-weight="bold" fill="#49332f"><text x="36" y="35" font-size="21">CRAFT ONES / JOINTS + AIM REVIEW</text><text x="36" y="59" font-size="12" font-weight="normal">Shared rig transforms / hands retain their shape while upper arms reach the weapon grips / mirrored and walking poses</text>${proofs.join("")}</g></svg>`,
 );
 const weapons = (Object.keys(WEAPONS) as WeaponId[])
   .map(
