@@ -12,6 +12,10 @@ export type Shot = {
   kind: WeaponId;
   elapsedMs: number;
   bounces: number;
+  stuck: boolean;
+  attachedPlayer: number;
+  offsetX: number;
+  offsetY: number;
 };
 export type Impact = "flying" | "blast" | "anchor" | "miss";
 
@@ -35,6 +39,10 @@ export function launchShot(
     kind,
     elapsedMs: 0,
     bounces: 0,
+    stuck: false,
+    attachedPlayer: 0,
+    offsetX: 0,
+    offsetY: 0,
   };
 }
 
@@ -74,15 +82,24 @@ export function advanceShot(
   const spec = WEAPONS[shot.kind],
     dt = ARENA.stepMs / 1000;
   shot.elapsedMs += ARENA.stepMs;
+  const bodies = Array.from(players);
+  if (shot.stuck) {
+    const target = bodies[shot.attachedPlayer - 1];
+    if (target) {
+      shot.x = target.x + shot.offsetX;
+      shot.y = target.y + shot.offsetY;
+    }
+    return shot.elapsedMs + 0.001 >= spec.fuse ? "blast" : "flying";
+  }
   if (!world.terrainRows.length && shot.kind === "rocket")
-    return advanceRocket(shot, players, world.terrain) ? "blast" : "flying";
+    return advanceRocket(shot, bodies, world.terrain) ? "blast" : "flying";
   const dx = shot.vx * dt,
     dy = shot.vy * dt + 0.5 * ARENA.gravity * spec.gravity * dt ** 2;
   const terrain = gridHit(world, shot.x, shot.y, dx, dy);
   const player =
     shot.kind === "grapple" || spec.bounce
       ? Infinity
-      : bodyHit(shot.x, shot.y, dx, dy, players);
+      : bodyHit(shot.x, shot.y, dx, dy, bodies);
   const hit = Math.min(terrain, player);
   if (hit <= 1) {
     const travel = Math.max(0, hit - 0.001);
@@ -90,7 +107,23 @@ export function advanceShot(
     shot.y += dy * travel;
     if (shot.kind === "grapple")
       return shot.x <= 2 || shot.x >= world.worldWidth - 2 ? "miss" : "anchor";
-    if (spec.bounce) {
+    if (shot.kind === "sticky") {
+      shot.stuck = true;
+      shot.vx = 0;
+      shot.vy = 0;
+      if (player < terrain) {
+        const index = bodies.findIndex(
+          (p) =>
+            p.hp > 0 &&
+            Math.hypot(p.x - shot.x, p.y - shot.y) <= ARENA.playerRadius + 1,
+        );
+        if (index >= 0) {
+          shot.attachedPlayer = index + 1;
+          shot.offsetX = shot.x - bodies[index].x;
+          shot.offsetY = shot.y - bodies[index].y;
+        }
+      }
+    } else if (spec.bounce) {
       const hitX = shot.x + dx * 0.003,
         hitY = shot.y + dy * 0.003;
       const wall = solidAt(world, hitX + Math.sign(dx) * 3, shot.y);

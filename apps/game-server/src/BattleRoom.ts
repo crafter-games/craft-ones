@@ -1,6 +1,6 @@
 import { type Client, Room } from "@colyseus/core";
 import { Encoder } from "@colyseus/schema";
-import { ARENA, type BattleState } from "@craft-ones/shared";
+import { ARENA, type BattleState, PLAYABLE_MAP_IDS } from "@craft-ones/shared";
 import { Battle } from "./Battle";
 
 // A full 224 × 128 occupancy map is about 30 KB; patches only carry changed rows.
@@ -14,7 +14,7 @@ export class BattleRoom extends Room<BattleState> {
   onCreate(options: { mapId?: unknown } = {}) {
     this.battle = new Battle(
       undefined,
-      options.mapId === "coast" ? "coast" : "andes",
+      PLAYABLE_MAP_IDS.find((id) => id === options.mapId) ?? "andes",
     );
     this.setState(this.battle.state);
     this.setPatchRate(ARENA.stepMs * 3);

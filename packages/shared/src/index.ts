@@ -5,5 +5,6 @@ export * from "./config";
 export * from "./projectiles";
 export * from "./schema";
 export * from "./terrain";
+export * from "./terrainContours";
 export * from "./terrainGrid";
 export * from "./worlds";

@@ -38,7 +38,8 @@ export class BattleEffects {
     const p = state.projectile;
     this.projectile.setVisible(p.active);
     this.fuse.setVisible(
-      p.active && (p.kind === "grenade" || p.kind === "dynamite"),
+      p.active &&
+        (p.kind === "grenade" || p.kind === "dynamite" || p.kind === "sticky"),
     );
     if (p.active) {
       const size = WEAPON_ART[p.kind].shotSize;
@@ -47,8 +48,10 @@ export class BattleEffects {
         .setDisplaySize(size[0], size[1])
         .setPosition(p.x, p.y)
         .setRotation(
-          p.kind === "grenade" || p.kind === "dynamite"
-            ? p.elapsedMs / 180
+          p.kind === "grenade" || p.kind === "dynamite" || p.kind === "sticky"
+            ? p.stuck
+              ? 0
+              : p.elapsedMs / 180
             : Math.atan2(p.vy, p.vx),
         );
       this.fuse

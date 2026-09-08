@@ -35,11 +35,27 @@ export function moveHorizontal(
   return moved;
 }
 
-export function worldBodyStep(world: Geometry, players: Iterable<Player>) {
+export function worldBodyStep(
+  world: Geometry,
+  players: Iterable<Player>,
+  controlled?: ReadonlySet<Player>,
+) {
   const dt = ARENA.stepMs / 1000;
   for (const player of players) {
     if (player.hp <= 0) continue;
-    moveHorizontal(world, player, player.vx * dt);
+    const budgeted = controlled?.has(player);
+    const delta = budgeted
+      ? Math.sign(player.vx) *
+        Math.min(Math.abs(player.vx * dt), player.movementLeft)
+      : player.vx * dt;
+    const moved = moveHorizontal(world, player, delta);
+    if (budgeted) {
+      player.movementLeft = Math.max(0, player.movementLeft - moved);
+      if (player.movementLeft < 0.001) {
+        player.movementLeft = 0;
+        player.vx = 0;
+      }
+    }
     const dy = player.vy * dt + 0.5 * ARENA.gravity * dt * dt;
     player.vy += ARENA.gravity * dt;
     const steps = Math.max(1, Math.ceil(Math.abs(dy) / 2));

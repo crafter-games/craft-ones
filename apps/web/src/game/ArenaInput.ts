@@ -13,6 +13,7 @@ export class ArenaInput {
   private direction: -1 | 0 | 1 = 0;
   private moveAt = 0;
   private angleDirection = 0;
+  private held = new Set<string>();
 
   constructor(
     private scene: Phaser.Scene,
@@ -23,7 +24,7 @@ export class ArenaInput {
     canvas.setAttribute("role", "application");
     canvas.setAttribute(
       "aria-label",
-      "Battle arena. Mouse or touch: aim, hold, release to fire. A/D move. Arrows aim. Hold and release Space to fire.",
+      "Battle arena. Mouse or touch: aim, hold, release to fire. A/D move, W jumps. Combine A/D and W to run and jump. Arrows aim. Hold and release Space to fire.",
     );
     scene.input.on("pointermove", (p: Phaser.Input.Pointer) => this.aim(p));
     scene.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
@@ -41,8 +42,24 @@ export class ArenaInput {
       this.cancel();
       this.direction = 0;
       this.angleDirection = 0;
+      this.held.clear();
+      this.bridge.movementDirection = 0;
     };
     const keydown = (event: KeyboardEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      // Play from the arena or from an unfocused page, never from a text field
+      // or from a control that sits outside the battle.
+      if (
+        this.bridge.suspended ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        target?.closest(
+          'input,textarea,select,[contenteditable="true"],dialog',
+        ) ||
+        (target && target !== document.body && !target.closest(".battle-panel"))
+      )
+        return;
       if (
         !["ArrowLeft", "ArrowRight", "Space", "KeyA", "KeyD", "KeyW"].includes(
           event.code,
@@ -50,6 +67,7 @@ export class ArenaInput {
       )
         return;
       event.preventDefault();
+      this.held.add(event.code);
       if (event.code === "Space" && !event.repeat && this.canFire())
         this.begin();
       if (
@@ -65,31 +83,43 @@ export class ArenaInput {
       if (event.code === "ArrowRight") this.angleDirection = 1;
     };
     const keyup = (event: KeyboardEvent) => {
+      this.held.delete(event.code);
       if (event.code === "Space") {
         event.preventDefault();
         this.shoot();
       }
-      if (["KeyA", "KeyD"].includes(event.code)) this.direction = 0;
+      if (["KeyA", "KeyD"].includes(event.code))
+        this.direction = this.held.has("KeyD")
+          ? 1
+          : this.held.has("KeyA")
+            ? -1
+            : 0;
       if (["ArrowLeft", "ArrowRight"].includes(event.code))
-        this.angleDirection = 0;
+        this.angleDirection = this.held.has("ArrowRight")
+          ? 1
+          : this.held.has("ArrowLeft")
+            ? -1
+            : 0;
     };
-    canvas.addEventListener("keydown", keydown);
-    canvas.addEventListener("keyup", keyup);
+    window.addEventListener("keydown", keydown);
+    window.addEventListener("keyup", keyup);
     canvas.addEventListener("pointercancel", cancel);
-    canvas.addEventListener("blur", cancel);
+    const blur = () => this.cancel();
+    canvas.addEventListener("blur", blur);
     window.addEventListener("blur", cancel);
     const visibility = () => {
       if (document.hidden) cancel();
     };
     document.addEventListener("visibilitychange", visibility);
     scene.events.once("shutdown", () => {
-      canvas.removeEventListener("keydown", keydown);
-      canvas.removeEventListener("keyup", keyup);
+      window.removeEventListener("keydown", keydown);
+      window.removeEventListener("keyup", keyup);
       canvas.removeEventListener("pointercancel", cancel);
-      canvas.removeEventListener("blur", cancel);
+      canvas.removeEventListener("blur", blur);
       window.removeEventListener("blur", cancel);
       document.removeEventListener("visibilitychange", visibility);
     });
+    canvas.focus({ preventScroll: true });
   }
   private turnKey() {
     return `${this.bridge.generation}:${this.bridge.state?.turnNumber}`;
@@ -98,6 +128,7 @@ export class ArenaInput {
     const { state, connected, sessionId } = this.bridge;
     return (
       connected &&
+      !this.bridge.suspended &&
       state?.phase === "aiming" &&
       state.currentPlayer === sessionId &&
       state.remainingMs > 0 &&
@@ -155,10 +186,17 @@ export class ArenaInput {
       this.lastTurn = this.turnKey();
       this.cancel();
       this.direction = 0;
+      this.held.clear();
+      this.angleDirection = 0;
       const me = this.bridge.state?.players.find(
         (p) => p.sessionId === this.bridge.sessionId,
       );
       this.angle = me?.number === 2 ? (-3 * Math.PI) / 4 : -Math.PI / 4;
+    }
+    if (this.bridge.suspended) {
+      this.direction = 0;
+      this.angleDirection = 0;
+      this.held.clear();
     }
     if (!this.canFire() && this.charging) this.cancel();
     if (this.canFire()) {
@@ -167,10 +205,9 @@ export class ArenaInput {
       );
       if (
         this.direction &&
-        (this.bridge.state?.terrainRows.length ||
-          (this.bridge.state?.players.find(
-            (p) => p.sessionId === this.bridge.sessionId,
-          )?.movementLeft ?? 0) > 0) &&
+        (this.bridge.state?.players.find(
+          (p) => p.sessionId === this.bridge.sessionId,
+        )?.movementLeft ?? 0) > 0 &&
         performance.now() >= this.moveAt &&
         !this.charging
       ) {
@@ -179,6 +216,7 @@ export class ArenaInput {
       }
     }
     this.bridge.direction = Math.cos(this.angle) >= 0 ? 1 : -1;
+    this.bridge.movementDirection = this.direction;
     this.reportPower(this.power());
   }
 }

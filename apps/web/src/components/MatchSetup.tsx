@@ -1,14 +1,19 @@
 "use client";
 import {
   ABILITIES,
+  ARENA,
   CHARACTERS,
   COATS,
   type CoatId,
+  PLAYABLE_MAP_IDS,
+  type PlayableMapId,
   type PlayerOptions,
   SPECIES,
+  WEAPONS,
   WORLD_MAPS,
 } from "@craft-ones/shared";
 import Image from "next/image";
+
 export function CharacterPicker({
   value,
   onChange,
@@ -18,54 +23,103 @@ export function CharacterPicker({
   onChange: (value: PlayerOptions) => void;
   label: string;
 }) {
+  const index = SPECIES.indexOf(value.species);
   const character = CHARACTERS[value.species];
+  const ability = ABILITIES[value.species];
+  const cycle = (direction: number) =>
+    onChange({
+      ...value,
+      species: SPECIES[(index + direction + SPECIES.length) % SPECIES.length],
+    });
   return (
-    <fieldset className="critter-picker radial-picker">
+    <fieldset className="critter-picker roster-picker">
       <legend>{label}</legend>
-      <div className="character-orbit">
-        <div className="orbit-ring" />
-        <div className="selected-critter" key={value.species}>
-          <Image
-            src={`/art/${value.species}/${value.coat}/portrait.svg`}
-            alt={`${value.coat} ${character.name}`}
-            width={210}
-            height={210}
-            className="breathing-critter"
-          />
-        </div>
+      <div className="roster-kicker">
+        <span>Meet the mischief</span>
+        <span>
+          {String(index + 1).padStart(2, "0")} /{" "}
+          {String(SPECIES.length).padStart(2, "0")}
+        </span>
+      </div>
+      <div className="character-lineup" aria-hidden="true">
+        <div className="lineup-stage" />
         {SPECIES.map((species, i) => {
-          const angle = ((i * 90 - 90) * Math.PI) / 180;
+          const slot = (i - index + SPECIES.length) % SPECIES.length;
           return (
-            <button
-              type="button"
+            <div
               key={species}
-              className="orbit-choice"
-              aria-label={CHARACTERS[species].name}
-              aria-pressed={value.species === species}
+              className={`lineup-critter ${slot === 0 ? "is-selected" : ""} ${slot === 2 ? "is-distant" : ""}`}
               style={{
-                left: `${50 + 37 * Math.cos(angle)}%`,
-                top: `${50 + 37 * Math.sin(angle)}%`,
+                left: `${[50, 83, 50, 17][slot]}%`,
+                zIndex: slot === 0 ? 4 : slot === 2 ? 1 : 2,
               }}
-              onClick={() => onChange({ ...value, species })}
             >
               <Image
                 src={`/art/${species}/${value.coat}/portrait.svg`}
                 alt=""
-                width={76}
-                height={76}
-                style={{ animationDelay: `${-i * 0.8}s` }}
+                width={300}
+                height={312}
+                loading="eager"
+                draggable={false}
               />
-              <span>{CHARACTERS[species].name}</span>
-            </button>
+            </div>
           );
         })}
       </div>
-      <div className="character-bio">
-        <h3>{character.name}</h3>
-        <span className="critter-role">{character.role}</span>
-        <p>{character.tagline}</p>
+      <fieldset
+        className="roster-choices"
+        aria-label={`${label} character roster`}
+      >
+        {SPECIES.map((species) => (
+          <button
+            key={species}
+            type="button"
+            aria-label={CHARACTERS[species].name}
+            aria-pressed={value.species === species}
+            onClick={() => onChange({ ...value, species })}
+          >
+            <span>{CHARACTERS[species].name}</span>
+          </button>
+        ))}
+      </fieldset>
+      <div className="roster-profile">
+        <button
+          type="button"
+          className="roster-arrow"
+          aria-label="Previous character"
+          onClick={() => cycle(-1)}
+        >
+          ‹
+        </button>
+        <div className="character-bio" aria-live="polite" aria-atomic="true">
+          <span className="critter-role">
+            {value.species === "cuy" ? "Default critter" : character.role}
+          </span>
+          <h3>{character.name}</h3>
+          <p>{character.tagline}</p>
+        </div>
+        <button
+          type="button"
+          className="roster-arrow"
+          aria-label="Next character"
+          onClick={() => cycle(1)}
+        >
+          ›
+        </button>
+      </div>
+      <div className="roster-stats">
+        <span>
+          <strong>100</strong> HP
+        </span>
+        <span>
+          <strong>{ARENA.turnMs / 1000}s</strong> TURN
+        </span>
+        <span>
+          <strong>{Object.keys(WEAPONS).length}</strong> TOOLS
+        </span>
       </div>
       <fieldset className="coat-options" aria-label={`${label} coat color`}>
+        <legend>Coat / {COATS[value.coat].name}</legend>
         {(Object.entries(COATS) as [CoatId, (typeof COATS)[CoatId]][]).map(
           ([coat, palette]) => (
             <button
@@ -82,9 +136,12 @@ export function CharacterPicker({
         )}
       </fieldset>
       <div className="ability-description">
-        <span>UNIQUE ABILITY · 1 TURN</span>
-        <h4>{ABILITIES[value.species].name}</h4>
-        <p>{ABILITIES[value.species].description}</p>
+        <span>{ability ? "UNIQUE ABILITY · 1 TURN" : "STANDARD LOADOUT"}</span>
+        <h4>{ability?.name ?? "No special ability"}</h4>
+        <p>
+          {ability?.description ??
+            "The original all-rounder. Six shared tools, no special move. Win with your aim, movement and timing."}
+        </p>
       </div>
     </fieldset>
   );
@@ -94,17 +151,18 @@ export function MapPicker({
   value,
   onChange,
 }: {
-  value: "andes" | "coast";
-  onChange: (id: "andes" | "coast") => void;
+  value: PlayableMapId;
+  onChange: (id: PlayableMapId) => void;
 }) {
   return (
     <fieldset className="map-picker">
       <legend>Choose your battleground</legend>
       <div className="grid grid-cols-2 gap-3">
-        {(["andes", "coast"] as const).map((id) => (
+        {PLAYABLE_MAP_IDS.map((id) => (
           <button
             type="button"
             key={id}
+            data-map-id={id}
             aria-pressed={value === id}
             className="map-card"
             onClick={() => onChange(id)}

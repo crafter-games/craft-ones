@@ -1,4 +1,8 @@
-import type { BattleState, PlayerOptions } from "@craft-ones/shared";
+import type {
+  BattleState,
+  PlayableMapId,
+  PlayerOptions,
+} from "@craft-ones/shared";
 import { Client, type Room } from "colyseus.js";
 
 export type BattleRoom = Room<BattleState>;
@@ -26,7 +30,7 @@ function scheduleRelease(id: string, entry: Connection, delay: number) {
 }
 
 export async function createBattle(
-  mapId: "andes" | "coast" = "andes",
+  mapId: PlayableMapId = "andes",
   player: PlayerOptions = { species: "cuy", coat: "caramel" },
 ) {
   const room = await client().create<BattleState>("battle", { mapId, player });

@@ -77,6 +77,10 @@ export class Projectile extends Schema {
   declare kind: WeaponId;
   declare elapsedMs: number;
   declare bounces: number;
+  declare stuck: boolean;
+  declare attachedPlayer: number;
+  declare offsetX: number;
+  declare offsetY: number;
   declare active: boolean;
   declare x: number;
   declare y: number;
@@ -89,6 +93,10 @@ export class Projectile extends Schema {
       kind: "rocket",
       elapsedMs: 0,
       bounces: 0,
+      stuck: false,
+      attachedPlayer: 0,
+      offsetX: 0,
+      offsetY: 0,
       active: false,
       x: 0,
       y: 0,
@@ -101,6 +109,10 @@ defineTypes(Projectile, {
   kind: "string",
   elapsedMs: "number",
   bounces: "number",
+  stuck: "boolean",
+  attachedPlayer: "number",
+  offsetX: "number",
+  offsetY: "number",
   active: "boolean",
   x: "number",
   y: "number",
@@ -212,7 +224,18 @@ export type BattleView = {
   players: PlayerView[];
   projectile: Pick<
     Projectile,
-    "kind" | "elapsedMs" | "bounces" | "active" | "x" | "y" | "vx" | "vy"
+    | "kind"
+    | "elapsedMs"
+    | "bounces"
+    | "stuck"
+    | "attachedPlayer"
+    | "offsetX"
+    | "offsetY"
+    | "active"
+    | "x"
+    | "y"
+    | "vx"
+    | "vy"
   >;
   explosion: Pick<Explosion, "radius" | "id" | "x" | "y">;
   phase: Phase;

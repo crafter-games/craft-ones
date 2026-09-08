@@ -1,6 +1,7 @@
 import { ARENA } from "./config";
+import type { PlayableMapId } from "./worlds";
 
-export type MapId = "flat" | "andes" | "coast";
+export type MapId = "flat" | PlayableMapId;
 export const MAPS = {
   andes: {
     name: "Highland Hop",
@@ -16,9 +17,23 @@ export const MAPS = {
     earth: 0xbb795a,
     grass: 0xefbf78,
   },
+  canopy: {
+    name: "Emerald Ladder",
+    subtitle: "Jungle canopy",
+    sky: 0xc8e6ae,
+    earth: 0x5f6550,
+    grass: 0x4ea96b,
+  },
+  caldera: {
+    name: "Cinder Crown",
+    subtitle: "Volcanic crater",
+    sky: 0xe7b7a8,
+    earth: 0x66535f,
+    grass: 0xc16e54,
+  },
 } as const;
 
-const profiles: Record<MapId, [number, number][]> = {
+const profiles: Record<"flat" | "andes" | "coast", [number, number][]> = {
   flat: [
     [0, 440],
     [960, 440],
@@ -53,7 +68,8 @@ const profiles: Record<MapId, [number, number][]> = {
 };
 
 export function makeTerrain(mapId: MapId): number[] {
-  const points = profiles[mapId];
+  const points =
+    profiles[mapId === "canopy" || mapId === "caldera" ? "flat" : mapId];
   return Array.from({ length: ARENA.width / ARENA.terrainStep + 1 }, (_, i) => {
     const x = i * ARENA.terrainStep;
     const end = points.findIndex((p) => p[0] >= x);

@@ -8,6 +8,9 @@ export type GameBridge = {
   debug: boolean;
   weapon: WeaponId;
   focus: boolean;
+  suspended: boolean;
+  ready: boolean;
+  movementDirection: -1 | 0 | 1;
   direction: -1 | 1;
   jump: (direction?: -1 | 0 | 1) => void;
   ability: () => void;
@@ -25,6 +28,9 @@ export function createBridge(charge: GameBridge["charge"]): GameBridge {
     debug: false,
     weapon: "rocket",
     focus: false,
+    suspended: false,
+    ready: false,
+    movementDirection: 0,
     direction: 1,
     jump: () => {},
     ability: () => {},

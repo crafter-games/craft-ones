@@ -40,11 +40,16 @@ export function worldMove(
   state: BattleState,
   player: Player,
   direction: number,
+  distance: number = ARENA.moveStep,
 ) {
-  if (player.vy < -1 || !grounded(state, player.x, player.y))
-    return "Land before moving";
+  if (player.vy < -1 || !grounded(state, player.x, player.y)) {
+    // Steering changes horizontal velocity only; gravity and swept body collision
+    // still resolve on the server. Repeated inputs never add jump height/speed.
+    player.vx = direction * 180;
+    return null;
+  }
   const before = { x: player.x, y: player.y };
-  moveHorizontal(state, player, direction * ARENA.moveStep, true);
+  moveHorizontal(state, player, direction * distance, true);
   if (
     state.players.some(
       (p) =>

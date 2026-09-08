@@ -2,6 +2,8 @@
 import {
   Battle,
   type BattleView,
+  PLAYABLE_MAP_IDS,
+  type PlayableMapId,
   type PlayerOptions,
   validPlayerOptions,
 } from "@craft-ones/shared";
@@ -18,8 +20,8 @@ export default function Playground() {
     species: search.get("species"),
     coat: search.get("coat"),
   };
-  const [mapId, setMapId] = useState<"andes" | "coast">(
-    search.get("map") === "coast" ? "coast" : "andes",
+  const [mapId, setMapId] = useState<PlayableMapId>(
+    PLAYABLE_MAP_IDS.find((id) => id === search.get("map")) ?? "andes",
   );
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState<BattleView | null>(null);

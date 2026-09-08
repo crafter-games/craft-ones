@@ -14,7 +14,13 @@ import { BattleState, type FireAction, Player } from "./schema";
 import { carveCrater, type MapId, makeTerrain, terrainHeight } from "./terrain";
 import { eraseCircle, grounded } from "./terrainGrid";
 import { moveHorizontal, worldBodyStep } from "./worldMotion";
-import { makeWorld, WORLD_HEIGHT, WORLD_MAPS, WORLD_WIDTH } from "./worlds";
+import {
+  makeWorld,
+  type PlayableMapId,
+  WORLD_HEIGHT,
+  WORLD_MAPS,
+  WORLD_WIDTH,
+} from "./worlds";
 
 const MAX_CATCH_UP_STEPS = 6;
 const EPSILON = 1e-7;
@@ -48,6 +54,7 @@ export class Battle {
   private flightMs = 0;
   private explosionDeadline = 0;
 
+  private controlledMotion = new Set<Player>();
   private moveSequence = 0;
   private moveAt = -Infinity;
   // Local lab options are never exposed by BattleRoom's message handlers.
@@ -97,12 +104,26 @@ export class Battle {
     if (
       !player?.connected ||
       player.hp <= 0 ||
-      (!this.state.terrainRows.length && player.movementLeft <= 0) ||
+      player.movementLeft <= 0 ||
       now - this.moveAt < ARENA.moveIntervalMs
     )
       return "Movement unavailable";
     if (this.state.terrainRows.length) {
-      const error = worldMove(this.state, player, direction);
+      const before = player.x;
+      const airborne =
+        player.vy < -1 || !grounded(this.state, player.x, player.y);
+      const error = worldMove(
+        this.state,
+        player,
+        direction,
+        Math.min(ARENA.moveStep, player.movementLeft),
+      );
+      if (!error && airborne) this.controlledMotion.add(player);
+      if (!error && !airborne)
+        player.movementLeft = Math.max(
+          0,
+          player.movementLeft - Math.abs(player.x - before),
+        );
       if (!error) {
         this.moveSequence = sequence as number;
         this.moveAt = now;
@@ -166,7 +187,7 @@ export class Battle {
         terrainHeight(this.state.terrain, player.x) - ARENA.playerRadius;
       if (this.state.mapId !== "flat")
         [player.x, player.y] =
-          WORLD_MAPS[this.state.mapId as "andes" | "coast"].spawns[
+          WORLD_MAPS[this.state.mapId as PlayableMapId].spawns[
             player.number - 1
           ];
       player.hp = 100;
@@ -174,7 +195,11 @@ export class Battle {
       player.vx = 0;
       player.abilityReadyTurn = 0;
       player.shield = 0;
+      player.movementLeft = ARENA.moveBudget;
     }
+    this.controlledMotion.clear();
+    this.state.projectile.stuck = false;
+    this.state.projectile.attachedPlayer = 0;
     this.bodyAccumulator = 0;
     this.state.winner = "";
     this.state.finishReason = "";
@@ -200,9 +225,7 @@ export class Battle {
     player.y = terrainHeight(this.state.terrain, player.x) - ARENA.playerRadius;
     if (this.state.mapId !== "flat")
       [player.x, player.y] =
-        WORLD_MAPS[this.state.mapId as "andes" | "coast"].spawns[
-          player.number - 1
-        ];
+        WORLD_MAPS[this.state.mapId as PlayableMapId].spawns[player.number - 1];
     setAppearance(player, defaultAppearance(player.number));
     if (options) setAppearance(player, options);
     this.state.players.push(player);
@@ -249,7 +272,7 @@ export class Battle {
     if (!player?.connected || player.hp <= 0) return "Player cannot fire";
     const projectile = this.state.projectile;
     const kind = payload.weapon ?? "rocket";
-    if (this.state.terrainRows.length)
+    if (this.state.terrainRows.length || kind !== "rocket")
       Object.assign(
         projectile,
         launchShot(this.state, player, payload.angle, payload.power, kind),
@@ -258,7 +281,15 @@ export class Battle {
       Object.assign(
         projectile,
         launch(player, payload.angle, payload.power, this.state.terrain),
-        { kind, elapsedMs: 0, bounces: 0 },
+        {
+          kind,
+          elapsedMs: 0,
+          bounces: 0,
+          stuck: false,
+          attachedPlayer: 0,
+          offsetX: 0,
+          offsetY: 0,
+        },
       );
     this.state.lastAction = kind;
     projectile.active = true;
@@ -325,6 +356,7 @@ export class Battle {
         worldBodyStep(
           this.state,
           this.state.players.filter((p) => p !== player),
+          this.controlledMotion,
         );
         if (
           !player ||
@@ -366,6 +398,8 @@ export class Battle {
   }
 
   private startTurn(index: number, now: number) {
+    for (const player of this.controlledMotion) player.vx = 0;
+    this.controlledMotion.clear();
     this.state.phase = "aiming";
     this.state.currentPlayer = this.state.players[index].sessionId;
     this.state.turnNumber++;
@@ -386,7 +420,7 @@ export class Battle {
 
   private bodyStep() {
     if (this.state.terrainRows.length)
-      worldBodyStep(this.state, this.state.players);
+      worldBodyStep(this.state, this.state.players, this.controlledMotion);
     else settlePlayers(this.state.players, this.state.terrain);
   }
 
@@ -423,10 +457,13 @@ export class Battle {
     if (
       !player ||
       (direction !== -1 && direction !== 0 && direction !== 1) ||
+      player.movementLeft < ARENA.jumpCost ||
       player.vy < -1 ||
       !grounded(this.state, player.x, player.y)
     )
       return "Jump unavailable";
+    player.movementLeft -= ARENA.jumpCost;
+    this.controlledMotion.add(player);
     player.vy = -330;
     player.vx = direction * 180;
 
@@ -442,11 +479,9 @@ export class Battle {
     const player = validateTurn(this.state, sessionId, payload);
     if (!player || this.state.turnNumber < player.abilityReadyTurn)
       return "Ability unavailable";
-    if (player.species === "cuy") {
-      if (player.hp >= 100) return "Already at full health";
-      player.hp = Math.min(100, player.hp + 25);
-      this.state.lastAction = "heal";
-    } else if (player.species === "ronsoco") {
+    if (player.species === "cuy")
+      return "This character has no special ability";
+    if (player.species === "ronsoco") {
       if (player.shield > 0) return "Shield already active";
       player.shield = 30;
       this.state.lastAction = "shield";
@@ -461,6 +496,7 @@ export class Battle {
       const start = player.x;
       for (let i = 0; i < 40; i++) {
         const { x, y } = player;
+        if (!grounded(this.state, x, y)) break;
         const error = worldMove(this.state, player, direction);
         if (!grounded(this.state, player.x, player.y)) {
           player.x = x;
@@ -482,6 +518,7 @@ export class Battle {
       player.vy = -480;
       this.state.lastAction = "leap";
     }
+    this.controlledMotion.delete(player);
     player.abilityReadyTurn = this.state.turnNumber + 4;
     this.resolve(now, 550);
     return null;
@@ -512,6 +549,7 @@ export class Battle {
         player.y - explosion.y,
       );
       if (distance >= weapon.radius) continue;
+      this.controlledMotion.delete(player);
       const strength = 1 - distance / weapon.radius;
       const incoming = Math.round(weapon.damage * strength);
       const absorbed = Math.min(player.shield, incoming);

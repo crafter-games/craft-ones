@@ -3,6 +3,7 @@ import type { WeaponId } from "@craft-ones/shared";
 const INK = "#34333e";
 export const WEAPON_ART = {
   rocket: { backGrip: [-5, 7], frontGrip: [13, 6], shotSize: [30, 22] },
+  sticky: { backGrip: [0, 6], frontGrip: [10, 7], shotSize: [26, 26] },
   grenade: { backGrip: [2, 6], frontGrip: [10, 7], shotSize: [24, 24] },
   mortar: { backGrip: [-5, 9], frontGrip: [12, 9], shotSize: [27, 22] },
   dynamite: { backGrip: [-3, 7], frontGrip: [12, 7], shotSize: [27, 23] },
@@ -12,6 +13,10 @@ export const WEAPON_ART = {
 export function weaponMarkup(kind: WeaponId, projectile = false): string {
   const wrap = (s: string) =>
     `<g stroke="${INK}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">${s}</g>`;
+  if (kind === "sticky")
+    return wrap(
+      `<path d="M-7-5L-11-9L-14-5L-10 0L-13 5L-9 9L-5 7L0 13L5 10L11 12L14 7L19 5L17 0L20-5L15-9L10-7L6-12L1-9L-3-11Z" fill="#b4c782"/><path d="M-7-4Q4-12 13-4Q20 5 10 11Q1 15-6 8Q-12 3-7-4Z" fill="#829b69"/><path d="M7-6Q16-3 13 6Q8 12 0 9L5 4Z" fill="#586f56" stroke="none"/><path d="M-5-2L0-5L-1 1L-6 3Z" fill="#dce7a9" stroke="none"/><circle cx="5" cy="2" r="4" fill="#e6ac70"/><path d="M5-2V2L8 3" fill="none"/><path d="M4-9L5-15Q11-19 13-14" fill="none" stroke="#f1d7a1" stroke-width="2.5"/><path d="m13-14 4-3m-4 3 5 1" stroke="#f3b55c"/>`,
+    );
   if (kind === "grenade")
     return wrap(
       `<path d="M1-9H11V-4H1Z" fill="#889da0"/><path d="M0-6Q-6-1-4 8Q-2 15 7 14Q17 13 18 4Q19-3 11-6Z" fill="#75905a"/><path d="M8-5Q18-2 16 7Q12 15 3 12L7 8Z" fill="#50674b" stroke="none"/><path d="M0-2L4-4L3 5L-1 6Z" fill="#b2c97e" stroke="none"/><path d="M-3 2Q5 5 17 2M-2 8Q6 11 15 7M5-5Q1 3 5 13M11-4Q15 4 10 13" fill="none" stroke="#3f5444" stroke-width="1.3"/><path d="M4-10L13-10L19-4L18 3" fill="none" stroke="#c5d6ca" stroke-width="3"/><circle cx="0" cy="-12" r="4" fill="none" stroke="#e6ce93" stroke-width="2.2"/>`,

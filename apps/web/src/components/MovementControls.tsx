@@ -1,4 +1,5 @@
 "use client";
+import { ARENA } from "@craft-ones/shared";
 import { type RefObject, useEffect, useRef } from "react";
 import type { GameBridge } from "../game/GameBridge";
 
@@ -6,12 +7,10 @@ export function MovementControls({
   bridge,
   disabled,
   budget,
-  limited = false,
 }: {
   bridge: RefObject<GameBridge>;
   disabled: boolean;
   budget: number;
-  limited?: boolean;
 }) {
   const heldDirection = useRef<-1 | 0 | 1>(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -21,11 +20,11 @@ export function MovementControls({
     timer.current = null;
   };
   useEffect(() => {
-    if (limited && budget <= 0 && timer.current) {
+    if (budget <= 0 && timer.current) {
       clearInterval(timer.current);
       timer.current = null;
     }
-  }, [budget, limited]);
+  }, [budget]);
   useEffect(() => {
     if (disabled && timer.current) {
       clearInterval(timer.current);
@@ -50,7 +49,7 @@ export function MovementControls({
           key={direction}
           type="button"
           aria-label={direction === -1 ? "Move left" : "Move right"}
-          disabled={disabled || (limited && budget <= 0)}
+          disabled={disabled || budget <= 0}
           className="move-button"
           onPointerDown={(event) => {
             event.preventDefault();
@@ -80,26 +79,43 @@ export function MovementControls({
         type="button"
         className="move-button jump-button"
         aria-label="Jump"
-        title="W jumps; hold A or D for direction. Uses time, keeps your shot."
-        disabled={disabled}
-        onClick={() => bridge.current.jump(heldDirection.current)}
+        title={`W jumps; A/D sets direction. Jump costs ${ARENA.jumpCost} + horizontal travel. Keeps your shot.`}
+        disabled={disabled || budget < ARENA.jumpCost}
+        onPointerDown={(event) => {
+          event.preventDefault();
+          bridge.current.jump(
+            heldDirection.current || bridge.current.movementDirection,
+          );
+        }}
+        onClick={(event) => {
+          if (event.detail === 0)
+            bridge.current.jump(
+              heldDirection.current || bridge.current.movementDirection,
+            );
+        }}
       >
         ↥ <span>Jump</span>
       </button>
-      <span className="text-[10px] leading-tight text-[#b5bfb3]">
-        {limited ? (
-          <>
-            Move{" "}
-            <strong data-testid="movement-left">{Math.round(budget)}</strong>
-          </>
-        ) : (
-          <>
-            Move & jump
-            <br />
-            <strong className="text-[#d8dda5]">Keeps your shot</strong>
-          </>
-        )}
-      </span>
+      <div className="min-w-24 flex-1 text-[10px] leading-tight text-[#b5bfb3]">
+        <div className="mb-1 flex justify-between gap-2">
+          <span>MOVE</span>
+          <strong data-testid="movement-left">
+            {Math.ceil(budget)} / {ARENA.moveBudget}
+          </strong>
+        </div>
+        <meter
+          aria-label="Movement remaining"
+          min={0}
+          max={ARENA.moveBudget}
+          value={budget}
+          className="block h-2 w-full"
+        />
+        <span className="mt-1 block">
+          {budget <= 0
+            ? "Movement spent · shot preserved"
+            : `Jump ${ARENA.jumpCost} + travel · keeps your shot`}
+        </span>
+      </div>
     </div>
   );
 }

@@ -229,10 +229,10 @@ body {
   }
 }
 
-/* Fit the whole battlefield and its controls in short desktop windows. */
+/* Keep desktop arenas readable instead of shrinking them to fit every control. */
 @media (min-width: 768px) and (min-height: 600px) {
   .game-shell {
-    max-width: min(72rem, calc((100svh - 360px) * 1.777778 + 64px));
+    max-width: min(90rem, max(60rem, calc((100svh - 320px) * 1.777778 + 64px)));
   }
   .game-shell .game-header {
     margin-bottom: 18px;
@@ -329,7 +329,7 @@ body {
 }
 .arsenal-weapons {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
 }
 .weapon-card {
@@ -367,7 +367,6 @@ body {
 }
 @media (min-width: 768px) and (min-height: 600px) {
   .game-shell {
-    max-width: min(78rem, calc((100svh - 450px) * 1.777778 + 64px));
     min-width: 650px;
   }
 }
@@ -404,109 +403,164 @@ body {
 .jump-button span {
   font-size: 11px;
 }
-.radial-picker {
+.roster-picker {
   min-width: 0;
   padding: 16px;
-  background: #24382f;
+  background: #203831;
+  border: 1px solid #71876a66;
+  border-radius: 18px;
 }
-.character-orbit {
-  position: relative;
-  width: min(100%, 400px);
-  aspect-ratio: 1;
-  margin: 0 auto;
-}
-.orbit-ring {
-  position: absolute;
-  inset: 14%;
-  border: 1px solid #7a916f55;
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 16px #a9b68806,
-    inset 0 0 0 15px #a9b68805;
-}
-.selected-critter {
-  position: absolute;
-  inset: 18%;
+.roster-kicker {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-}
-.selected-critter img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 7px 0 #12231b55);
-}
-.breathing-critter,
-.orbit-choice img {
-  animation: critter-breathe 3.5s ease-in-out infinite;
-  transform-origin: 50% 85%;
-}
-.critter-role {
-  display: block;
-  margin-top: 3px;
-  font-size: 8px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: #b6c995;
-  font-weight: bold;
-}
-.orbit-choice {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  width: 23%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  border: 2px solid #6d825e;
-  background: #33483b;
-  box-shadow: 0 4px 0 #15271d;
-  transition:
-    background 0.15s,
-    border-color 0.15s;
-}
-.orbit-choice img {
-  position: absolute;
-  inset: -5% 4% 0;
-  width: 92%;
-  height: 92%;
-  object-fit: contain;
-}
-.orbit-choice span {
-  position: absolute;
-  bottom: 3px;
-  left: 0;
-  right: 0;
+  justify-content: space-between;
+  gap: 10px;
   font-size: 9px;
-  font-weight: bold;
-  text-shadow: 0 1px 2px #15271d;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: #b2c0a8;
 }
-.orbit-choice[aria-pressed="true"] {
-  border-color: #e5c07c;
-  background: #716347;
-  box-shadow:
-    0 0 0 4px #e5c07c18,
-    0 4px 0 #15271d;
+.character-lineup {
+  position: relative;
+  isolation: isolate;
+  height: clamp(190px, 24vw, 280px);
+  overflow: hidden;
+  margin: 6px -8px 0;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 100%, #54716055, transparent 70%);
+}
+.lineup-stage {
+  position: absolute;
+  inset: auto 3% 4px;
+  height: 45px;
+  border-radius: 50%;
+  background: #101f1d66;
+  border: 1px solid #7f96773d;
+}
+.lineup-critter {
+  position: absolute;
+  bottom: 22px;
+  width: 37%;
+  max-width: 220px;
+  transform: translateX(-50%);
+  filter: grayscale(0.8) brightness(0.72);
+  opacity: 0.78;
+  transition:
+    left 250ms ease,
+    bottom 250ms ease,
+    width 250ms ease,
+    filter 200ms ease;
+}
+.lineup-critter.is-distant {
+  bottom: 50px;
+  width: 30%;
+  opacity: 0.5;
+}
+.lineup-critter.is-selected {
+  bottom: 0;
+  width: 57%;
+  max-width: 310px;
+  filter: none;
+  opacity: 1;
+}
+.lineup-critter img {
+  width: 100%;
+  height: auto;
+  transform-origin: 50% 95%;
+}
+.lineup-critter.is-selected img {
+  animation: critter-breathe 3.5s ease-in-out infinite;
+}
+.roster-choices {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 9px 0 14px;
+}
+.roster-choices button {
+  min-height: 38px;
+  padding: 5px 2px;
+  border: 1px solid #71876a55;
+  border-radius: 8px;
+  color: #c5d1bf;
+  font-size: 11px;
+  font-weight: bold;
+}
+.roster-choices button[aria-pressed="true"] {
+  color: #ffe5a3;
+  background: #b9954a22;
+  border-color: #f3c677;
+}
+.roster-profile {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid #82916655;
+  border-radius: 12px;
+  background: #142b25;
+}
+.roster-arrow {
+  height: 42px;
+  border: 2px solid #ffe4a1;
+  border-radius: 50%;
+  box-shadow: 0 3px 0 #97754c;
+  background: #eac074;
+  color: #26392d;
+  font-size: 34px;
+  line-height: 1;
+}
+.roster-arrow:hover {
+  background: #ffe2a6;
 }
 .character-bio {
   text-align: center;
-  margin: 8px 0 12px;
 }
 .character-bio h3 {
-  font-size: 25px;
+  font-size: 27px;
   font-weight: 900;
   letter-spacing: -1px;
+  line-height: 1.25;
 }
 .character-bio p {
   font-size: 11px;
-  color: #a8b99d;
+  color: #b6c5ad;
   margin-top: 2px;
+  min-height: 2.6em;
+}
+.critter-role {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #c4d69e;
+  font-weight: bold;
+}
+.roster-stats {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 15px 0;
+  font-size: 9px;
+  color: #a6bca5;
+}
+.roster-stats strong {
+  color: #f7e5bc;
+  font-size: 14px;
+  margin-right: 3px;
 }
 .coat-options {
   display: flex;
   gap: 12px;
   justify-content: center;
-  margin-bottom: 17px;
+  margin: 0 0 17px;
+}
+.coat-options legend {
+  float: left;
+  align-self: center;
+  margin: 0 12px 0 0;
+  font-size: 8px;
+  letter-spacing: 0.5px;
 }
 .ability-description {
   padding: 14px;
@@ -530,6 +584,31 @@ body {
   line-height: 1.65;
   color: #c3ccb7;
 }
+.arsenal-weapons.has-ability {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.species-ability {
+  border-color: #c9b17b;
+  background: #77674344;
+  color: #ffe6a5;
+}
+.species-ability span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.species-ability small {
+  color: #c8d4b9;
+  font-size: 8px;
+  font-weight: normal;
+}
+.ability-state {
+  display: block;
+  color: #aabda1;
+  font-size: 10px;
+  margin-top: 6px;
+}
 @keyframes critter-breathe {
   0%,
   100% {
@@ -539,9 +618,31 @@ body {
     transform: translateY(-2px) scale(1.015, 1.025);
   }
 }
+@media (max-width: 560px) {
+  .arsenal-weapons,
+  .arsenal-weapons.has-ability {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .species-ability {
+    flex-direction: row;
+    gap: 6px;
+  }
+  .coat-options {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .coat-options legend {
+    float: none;
+    margin: 0 0 10px;
+    text-align: center;
+    width: 100%;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .breathing-critter,
-  .orbit-choice img {
+  .lineup-critter {
+    transition: none;
+  }
+  .lineup-critter.is-selected img {
     animation: none;
   }
 }

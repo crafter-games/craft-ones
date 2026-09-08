@@ -25,6 +25,19 @@ export const WEAPONS = {
     fuse: 3000,
     bounce: 0.58,
   },
+  sticky: {
+    name: "Sticky bomb",
+    description: "Sticks to terrain & critters · 3 second fuse",
+    icon: "sticky",
+    minSpeed: 160,
+    maxSpeed: 680,
+    gravity: 1,
+    radius: 120,
+    damage: 60,
+    crater: 76,
+    fuse: 3000,
+    bounce: 0,
+  },
   mortar: {
     name: "Mortar",
     description: "Heavy shell · wide crater",
@@ -71,7 +84,11 @@ export function isWeapon(value: unknown): value is WeaponId {
 }
 export const SPECIES = ["cuy", "llama", "zorro", "ronsoco"] as const;
 export const CHARACTERS = {
-  cuy: { name: "Cuy", role: "Survivor", tagline: "Too stubborn to quit." },
+  cuy: {
+    name: "Cuy",
+    role: "All-rounder",
+    tagline: "No tricks. Just good aim.",
+  },
   llama: {
     name: "Llama",
     role: "High ground",
@@ -85,10 +102,7 @@ export const CHARACTERS = {
   },
 } as const;
 export const ABILITIES = {
-  cuy: {
-    name: "Second wind",
-    description: "Recover 25 HP. Costs this turn; 2-turn cooldown.",
-  },
+  cuy: null,
   zorro: {
     name: "Quickstep",
     description:

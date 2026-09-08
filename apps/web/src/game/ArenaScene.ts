@@ -84,6 +84,7 @@ export class ArenaScene extends Phaser.Scene {
       this.rigs[i]?.recoil();
     }
     this.lastPhase = state.phase;
+    let aimImpact: { x: number; y: number } | undefined;
     state.players.forEach((player, i) => {
       const key = `${player.species}-${player.coat}`;
       if (this.rigKeys[i] !== key) {
@@ -176,7 +177,10 @@ export class ArenaScene extends Phaser.Scene {
             );
           });
           const end = points.at(-1);
-          if (end) g.lineStyle(2, 0x403c4b, 0.4).strokeCircle(end.x, end.y, 8);
+          if (end) {
+            g.lineStyle(2, 0x403c4b, 0.4).strokeCircle(end.x, end.y, 8);
+            aimImpact = end;
+          }
         }
         if (power > 0)
           g.lineStyle(3, 0xffef9f)
@@ -208,5 +212,13 @@ export class ArenaScene extends Phaser.Scene {
     canvas.dataset.cameraCenterY = String(
       this.cameras.main.scrollY + ARENA.height / 2,
     );
+    // Where the previewed arc currently lands, the same circle the player sees.
+    if (aimImpact) {
+      canvas.dataset.aimImpactX = String(Math.round(aimImpact.x));
+      canvas.dataset.aimImpactY = String(Math.round(aimImpact.y));
+    } else {
+      delete canvas.dataset.aimImpactX;
+      delete canvas.dataset.aimImpactY;
+    }
   }
 }

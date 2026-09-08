@@ -5,18 +5,18 @@ export type { Species } from "@craft-ones/shared";
 export const HEAD_SCALE = 0.94;
 export const joints = {
   cuy: {
-    neck: [0, -14],
+    neck: [0, -16],
     shoulderBack: [-6, -2],
     shoulderFront: [6, 0],
     hipBack: [-10, 10],
     hipFront: [8, 10],
-    earBack: [-15, -20],
+    earBack: [-17, -21],
     earFront: [10, -24],
     wrist: [12, 0],
     ankle: [0, 7],
   },
   llama: {
-    neck: [1, -26],
+    neck: [1, -25],
     shoulderBack: [-6, -3],
     shoulderFront: [6, -1],
     hipBack: [-8, 10],
@@ -27,7 +27,7 @@ export const joints = {
     ankle: [0, 7],
   },
   zorro: {
-    neck: [1, -19],
+    neck: [1, -18],
     shoulderBack: [-7, -2],
     shoulderFront: [7, 0],
     hipBack: [-10, 11],
@@ -38,7 +38,7 @@ export const joints = {
     ankle: [0, 7],
   },
   ronsoco: {
-    neck: [0, -13],
+    neck: [0, -15],
     shoulderBack: [-9, -2],
     shoulderFront: [9, 0],
     hipBack: [-12, 11],
@@ -68,7 +68,19 @@ export function armPose(
   weapon?: WeaponId,
 ) {
   const shoulder = joints[species][front ? "shoulderFront" : "shoulderBack"];
-  if (!weapon) return { angle: front ? 0.65 : 0.85, length: 1 };
+  const rest = {
+    cuy: { front: -0.35, back: 1.3, length: 0.85 },
+    llama: { front: 1.15, back: 1.65, length: 1.15 },
+    zorro: { front: 0.15, back: 2.15, length: 0.95 },
+    ronsoco: { front: 0.8, back: 1.9, length: 0.85 },
+  }[species];
+  // Tossed tools are held in one paw; the other retains the species' stance.
+  if (
+    !weapon ||
+    (!front &&
+      (weapon === "grenade" || weapon === "sticky" || weapon === "dynamite"))
+  )
+    return { angle: front ? rest.front : rest.back, length: rest.length };
   const grip = WEAPON_ART[weapon][front ? "frontGrip" : "backGrip"];
   const x = Math.cos(angle) * grip[0] - Math.sin(angle) * grip[1];
   const y = Math.sin(angle) * grip[0] + Math.cos(angle) * grip[1];

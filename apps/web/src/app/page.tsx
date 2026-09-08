@@ -1,6 +1,6 @@
 "use client";
 
-import type { PlayerOptions } from "@craft-ones/shared";
+import type { PlayableMapId, PlayerOptions } from "@craft-ones/shared";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,7 +13,7 @@ export default function Home() {
   const creating = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [mapId, setMapId] = useState<"andes" | "coast">("andes");
+  const [mapId, setMapId] = useState<PlayableMapId>("andes");
   const [player, setPlayer] = useState<PlayerOptions>({
     species: "cuy",
     coat: "caramel",
@@ -57,7 +57,7 @@ export default function Home() {
             <span className="text-[#f3c677]">Big trouble.</span>
           </h1>
           <p className="mt-6 max-w-sm text-base leading-relaxed text-[#b7c4b1]">
-            Four rivals. Four tricks. One very bad idea.
+            Four rivals. Six tools. Plenty of bad ideas.
             <br />
             Aim, charge, and send your friendly rivalry flying.
           </p>

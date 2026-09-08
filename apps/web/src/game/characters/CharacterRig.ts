@@ -29,6 +29,7 @@ export class CharacterRig {
   private firedAt = -10000;
   private previousX: number | null = null;
   private moving = 0;
+  private movedAt = -1000;
   private death = 0;
   private weaponImage: Phaser.GameObjects.Image;
   private armImages: Phaser.GameObjects.Image[] = [];
@@ -134,10 +135,12 @@ export class CharacterRig {
     if (player.hp < this.lastHp) this.hitAt = now;
     this.lastHp = player.hp;
     const factor = Math.min(1, dt / 70);
+    const deltaX = player.x - (this.previousX ?? player.x);
+    if (Math.abs(deltaX) > 0.1) this.movedAt = now;
     if (this.previousX === null) this.root.setPosition(player.x, player.y);
     this.moving = Phaser.Math.Linear(
       this.moving,
-      Math.abs(player.x - (this.previousX ?? player.x)) > 0.1 ? 1 : 0,
+      now - this.movedAt < 130 ? 1 : 0,
       factor,
     );
     this.previousX = player.x;

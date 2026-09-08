@@ -2,7 +2,7 @@
 
 ## Principles
 - Original, tiny 1v1 turn-based artillery prototype for Crafter Station. No copied code or assets.
-- Scope: two players, 100 HP, two 1792 × 1024 maps with platforms/caves, five default weapons/tools, turn-cost character abilities, gravity, splash damage, knockback, basic movement bounded by the turn timer, 15-second turns, invite links, winner and rematch.
+- Scope: two players, 100 HP, two 2688 × 1536 maps with platforms/caves, six default weapons/tools, turn-cost character abilities, gravity, splash damage, knockback, basic movement bounded by a shared turn budget and timer, 15-second turns, invite links, winner and rematch.
 - No auth, database, economy, bots, matchmaking, inventories or future-feature frameworks. Terrain destruction is enabled in both local and multiplayer matches; local lab controls can disable it.
 - Server alone decides physics, damage, positions, turns and winner. Multiplayer browsers send move/jump/fire/ability/restart intentions and render synchronized state. `/playground` runs the identical shared engine locally with alternating seats and no network dependency.
 - Keep Phaser client-only and lazy-loaded. React owns the lobby and HUD; Phaser owns the canvas and pointer input.
@@ -53,8 +53,8 @@
 - Original cartoon art uses flat colored shapes, contours and inset shadow planes. No realistic scenery, photographs, clothing or borrowed game assets.
 - Both species can occupy either seat with one of five validated coat palettes. Home visibly offers map/character selectors that carry into local play and room creation; invite guests choose their character before joining.
 - Maps have suspended islands, obstacles, enclosed caves and open voids. Explosions remove occupancy cells; bodies fall onto new surfaces or lose when falling out of the world.
-- Rocket, grenade, mortar, dynamite and grappling hook are available by default. Each shot/tool spends a turn; grenade/dynamite fuse and bounce are authoritative. Hooks pull along a collision-checked line.
-- Basic walk/jump use time only and preserve the shot; jumping rejects repeated airborne jumps. W jumps vertically, A/D+W jumps directionally; the touch Jump control is adjacent to movement. Cuy heals 25 HP; Llama leaps toward aim. Abilities spend a turn and become available four global turn numbers later.
+- Rocket, grenade, sticky bomb, mortar, dynamite and grappling hook are available by default. Each shot/tool spends a turn; grenade/dynamite fuse and bounce are authoritative. Sticky bombs attach to terrain or characters and explode after a 3-second fuse. Hooks pull along a collision-checked line.
+- Basic walk/jump share 240 movement points per turn and preserve the shot; walking and airborne steering spend horizontal distance, jumping costs 48 plus travel, and the HUD displays the synchronized remaining budget; jumping rejects repeated airborne jumps. W jumps vertically, A/D+W jumps directionally; the touch Jump control is adjacent to movement. Cuy heals 25 HP; Llama leaps toward aim. Abilities spend a turn and become available four global turn numbers later.
 - Turn camera briefly focuses the active character, pulls back to the map, and includes high projectiles. Manual focus is available; charging freezes camera movement.
 - Shared occupancy collision drives previews, damage craters and physical movement. Flat terrain remains an internal baseline for regression tests, not a player-facing map.
 - Regenerate original layered backgrounds/previews with `bun apps/web/scripts/map-art.ts`; character generation also creates all coat variants and portraits.

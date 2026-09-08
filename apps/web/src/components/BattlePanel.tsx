@@ -2,6 +2,7 @@
 import {
   type BattleView,
   CHARACTERS,
+  type PlayableMapId,
   type PlayerView,
   WORLD_MAPS,
 } from "@craft-ones/shared";
@@ -87,7 +88,6 @@ export function BattlePanel({
   const current = state?.players.find(
     (p) => p.sessionId === state.currentPlayer,
   );
-  const me = state?.players.find((p) => p.sessionId === sessionId);
   const winner = state?.players.find((p) => p.sessionId === state.winner);
   const aiming = state?.phase === "aiming",
     finished = state?.phase === "finished",
@@ -121,7 +121,7 @@ export function BattlePanel({
           <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#9daa9b]">
             {finished
               ? "A tiny rivalry, settled."
-              : `${local ? "Pass & play" : "Friendly duel"} · Round ${Math.max(1, Math.ceil((state?.turnNumber ?? 1) / 2))} · ${state?.mapId === "coast" ? WORLD_MAPS.coast.name : WORLD_MAPS.andes.name}`}
+              : `${local ? "Pass & play" : "Friendly duel"} · Round ${Math.max(1, Math.ceil((state?.turnNumber ?? 1) / 2))} · ${WORLD_MAPS[state?.mapId as PlayableMapId]?.name ?? "Flatland"}`}
           </p>
           <h1
             data-testid="match-status"
@@ -154,6 +154,9 @@ export function BattlePanel({
         data-map={state?.mapId ?? ""}
         data-explosion={state?.explosion.id ?? 0}
         data-terrain-revision={state?.terrainRevision ?? 0}
+        data-remaining={
+          aiming ? Math.ceil((state?.remainingMs ?? 0) / 1000) : 0
+        }
       >
         <div className="flex items-center gap-4 bg-[#283a35] p-4 sm:gap-12 sm:px-6">
           <Health
@@ -207,8 +210,7 @@ export function BattlePanel({
           <MovementControls
             bridge={bridge}
             disabled={!aiming || !myTurn || !connected || power > 0}
-            budget={myTurn ? (me?.movementLeft ?? 0) : 0}
-            limited={!!state && !state.terrainRows.length}
+            budget={current?.movementLeft ?? 0}
           />
           <div className="flex items-center gap-3">
             <label htmlFor="power" className="text-xs font-bold text-[#bdc9bc]">
