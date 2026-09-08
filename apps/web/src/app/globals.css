@@ -134,6 +134,23 @@ body {
     0 10px 0 #0c1a1660,
     0 24px 60px #09181350;
 }
+.sound-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-right: 8px;
+  font-size: 17px;
+  line-height: 1;
+  background: #283a35;
+  border-radius: 12px;
+  border: 1px solid #526a5355;
+}
+.sound-toggle[aria-pressed="false"] {
+  opacity: 0.55;
+}
+
 .turn-clock {
   display: flex;
   gap: 5px;

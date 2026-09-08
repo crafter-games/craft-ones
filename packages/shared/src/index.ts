@@ -4,6 +4,7 @@ export * from "./ballistics";
 export * from "./config";
 export * from "./projectiles";
 export * from "./schema";
+export * from "./soundCues";
 export * from "./terrain";
 export * from "./terrainContours";
 export * from "./terrainGrid";

@@ -7,7 +7,7 @@ import {
   WORLD_MAPS,
 } from "@craft-ones/shared";
 import dynamic from "next/dynamic";
-import type { RefObject } from "react";
+import { type RefObject, useEffect, useState } from "react";
 import type { GameBridge } from "../game/GameBridge";
 import { ArsenalControls } from "./ArsenalControls";
 import { MovementControls } from "./MovementControls";
@@ -20,6 +20,45 @@ const ArenaCanvas = dynamic(() => import("./ArenaCanvas"), {
     </div>
   ),
 });
+
+const SOUND_KEY = "craft-ones:sound";
+
+function SoundToggle({ bridge }: { bridge: RefObject<GameBridge> }) {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem(SOUND_KEY);
+    } catch {
+      stored = null;
+    }
+    const enabled = stored !== "off";
+    setOn(enabled);
+    bridge.current.sound = enabled;
+  }, [bridge]);
+  return (
+    <button
+      type="button"
+      className="sound-toggle"
+      data-testid="sound-toggle"
+      aria-pressed={on}
+      aria-label={on ? "Mute sound" : "Unmute sound"}
+      title={on ? "Sound on" : "Sound off"}
+      onClick={() => {
+        const next = !on;
+        setOn(next);
+        bridge.current.sound = next;
+        try {
+          localStorage.setItem(SOUND_KEY, next ? "on" : "off");
+        } catch {
+          // A browser with storage switched off simply forgets the choice.
+        }
+      }}
+    >
+      <span aria-hidden="true">{on ? "🔊" : "🔇"}</span>
+    </button>
+  );
+}
 
 function Health({
   player,
@@ -131,6 +170,7 @@ export function BattlePanel({
             {status}
           </h1>
         </div>
+        <SoundToggle bridge={bridge} />
         <div
           className={`turn-clock ${aiming && (state?.remainingMs ?? 0) < 5000 ? "urgent" : ""}`}
         >
@@ -157,6 +197,7 @@ export function BattlePanel({
         data-remaining={
           aiming ? Math.ceil((state?.remainingMs ?? 0) / 1000) : 0
         }
+        data-sound={bridge.current.sound ? "on" : "off"}
       >
         <div className="flex items-center gap-4 bg-[#283a35] p-4 sm:gap-12 sm:px-6">
           <Health

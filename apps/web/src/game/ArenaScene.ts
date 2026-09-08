@@ -1,4 +1,11 @@
-import { ARENA, shotTrajectory, trajectory, WEAPONS } from "@craft-ones/shared";
+import {
+  ARENA,
+  type BattleView,
+  shotTrajectory,
+  soundCues,
+  trajectory,
+  WEAPONS,
+} from "@craft-ones/shared";
 import * as Phaser from "phaser";
 import { ArenaCamera } from "./ArenaCamera";
 import { ArenaInput } from "./ArenaInput";
@@ -6,6 +13,7 @@ import { ArenaMap } from "./ArenaMap";
 import { BattleEffects } from "./BattleEffects";
 import { CharacterRig } from "./characters/CharacterRig";
 import type { GameBridge } from "./GameBridge";
+import { SoundBoard } from "./SoundBoard";
 
 export type { GameBridge } from "./GameBridge";
 
@@ -19,6 +27,8 @@ export class ArenaScene extends Phaser.Scene {
   private rigs: CharacterRig[] = [];
   private labels: Phaser.GameObjects.Text[] = [];
   private lastPhase = "";
+  private speakers!: SoundBoard;
+  private heard: BattleView | null = null;
   private generation = -1;
   private firedAngle = -Math.PI / 4;
 
@@ -42,6 +52,10 @@ export class ArenaScene extends Phaser.Scene {
     this.controls = new ArenaInput(this, this.bridge);
     this.effects = new BattleEffects(this);
     this.director = new ArenaCamera(this.cameras.main);
+    this.speakers = new SoundBoard(this.bridge.sound);
+    // Browsers keep audio asleep until the player acts, and aiming is an act.
+    this.input.on("pointerdown", () => this.speakers.resume());
+    this.events.once("shutdown", () => this.speakers.dispose());
     this.labels = [0, 1].map((i) =>
       this.add
         .text(0, 0, i === 0 ? "CUY" : "LLAMA", {
@@ -67,6 +81,14 @@ export class ArenaScene extends Phaser.Scene {
       this.lastPhase = "";
     }
     this.controls.update(dt);
+    this.speakers.setEnabled(this.bridge.sound);
+    if (this.generation !== -1) {
+      if (this.heard?.turnNumber !== undefined)
+        for (const cue of soundCues(this.heard, state, this.bridge.sessionId))
+          this.speakers.play(cue);
+      this.heard = state;
+    }
+    this.speakers.charge(this.controls.power());
     this.map.update(state);
     this.director.update(
       state,
@@ -161,8 +183,8 @@ export class ArenaScene extends Phaser.Scene {
         // The walking range is anchored where the turn began, so show the
         // anchor and both edges: stepping back toward it hands the range back.
         const range = Math.max(0, ARENA.moveBudget - player.movementSpent);
-        const feet = player.y + ARENA.playerRadius + 9;
-        g.lineStyle(2, 0xf7e4ab, 0.16).lineBetween(
+        const feet = player.y + ARENA.playerRadius + 7;
+        g.lineStyle(4, 0xf7e4ab, 0.34).lineBetween(
           player.originX - range,
           feet,
           player.originX + range,
@@ -170,15 +192,20 @@ export class ArenaScene extends Phaser.Scene {
         );
         for (const side of [-1, 1]) {
           const edge = player.originX + side * range;
-          g.lineStyle(2, 0xf7e4ab, 0.3).lineBetween(edge, feet - 9, edge, feet);
+          g.lineStyle(5, 0xf7e4ab, 0.75).lineBetween(
+            edge,
+            feet - 22,
+            edge,
+            feet + 4,
+          );
         }
-        g.fillStyle(0xf7e4ab, 0.4).fillTriangle(
-          player.originX - 4,
-          feet + 5,
-          player.originX + 4,
-          feet + 5,
+        g.fillStyle(0xf7e4ab, 0.9).fillTriangle(
+          player.originX - 8,
+          feet - 20,
+          player.originX + 8,
+          feet - 20,
           player.originX,
-          feet - 2,
+          feet - 4,
         );
         if (this.bridge.showTrajectory) {
           const points = state.terrainRows.length

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { aimAtOpponent, aimWorld, overview } from "./gameplay";
+import { aimAtOpponent, aimWorld, overview, settled } from "./gameplay";
 
 test("lineup selector wraps between characters, explains the default Cuy and carries coats into play", async ({
   page,
@@ -538,4 +538,62 @@ test("walking range drains away from the origin and refills on the way back", as
   await expect.poll(left).toBeLessThan(BUDGET - 24);
   await page.keyboard.up("KeyA");
   expect(await at()).toBeLessThan(start);
+});
+
+test("the arena makes noise, the toggle silences it, and the choice sticks", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/playground");
+  await expect(page.locator("canvas")).toBeVisible();
+  await expect(page.locator("canvas")).toBeFocused();
+  // Count what the board schedules; a headless browser has no speaker to hear.
+  await page.evaluate(() => {
+    const counter = window as unknown as { __notes: number };
+    counter.__notes = 0;
+    const proto = AudioContext.prototype;
+    const oscillator = proto.createOscillator;
+    const buffer = proto.createBufferSource;
+    proto.createOscillator = function () {
+      counter.__notes++;
+      return oscillator.call(this);
+    };
+    proto.createBufferSource = function () {
+      counter.__notes++;
+      return buffer.call(this);
+    };
+  });
+  const notes = () =>
+    page.evaluate(() => (window as unknown as { __notes: number }).__notes);
+  const battle = page.getByTestId("battle");
+  const toggle = page.getByTestId("sound-toggle");
+  await expect(battle).toHaveAttribute("data-sound", "on");
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  const player = page.getByTestId("player-1");
+  const x = Number(await player.getAttribute("data-x"));
+  const y = Number(await player.getAttribute("data-y"));
+  await settled(page);
+  await aimWorld(page, x, y + 90);
+  await page.mouse.down();
+  // Charging hums while it winds up, before anything is fired.
+  await expect.poll(notes).toBeGreaterThan(0);
+  await page.waitForTimeout(500);
+  await page.mouse.up();
+  await expect(battle).toHaveAttribute("data-terrain-revision", "1");
+  await expect.poll(notes).toBeGreaterThan(4);
+
+  await toggle.click();
+  await expect(battle).toHaveAttribute("data-sound", "off");
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await page.getByRole("button", { name: "Restart", exact: true }).click();
+  const silent = await notes();
+  await page.keyboard.down("KeyD");
+  await page.waitForTimeout(600);
+  await page.keyboard.up("KeyD");
+  expect(await notes()).toBe(silent);
+
+  await page.reload();
+  await expect(page.getByTestId("battle")).toHaveAttribute("data-sound", "off");
+  expect(errors).toEqual([]);
 });

@@ -107,17 +107,22 @@ export async function aimAtOpponent(
   number: number,
   walked = false,
 ) {
-  if (!walked) {
-    await page.locator("canvas").click({ trial: true });
-    await settled(page);
-  }
   const canvas = page.locator("canvas");
+  if (!walked) await canvas.click({ trial: true });
+  await expect(page.getByTestId("battle")).toHaveAttribute(
+    "data-phase",
+    "aiming",
+  );
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Missing arena");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
+  const held = Date.now();
+  // Charging freezes the camera, so the critters settle inside the wind-up
+  // instead of before it, which keeps a whole shot inside one turn.
+  await settled(page);
   // Full power: the client clamps the charge, so the release can take its time.
-  await page.waitForTimeout(CHARGE_MS + 80);
+  await page.waitForTimeout(Math.max(0, CHARGE_MS + 80 - (Date.now() - held)));
   const arena = await readArena(page, number);
   const { from, to } = arena;
   const show = async (angle: number) => {
@@ -135,6 +140,9 @@ export async function aimAtOpponent(
     });
     return {
       angle,
+      blocked: impact
+        ? Math.hypot(impact.x - from.x, impact.y - from.y) < 110
+        : false,
       miss: impact ? Math.hypot(impact.x - to.x, impact.y - to.y) : Infinity,
     };
   };
@@ -155,6 +163,19 @@ export async function aimAtOpponent(
     return;
   }
   let best = await show(seed);
+  if (best.blocked && !walked && left >= 8) {
+    // Climb out of a crater through normal input before charging again. The
+    // expanded arena requires a shallower firing arc that can hit the rim.
+    await page.evaluate(() => dispatchEvent(new Event("blur")));
+    await page.mouse.up();
+    const key = to.x > from.x ? "KeyA" : "KeyD";
+    await page.keyboard.down(key);
+    await page.keyboard.press("KeyW");
+    await page.waitForTimeout(250);
+    await page.keyboard.up(key);
+    await settled(page);
+    return aimAtOpponent(page, number, true);
+  }
   // Craters and cliffs can block the open-air arc, so try the whole fan before
   // closing in on whichever one the terrain actually lets through.
   for (const degrees of [30, 45, 60, 72, 80, 20, 52, 66]) {
@@ -229,7 +250,10 @@ export async function overview(page: Page) {
           Math.min(960 / 2688, 540 / 1536), // ARENA viewport / expanded world
       ),
     )
-    .toBeLessThan(0.001);
+    // The camera eases in asymptotically and never lands exactly. The turn
+    // introduction sits far outside this margin, so it still reads as framed.
+    .toBeLessThan(0.006);
+  await settled(page);
 }
 
 /** Move the pointer to a world position, and report where that landed. */

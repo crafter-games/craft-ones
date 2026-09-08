@@ -8,6 +8,7 @@ export type GameBridge = {
   debug: boolean;
   weapon: WeaponId;
   focus: boolean;
+  sound: boolean;
   suspended: boolean;
   ready: boolean;
   movementDirection: -1 | 0 | 1;
@@ -28,6 +29,7 @@ export function createBridge(charge: GameBridge["charge"]): GameBridge {
     debug: false,
     weapon: "rocket",
     focus: false,
+    sound: true,
     suspended: false,
     ready: false,
     movementDirection: 0,
