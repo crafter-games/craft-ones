@@ -1,13 +1,21 @@
 import { expect, test } from "@playwright/test";
 import { aimAtOpponent, aimWorld, overview } from "./gameplay";
 
-test("radial roster explains each ability and keeps new characters and coats in local play", async ({
+test("lineup selector wraps between characters, explains the default Cuy and carries coats into play", async ({
   page,
 }) => {
   await page.goto("/");
   const picker = page.getByRole("group", { name: "Your critter", exact: true });
+  await picker.getByRole("button", { name: "Previous character" }).click();
+  await expect(
+    picker.getByRole("button", { name: "Ronsoco", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await picker.getByRole("button", { name: "Next character" }).click();
+  await expect(
+    picker.getByRole("button", { name: "Cuy", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   for (const [name, ability] of [
-    ["Cuy", "Second wind"],
+    ["Cuy", "No special ability"],
     ["Llama", "Andean leap"],
     ["Zorro", "Quickstep"],
     ["Ronsoco", "Iron hide"],
@@ -18,7 +26,11 @@ test("radial roster explains each ability and keeps new characters and coats in 
     await expect(
       picker.getByRole("heading", { name: ability, exact: true }),
     ).toBeVisible();
-    await expect(picker.getByText("UNIQUE ABILITY · 1 TURN")).toBeVisible();
+    await expect(
+      picker.getByText(
+        name === "Cuy" ? "STANDARD LOADOUT" : "UNIQUE ABILITY · 1 TURN",
+      ),
+    ).toBeVisible();
   }
   await picker
     .getByRole("button", { name: "Your critter: Slate", exact: true })
@@ -32,11 +44,108 @@ test("radial roster explains each ability and keeps new characters and coats in 
     "data-coat",
     "slate",
   );
-  await page
+  const arsenal = page.getByRole("group", { name: "Arsenal", exact: true });
+  await expect(arsenal.getByRole("button")).toHaveCount(7);
+  await arsenal
     .getByRole("button", { name: "Iron hide · 1 turn", exact: true })
     .click();
   await expect(page.getByTestId("player-1")).toContainText("+30 shield");
   await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "2");
+  await expect(
+    arsenal.getByRole("button", { name: "Andean leap · 1 turn", exact: true }),
+  ).toBeEnabled();
+  await expect(arsenal.getByRole("button", { name: /Iron hide/ })).toHaveCount(
+    0,
+  );
+  await arsenal
+    .getByRole("button", { name: "Andean leap · 1 turn", exact: true })
+    .click();
+  await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "3");
+  await expect(page.getByTestId("character-ability")).toBeDisabled();
+});
+
+for (const mapId of ["canopy", "caldera"]) {
+  test(`${mapId} can be selected from home, excavated offline and restarted`, async ({
+    page,
+  }) => {
+    const failures: string[] = [];
+    page.on("pageerror", (error) => failures.push(error.message));
+    page.on("response", (response) => {
+      if (response.url().includes("/art/") && response.status() >= 400)
+        failures.push(response.url());
+    });
+    await page.route("**/matchmake/**", (route) => route.abort());
+    await page.goto("/");
+    await page.locator(`[data-map-id="${mapId}"]`).click();
+    await page.getByRole("link", { name: "Playground" }).click();
+    await expect(page.getByTestId("battle")).toHaveAttribute("data-map", mapId);
+    await expect(page.getByTestId("battle")).toHaveAttribute(
+      "data-phase",
+      "aiming",
+    );
+    await expect(
+      page
+        .getByRole("group", { name: "Arsenal", exact: true })
+        .getByRole("button"),
+    ).toHaveCount(6);
+    await expect(page.getByTestId("character-ability")).toHaveCount(0);
+    const player = page.getByTestId("player-1");
+    const x = Number(await player.getAttribute("data-x"));
+    const y = Number(await player.getAttribute("data-y"));
+    await overview(page);
+    await aimWorld(page, x, y + 90);
+    await page.mouse.down();
+    await page.mouse.up();
+    await expect(page.getByTestId("battle")).toHaveAttribute(
+      "data-terrain-revision",
+      "1",
+    );
+    await page.getByRole("button", { name: "Restart", exact: true }).click();
+    await expect(page.getByTestId("battle")).toHaveAttribute(
+      "data-terrain-revision",
+      "0",
+    );
+    await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "1");
+    await expect(player).toHaveAttribute("data-hp", "100");
+    await expect(player).toHaveAttribute("data-x", String(x));
+    await expect(page.locator("canvas")).toHaveCount(1);
+    expect(failures).toEqual([]);
+  });
+}
+
+test("lineup and expanded arsenal fit mobile and reduced-motion preferences", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  const picker = page.getByRole("group", { name: "Your critter", exact: true });
+  await picker.getByRole("button", { name: "Next character" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    picker.getByRole("button", { name: "Llama", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(picker.locator(".lineup-critter.is-selected img")).toHaveCSS(
+    "animation-name",
+    "none",
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByRole("link", { name: "Playground" }).click();
+  await expect(page.getByTestId("character-ability")).toBeVisible();
+  await expect(
+    page
+      .getByRole("group", { name: "Arsenal", exact: true })
+      .getByRole("button"),
+  ).toHaveCount(7);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
 });
 
 for (const mapId of ["andes", "coast"]) {
@@ -107,12 +216,14 @@ for (const mapId of ["andes", "coast"]) {
   });
 }
 
-test("free movement, lab options, high-shot camera and restarting during flight", async ({
+test("metered movement, lab options, high-shot camera and restarting during flight", async ({
   page,
 }) => {
   await page.goto("/playground");
   await expect(page.locator("canvas")).toBeVisible();
-  await page.locator("canvas").focus();
+  // The arena claims keyboard focus while it boots; typing before that lands on
+  // the document instead.
+  await expect(page.locator("canvas")).toBeFocused();
   await page.keyboard.down("KeyD");
   await expect
     .poll(async () =>
@@ -167,7 +278,7 @@ test("mobile local movement and touch aim survive portrait-to-landscape resize",
     await page.goto("/playground");
     await expect(page.locator("canvas")).toBeVisible();
     await page.getByRole("button", { name: "Move right", exact: true }).tap();
-    await expect(page.getByTestId("player-1")).toHaveAttribute("data-x", "296");
+    await expect(page.getByTestId("player-1")).toHaveAttribute("data-x", "440");
     const canvas = page.locator("canvas");
     await page.bringToFront();
     await canvas.tap({ trial: true });
@@ -259,12 +370,19 @@ test("character colors, every weapon, turn camera and crater feedback are playab
     .getByRole("button", { name: "View whole map", exact: true })
     .click();
   await overview(page);
-  for (const name of ["Rocket", "Mortar", "Dynamite", "Grapple", "Grenade"]) {
+  for (const name of [
+    "Rocket",
+    "Mortar",
+    "Dynamite",
+    "Grapple",
+    "Sticky bomb",
+    "Grenade",
+  ]) {
     const weapon = page.getByRole("button", { name, exact: true });
     await weapon.click();
     await expect(weapon).toHaveAttribute("aria-pressed", "true");
   }
-  await aimWorld(page, 450, 570);
+  await aimWorld(page, 675, 855);
   await page.mouse.down();
   await page.waitForFunction(
     () => Number(document.querySelector("#power")?.getAttribute("value")) >= 10,
@@ -338,4 +456,50 @@ test("home selections carry into local play and basic jump preserves the shot", 
     "data-phase",
     "flying",
   );
+});
+
+test("movement bar empties, blocks walk and jump, and keeps sticky bombs available for both seats", async ({
+  page,
+}) => {
+  await page.goto("/playground");
+  const canvas = page.locator("canvas");
+  await expect(canvas).toBeFocused();
+  const meter = page.getByRole("meter", { name: "Movement remaining" });
+  await expect(meter).toHaveAttribute("value", "240");
+  await page.keyboard.down("KeyD");
+  await expect(meter).toHaveAttribute("value", "0");
+  await page.keyboard.up("KeyD");
+  const player = page.getByTestId("player-1");
+  const x = Number(await player.getAttribute("data-x"));
+  const y = Number(await player.getAttribute("data-y"));
+  await expect(
+    page.getByRole("button", { name: "Move right", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Jump", exact: true }),
+  ).toBeDisabled();
+  const sticky = page.getByRole("button", { name: "Sticky bomb", exact: true });
+  await sticky.click();
+  await expect(sticky).toHaveAttribute("aria-pressed", "true");
+  await overview(page);
+  await aimWorld(page, x, y + 90);
+  await page.mouse.down();
+  await page.mouse.up();
+  await expect(page.getByTestId("battle")).toHaveAttribute(
+    "data-phase",
+    "flying",
+  );
+  await expect(page.getByTestId("battle")).toHaveAttribute(
+    "data-terrain-revision",
+    "1",
+  );
+  await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "2");
+  await expect(meter).toHaveAttribute("value", "240");
+  await expect(sticky).toBeEnabled();
+  await page.getByRole("button", { name: "Jump", exact: true }).click();
+  await expect(meter).toHaveAttribute("value", "192");
+  await page.screenshot({
+    path: "test-results/movement-sticky.png",
+    fullPage: true,
+  });
 });

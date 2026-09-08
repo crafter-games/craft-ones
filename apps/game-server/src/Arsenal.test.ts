@@ -9,6 +9,7 @@ import {
   shotTrajectory,
   solidAt,
   WEAPONS,
+  WORLD_MAPS,
 } from "@craft-ones/shared";
 
 function fixture(map: "andes" | "coast" = "andes") {
@@ -38,17 +39,17 @@ test.each(["andes", "coast"] as const)(
       s = battle.state;
     expect(s.worldWidth).toBeGreaterThan(ARENA.width);
     expect(s.worldHeight).toBeGreaterThan(ARENA.height);
-    const caveY = map === "andes" ? 680 : 792;
-    expect(solidAt(s, 896, caveY)).toBe(false);
-    expect(bodyBlocked(s, 896, caveY)).toBe(false);
-    expect(solidAt(s, 896, caveY - 180)).toBe(true);
-    expect(gridHit(s, 840, caveY, 100, 0)).toBe(Infinity);
-    expect(gridHit(s, 840, caveY, 300, 0)).toBeLessThan(1);
-    expect(solidAt(s, 896, map === "andes" ? 300 : 352)).toBe(true);
+    const caveY = map === "andes" ? 1020 : 1188;
+    expect(solidAt(s, 1344, caveY)).toBe(false);
+    expect(bodyBlocked(s, 1344, caveY)).toBe(false);
+    expect(solidAt(s, 1344, caveY - 270)).toBe(true);
+    expect(gridHit(s, 1260, caveY, 150, 0)).toBe(Infinity);
+    expect(gridHit(s, 1260, caveY, 450, 0)).toBeLessThan(1);
+    expect(solidAt(s, 1344, map === "andes" ? 450 : 528)).toBe(true);
     expect(solidAt(s, 560, 200)).toBe(false);
   },
 );
-test.each(["rocket", "grenade", "mortar", "dynamite"] as const)(
+test.each(["rocket", "grenade", "mortar", "dynamite", "sticky"] as const)(
   "%s uses the shared preview, excavates terrain and resolves exactly once",
   (weapon) => {
     const { battle, tick, until } = fixture();
@@ -129,38 +130,39 @@ test("missed hook consumes the turn without a phantom explosion", () => {
   expect(battle.state.currentPlayer).toBe("two");
   expect(battle.state.explosion.id).toBe(0);
 });
-test("cuy heal caps health, consumes a turn and enforces its cooldown", () => {
-  const { battle, until, tick } = fixture(),
-    s = battle.state,
-    p = s.players[0];
-  expect(battle.ability("one", { turnNumber: 1 })).toBeString();
-  expect(s.phase).toBe("aiming");
-  p.hp = 85;
-  expect(battle.ability("one", { turnNumber: 1 })).toBeNull();
-  expect(p.hp).toBe(100);
-  expect(s.phase).toBe("resolving");
-  expect(
-    battle.fire("one", { angle: 0, power: 1, turnNumber: 1 }),
-  ).toBeString();
-  expect(battle.ability("one", { turnNumber: 1 })).toBeString();
-  until(() => s.phase === "aiming");
-  expect(s.currentPlayer).toBe("two");
-  tick(ARENA.turnMs);
-  p.hp = 50;
-  expect(battle.ability("one", { turnNumber: s.turnNumber })).toBeString();
-  expect(p.hp).toBe(50);
-  tick(ARENA.turnMs);
-  tick(ARENA.turnMs);
-  expect(battle.ability("one", { turnNumber: s.turnNumber })).toBeNull();
-  expect(p.hp).toBe(75);
-});
+test.each([100, 85, 1])(
+  "default Cuy at %i HP has no special ability and cannot forge another species",
+  (hp) => {
+    const { battle } = fixture();
+    battle.state.players[0].hp = hp;
+    const before = battle.state.toJSON();
+    for (const payload of [
+      { turnNumber: 1 },
+      { turnNumber: 1, direction: 1, species: "llama", ability: "leap" },
+      { turnNumber: 1, species: "ronsoco", shield: 999, hp: 100 },
+    ]) {
+      expect(battle.ability("one", payload)).toBe(
+        "This character has no special ability",
+      );
+      expect(battle.state.toJSON()).toEqual(before);
+    }
+    expect(
+      battle.fire("one", {
+        weapon: "rocket",
+        angle: -1,
+        power: 0.5,
+        turnNumber: 1,
+      }),
+    ).toBeNull();
+  },
+);
 test("llama leap spends its turn; basic jumping preserves the attack", () => {
   const { battle, tick, until } = fixture(),
     s = battle.state;
   const one = s.players[0],
     start = one.x;
   expect(battle.jump("one", { direction: 1, turnNumber: 1 })).toBeNull();
-  expect(one.movementLeft).toBe(ARENA.moveBudget);
+  expect(one.movementLeft).toBe(ARENA.moveBudget - ARENA.jumpCost);
   expect(battle.jump("one", { direction: 1, turnNumber: 1 })).toBeString();
   for (let i = 0; i < 20; i++) tick();
   expect(one.x).toBeGreaterThan(start);
@@ -214,15 +216,15 @@ test("a void fall eliminates a player and restart regenerates pristine terrain a
   expect(s.phase).toBe("finished");
   expect(s.winner).toBe("two");
   s.players[0].abilityReadyTurn = 999;
-  s.terrainRows[80] = "0".repeat(s.terrainRows[80].length);
+  s.terrainRows[120] = "0".repeat(s.terrainRows[120].length);
   expect(battle.restart("one", { turnNumber: s.turnNumber })).toBeNull();
   expect(s.players[0].abilityReadyTurn).toBe(0);
   expect(s.players[0].hp).toBe(100);
   expect(grounded(s, s.players[0].x, s.players[0].y)).toBe(true);
-  expect(s.terrainRows[80]).toContain("1");
+  expect(s.terrainRows[120]).toContain("1");
 });
 
-test("walking beyond the old movement budget still allows jumping and firing in the same turn", () => {
+test("walking spends distance while preserving enough budget to jump and fire", () => {
   const { battle, tick } = fixture(),
     s = battle.state,
     p = s.players[0],
@@ -233,7 +235,7 @@ test("walking beyond the old movement budget still allows jumping and firing in 
     ).toBeNull();
     tick(100);
   }
-  expect(p.x - x).toBeGreaterThan(ARENA.moveBudget);
+  expect(p.movementLeft).toBeCloseTo(ARENA.moveBudget - (p.x - x));
   expect(s.turnNumber).toBe(1);
   expect(s.currentPlayer).toBe("one");
   expect(battle.jump("one", { direction: -1, turnNumber: 1 })).toBeNull();
@@ -242,7 +244,7 @@ test("walking beyond the old movement budget still allows jumping and firing in 
   ).toBeNull();
   expect(s.phase).toBe("flying");
 });
-test("vertical jumps can repeat after landing, use time only, and cannot bypass the turn deadline", () => {
+test("vertical jumps cost movement, can repeat after landing and obey the turn deadline", () => {
   const { battle, tick, until } = fixture(),
     s = battle.state,
     p = s.players[0],
@@ -250,14 +252,14 @@ test("vertical jumps can repeat after landing, use time only, and cannot bypass 
   for (let jump = 0; jump < 2; jump++) {
     expect(battle.jump("one", { direction: 0, turnNumber: 1 })).toBeNull();
     tick();
-    expect(p.y).toBeLessThan(606);
+    expect(p.y).toBeLessThan(WORLD_MAPS.andes.spawns[0][1]);
     expect(battle.jump("one", { direction: 0, turnNumber: 1 })).toBeString();
     until(() => p.vy === 0 && grounded(s, p.x, p.y));
     expect(p.x).toBe(x);
     expect(s.turnNumber).toBe(1);
   }
   expect(s.remainingMs).toBeLessThan(ARENA.turnMs - 2000);
-  expect(p.movementLeft).toBe(ARENA.moveBudget);
+  expect(p.movementLeft).toBe(ARENA.moveBudget - ARENA.jumpCost * 2);
   tick(ARENA.turnMs);
   const y = p.y;
   expect(battle.jump("one", { direction: 0, turnNumber: 1 })).toBeString();

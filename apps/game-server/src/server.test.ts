@@ -1,7 +1,13 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { request } from "node:http";
 import { fileURLToPath } from "node:url";
-import { ARENA, type BattleView } from "@craft-ones/shared";
+import {
+  ARENA,
+  type BattleView,
+  CELL,
+  WORLD_HEIGHT,
+  WORLD_WIDTH,
+} from "@craft-ones/shared";
 import { Client, type Room } from "colyseus.js";
 import { parseWebOrigins } from "./server";
 
@@ -364,7 +370,7 @@ describe("real Colyseus SDK clients", () => {
         () => two.state.phase === "aiming" && one.state.players.length === 2,
       );
       expect(two.state.mapId).toBe("coast");
-      expect(two.state.worldWidth).toBe(1792);
+      expect(two.state.worldWidth).toBe(WORLD_WIDTH);
       expect(one.state.players.map((p) => [p.species, p.coat, p.hp])).toEqual([
         ["llama", "rose", 100],
         ["cuy", "sage", 100],
@@ -457,6 +463,70 @@ describe("real Colyseus SDK clients", () => {
     }
   });
 
+  test.each(["canopy", "caldera"])(
+    "%s synchronizes its own terrain and rejects forged Cuy abilities",
+    async (mapId) => {
+      const one = await new Client(endpoint).create<BattleView>("battle", {
+        mapId,
+      });
+      clients.add(one);
+      let two: Room<BattleView> | undefined;
+      try {
+        two = await new Client(endpoint).joinById<BattleView>(one.roomId);
+        clients.add(two);
+        const opponent = two;
+        await waitFor(
+          () =>
+            one.state.phase === "aiming" && opponent.state.phase === "aiming",
+        );
+        expect(one.state.mapId).toBe(mapId);
+        expect(two.state.mapId).toBe(mapId);
+        expect([...two.state.terrainRows]).toEqual([...one.state.terrainRows]);
+        expect(one.state.players[0].species).toBe("cuy");
+        let error = "";
+        one.onMessage("actionError", (message: string) => {
+          error = message;
+        });
+        one.send("ability", {
+          turnNumber: 1,
+          direction: 1,
+          species: "llama",
+          hp: 999,
+        });
+        await waitFor(() => error !== "");
+        expect(error).toBe("This character has no special ability");
+        expect(one.state.turnNumber).toBe(1);
+        expect(two.state.players[0].hp).toBe(100);
+        expect(one.state.players[0].abilityReadyTurn).toBe(0);
+      } finally {
+        await one.leave();
+        clients.delete(one);
+        if (two) {
+          await two.leave();
+          clients.delete(two);
+        }
+      }
+    },
+  );
+
+  test.each(["__proto__", "flat", "unknown"])(
+    "untrusted map %s cannot select an internal or invalid world",
+    async (mapId) => {
+      const room = await new Client(endpoint).create<BattleView>("battle", {
+        mapId,
+      });
+      clients.add(room);
+      try {
+        await waitFor(() => !!room.state.players?.length);
+        expect(room.state.mapId).toBe("andes");
+        expect(room.state.terrainRows.length).toBe(WORLD_HEIGHT / CELL);
+      } finally {
+        await room.leave();
+        clients.delete(room);
+      }
+    },
+  );
+
   test("oversized WebSocket messages disconnect instead of accepting unbounded intents", async () => {
     const room = await join();
     let closeCode = 0;
@@ -469,3 +539,90 @@ describe("real Colyseus SDK clients", () => {
     await expect(new Client(endpoint).joinById(room.roomId)).rejects.toThrow();
   });
 });
+
+test("movement budget and sticky fuse replicate to both seats through normal intentions", async () => {
+  const one = await new Client(endpoint).create<BattleView>("battle", {
+    mapId: "andes",
+  });
+  const two = await new Client(endpoint).joinById<BattleView>(one.roomId);
+  for (const room of [one, two]) {
+    clients.add(room);
+    room.onMessage("actionError", () => undefined);
+  }
+  try {
+    await waitFor(
+      () => one.state.players.length === 2 && two.state.phase === "aiming",
+    );
+    const start = one.state.players[0].x;
+    for (
+      let sequence = 1;
+      sequence <= ARENA.moveBudget / ARENA.moveStep;
+      sequence++
+    ) {
+      one.send("move", {
+        direction: sequence % 2 ? 1 : -1,
+        sequence,
+        turnNumber: 1,
+      });
+      await waitFor(
+        () =>
+          two.state.players[0].movementLeft ===
+          ARENA.moveBudget - sequence * ARENA.moveStep,
+      );
+      await Bun.sleep(90);
+    }
+    expect(two.state.players[0].movementLeft).toBe(0);
+    expect(one.state.players[0].x).toBe(start);
+    one.send("move", {
+      direction: 1,
+      sequence: 99,
+      turnNumber: 1,
+      movementLeft: 999,
+    });
+    one.send("jump", { direction: 1, turnNumber: 1 });
+    await Bun.sleep(150);
+    expect(one.state.players[0].x).toBe(start);
+    expect(two.state.players[0].movementLeft).toBe(0);
+    for (const [seat, room] of [one, two].entries()) {
+      const turnNumber = seat + 1;
+      const intent = {
+        weapon: "sticky",
+        angle: Math.PI / 2,
+        power: 0,
+        turnNumber,
+      };
+      room.send("fire", intent);
+      room.send("fire", intent);
+      await waitFor(
+        () =>
+          one.state.projectile.stuck &&
+          two.state.projectile.stuck &&
+          two.state.turnNumber === turnNumber,
+      );
+      expect(two.state.projectile.kind).toBe("sticky");
+      expect(two.state.projectile.x).toBe(one.state.projectile.x);
+      expect(two.state.projectile.y).toBe(one.state.projectile.y);
+      await waitFor(
+        () =>
+          one.state.explosion.id === turnNumber &&
+          two.state.explosion.id === turnNumber,
+        4500,
+      );
+      expect([...two.state.terrainRows]).toEqual([...one.state.terrainRows]);
+      expect(two.state.players.map((p) => p.hp)).toEqual(
+        one.state.players.map((p) => p.hp),
+      );
+      await waitFor(
+        () =>
+          one.state.turnNumber === turnNumber + 1 &&
+          two.state.turnNumber === turnNumber + 1,
+      );
+    }
+    expect(one.state.players[0].movementLeft).toBe(ARENA.moveBudget);
+  } finally {
+    await one.leave();
+    await two.leave();
+    clients.delete(one);
+    clients.delete(two);
+  }
+}, 20000);

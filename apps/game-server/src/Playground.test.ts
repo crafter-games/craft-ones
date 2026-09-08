@@ -7,6 +7,7 @@ import {
   grounded,
   shotTrajectory,
   solidAt,
+  WORLD_MAPS,
 } from "@craft-ones/shared";
 
 function fixture(mapId: "flat" | "andes" | "coast" = "andes") {
@@ -36,7 +37,7 @@ test("legacy flat movement is turn-bound, rate-limited and consumes a finite dis
   const moved = player.x;
   expect(battle.move("one", intent)).toBeString();
   expect(player.x).toBe(moved);
-  for (let sequence = 2; sequence < 30; sequence++) {
+  for (let sequence = 2; sequence < 40; sequence++) {
     tick();
     battle.move("one", { ...intent, sequence });
   }
@@ -125,7 +126,7 @@ test("movement clamps at map edges and preserves separation", () => {
   const { battle, tick } = fixture();
   const [one, two] = battle.state.players;
   one.x = ARENA.playerRadius;
-  one.y = 606;
+  one.y = WORLD_MAPS.andes.spawns[0][1];
   expect(
     battle.move("one", { direction: -1, turnNumber: 1, sequence: 1 }),
   ).toBeNull();
@@ -178,14 +179,20 @@ test("lab craters remove terrain, players fall onto the new surface, infinite HP
   expect(player.hp).toBe(100);
   expect(player.y).toBeGreaterThan(oldY);
   expect(grounded(battle.state, player.x, player.y)).toBe(true);
-  expect(solidAt(battle.state, 288, 628)).toBe(false);
+  expect(
+    solidAt(
+      battle.state,
+      WORLD_MAPS.andes.spawns[0][0],
+      oldY + ARENA.playerRadius + 4,
+    ),
+  ).toBe(false);
 });
 
 test("knockback gravity remains deterministic across tick groupings and continues during flight", () => {
   const first = fixture(),
     second = fixture();
   for (const { battle } of [first, second]) {
-    battle.state.players[0].y -= 30;
+    battle.state.players[0].y -= 220;
     battle.state.players[0].vy = -80;
     battle.fire("one", { angle: -1, power: 1, turnNumber: 1 });
   }
