@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { Archivo } from "next/font/google";
+import { Archivo, Bungee } from "next/font/google";
 import "./globals.css";
 
 const archivo = Archivo({
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800", "900"],
+  axes: ["wdth"],
   variable: "--font-archivo",
+});
+// The wordmark wants a face with more character than the UI text.
+const bungee = Bungee({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-display",
 });
 
 export const metadata: Metadata = {
@@ -20,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={archivo.variable}>
+    <html lang="en" className={`${archivo.variable} ${bungee.variable}`}>
       <body>{children}</body>
     </html>
   );

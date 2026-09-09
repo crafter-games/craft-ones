@@ -13,7 +13,8 @@ export function Brand({ as = "link" }: { as?: "link" | "span" }) {
         priority
       />
       <span className="brand-word">
-        CRAFT <span>ONES</span>
+        <span>Craft</span>
+        <span>Ones</span>
       </span>
     </>
   );

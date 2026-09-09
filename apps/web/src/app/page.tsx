@@ -1,6 +1,7 @@
-import Link from "next/link";
+import Image from "next/image";
 import { Brand } from "../components/Brand";
-import { HeroScene } from "../components/HeroScene";
+import { CtaLink } from "../components/CtaLink";
+import { HeroStage } from "../components/HeroStage";
 
 export default function Home() {
   return (
@@ -10,9 +11,7 @@ export default function Home() {
         <Brand as="span" />
         <span className="pill">Crafter Station · Play Lab</span>
       </header>
-      <div className="home-scene">
-        <HeroScene />
-      </div>
+      <HeroStage />
       <div className="home-copy">
         <p className="hero-kicker">Made of mischief. Born in Peru.</p>
         <h1 className="hero-title">
@@ -27,9 +26,9 @@ export default function Home() {
         </p>
       </div>
       <div className="home-actions">
-        <Link href="/setup?mode=local" className="cta gold">
+        <CtaLink href="/setup?mode=local" className="cta gold">
           Playground <small>LOCAL · 2 SEATS</small>
-        </Link>
+        </CtaLink>
         <p className="cta dark is-soon" aria-disabled="true">
           Create Game <small>SOON</small>
         </p>
@@ -41,7 +40,20 @@ export default function Home() {
       </div>
       <footer className="lobby-footer">
         <span>Six critters · 100 HP · 15-second turns</span>
-        <span>Craft Ones / First playable</span>
+        <a
+          className="made-by"
+          href="https://crafter.run"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <Image
+            src="/brand/crafter-station-mark.svg"
+            alt=""
+            width={14}
+            height={14}
+          />
+          Built by <b>Crafter Station</b>
+        </a>
       </footer>
     </main>
   );

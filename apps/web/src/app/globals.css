@@ -20,6 +20,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-archivo), Helvetica, sans-serif;
+  --font-display: var(--font-display), var(--font-archivo), sans-serif;
   --font-mono: "Courier New", monospace;
 }
 
@@ -108,9 +109,17 @@ body {
   text-decoration: none;
 }
 .brand-word {
+  display: grid;
+  gap: 1px;
+  font-family: var(--font-display), var(--font-archivo), sans-serif;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 0.86;
+  letter-spacing: 0.01em;
   white-space: nowrap;
+  text-shadow: 0 2px 0 var(--ink);
 }
-.brand-word span {
+.brand-word span:last-child {
   color: var(--gold);
 }
 .brand img {
@@ -210,11 +219,39 @@ body {
   letter-spacing: 0.14em;
 }
 /* ---------- Hero: abstract isometric arena ---------- */
+.hero-gl {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.hero-gl canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.made-by {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+}
+.made-by b {
+  color: var(--cream);
+}
+.made-by:hover b {
+  color: var(--gold);
+}
+.made-by img {
+  opacity: 0.85;
+}
 .home-scene {
   position: relative;
   margin: 20px 20px 0;
   overflow: hidden;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 11;
   border: 3px solid var(--ink);
   border-radius: 22px;
   box-shadow: 0 5px 0 var(--ink);
@@ -332,9 +369,10 @@ body {
 }
 .hero-title {
   font-size: clamp(48px, 13vw, 56px);
-  line-height: 0.92;
+  line-height: 0.9;
   font-weight: 900;
-  letter-spacing: -0.05em;
+  font-variation-settings: "wdth" 112;
+  letter-spacing: -0.045em;
 }
 .hero-title span {
   color: var(--gold);
@@ -381,10 +419,10 @@ body {
     z-index: 1;
     background: linear-gradient(
       90deg,
-      #111512f7 0%,
-      #111512f0 42%,
-      #111512b8 62%,
-      #11151200 84%
+      #111512f2 0%,
+      #111512d6 30%,
+      #1115127a 50%,
+      #11151200 68%
     );
   }
   .home .pill {
@@ -404,6 +442,7 @@ body {
   .home-scene {
     position: absolute;
     inset: 0;
+    z-index: 0;
     margin: 0;
     aspect-ratio: auto;
     border: 0;
