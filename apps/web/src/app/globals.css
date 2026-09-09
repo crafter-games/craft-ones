@@ -786,6 +786,33 @@ body {
   color: var(--dim);
 }
 
+/* In-game setup drawer: the same panels, folded into the arena page. */
+.match-setup {
+  padding: 12px 16px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: var(--inset);
+}
+.match-setup summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+.match-setup summary span {
+  float: right;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.setup-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+.setup-grid .character-lineup {
+  height: 130px;
+}
+
 /* ---------- Setup screen ---------- */
 /* Mobile setup scrolls under a sticky start button; the map comes first. */
 .setup {
@@ -894,10 +921,10 @@ body {
     display: block;
     margin-right: auto;
   }
-  .map-picker {
+  .setup .map-picker {
     overflow: hidden;
   }
-  .map-list {
+  .setup .map-list {
     min-height: 0;
     overflow-y: auto;
     padding-bottom: 2px;
@@ -914,19 +941,19 @@ body {
     font-size: 18px;
   }
   /* Two headline maps, then a compact pair, so the column never scrolls. */
-  .map-list {
+  .setup .map-list {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
     overflow: visible;
   }
-  .map-list .map-card {
+  .setup .map-list .map-card {
     width: auto;
   }
-  .map-list .map-card:nth-child(-n + 2) {
+  .setup .map-list .map-card:nth-child(-n + 2) {
     grid-column: 1 / -1;
   }
-  .map-list .map-card:nth-child(n + 3) small {
+  .setup .map-list .map-card:nth-child(n + 3) small {
     display: none;
   }
   .map-hint {
