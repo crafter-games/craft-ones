@@ -1,57 +1,44 @@
 /**
- * Abstract isometric arena: floating slabs, a travelling shot arc and its
- * blast ring. Pure inline SVG in the game palette — no characters, no runtime.
+ * Flat-vector twin of the WebGL hero: floating islands, a shot arcing between
+ * them and its blast ring. It carries the hero until the canvas paints, and
+ * stays put on machines with no WebGL, so it tracks the 3D scene's layout.
  */
-const U = [1, 0.5] as const;
-const V = [-1, 0.5] as const;
-
-type Slab = {
+type Island = {
   x: number;
   y: number;
   w: number;
-  d: number;
-  h: number;
+  drop: number;
   delay?: number;
+  shrubs?: [number, number, number][];
 };
 
-function points(list: number[][]) {
-  return list.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
-}
-
-function Slab({ x, y, w, d, h, delay = 0 }: Slab) {
-  const a = [x, y];
-  const b = [x + w * U[0], y + w * U[1]];
-  const c = [x + w * U[0] + d * V[0], y + w * U[1] + d * V[1]];
-  const e = [x + d * V[0], y + d * V[1]];
-  const drop = ([px, py]: number[]) => [px, py + h];
+function Island({ x, y, w, drop, delay = 0, shrubs = [] }: Island) {
+  const lip = w * 0.3;
   return (
-    <g className="hero-slab" style={{ animationDelay: `${delay}s` }}>
+    <g className="hero-float" style={{ animationDelay: `${delay}s` }}>
+      {/* Rock spire: two eased flanks meeting at a tip, just off centre. */}
+      <path
+        className="hero-rock"
+        d={`M ${x - w} ${y} Q ${x - w * 0.5} ${y + drop * 0.62} ${x + w * 0.08} ${y + drop} Q ${x + w * 0.58} ${y + drop * 0.56} ${x + w} ${y} Z`}
+      />
       <ellipse
-        className="hero-shadow"
-        cx={c[0]}
-        cy={c[1] + h + 26}
-        rx={(w + d) * 0.42}
-        ry={(w + d) * 0.14}
+        className="hero-dirt"
+        cx={x}
+        cy={y + w * 0.1}
+        rx={w}
+        ry={lip * 0.92}
       />
-      <polygon
-        className="hero-face-left"
-        points={points([e, c, drop(c), drop(e)])}
-      />
-      <polygon
-        className="hero-face-right"
-        points={points([b, c, drop(c), drop(b)])}
-      />
-      <polygon className="hero-face-top" points={points([a, b, c, e])} />
-      <polyline
-        className="hero-seam"
-        points={points([
-          [a[0] + w * U[0] * 0.25, a[1] + w * U[1] * 0.25],
-          [
-            a[0] + w * U[0] * 0.25 + d * V[0],
-            a[1] + w * U[1] * 0.25 + d * V[1],
-          ],
-        ])}
-      />
+      <ellipse className="hero-grass" cx={x} cy={y} rx={w * 0.97} ry={lip} />
+      {shrubs.map(([sx, sy, r]) => (
+        <ellipse
+          key={`${sx}-${sy}`}
+          className="hero-shrub"
+          cx={x + sx * w}
+          cy={y + sy * lip}
+          rx={r * w}
+          ry={r * w * 1.05}
+        />
+      ))}
     </g>
   );
 }
@@ -62,40 +49,48 @@ export function HeroScene() {
       className="hero-art"
       viewBox="0 0 640 440"
       role="img"
-      aria-label="An abstract isometric arena of floating slabs with a shot arcing between them."
+      aria-label="Floating grass islands with a shot arcing between them."
     >
       <title>Craft Ones arena</title>
       <defs>
-        <radialGradient id="hero-glow" cx="50%" cy="40%" r="60%">
-          <stop offset="0%" stopColor="#8cd5bb" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#8cd5bb" stopOpacity="0" />
+        <radialGradient id="hero-sun" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#f0b96a" stopOpacity="0.6" />
+          <stop offset="100%" stopColor="#f0b96a" stopOpacity="0" />
         </radialGradient>
       </defs>
-      <circle cx="330" cy="180" r="220" fill="url(#hero-glow)" />
+      <circle cx="392" cy="66" r="170" fill="url(#hero-sun)" />
       <g className="hero-motes">
         {[
-          [96, 96, 5],
-          [548, 128, 4],
-          [470, 66, 6],
-          [138, 208, 4],
-          [590, 262, 5],
+          [104, 118, 5],
+          [560, 150, 4],
+          [486, 74, 6],
+          [150, 246, 4],
+          [596, 292, 5],
         ].map(([x, y, r]) => (
           <circle key={`${x}-${y}`} cx={x} cy={y} r={r} />
         ))}
       </g>
-      <Slab x={150} y={236} w={148} d={116} h={58} />
-      <Slab x={438} y={168} w={104} d={86} h={46} delay={-2.4} />
-      <Slab x={286} y={330} w={74} d={62} h={34} delay={-1.2} />
-      <Slab x={92} y={150} w={46} d={40} h={22} delay={-3.1} />
-      <Slab x={520} y={306} w={52} d={44} h={24} delay={-1.8} />
+      <Island x={498} y={148} w={44} drop={70} delay={-2.4} />
+      <Island x={578} y={294} w={38} drop={62} delay={-1.2} />
+      <Island
+        x={318}
+        y={244}
+        w={116}
+        drop={182}
+        shrubs={[
+          [-0.34, -0.5, 0.11],
+          [0.3, -0.9, 0.09],
+          [0.52, 0.16, 0.07],
+        ]}
+      />
       <path
         className="hero-arc"
-        d="M188 250 C 268 96 402 92 470 178"
+        d="M 150 296 C 214 118 366 96 452 168"
         fill="none"
       />
       <g className="hero-impact">
-        <circle cx="470" cy="178" r="12" />
-        <circle cx="470" cy="178" r="12" />
+        <circle cx="452" cy="168" r="12" />
+        <circle cx="452" cy="168" r="12" />
       </g>
     </svg>
   );
