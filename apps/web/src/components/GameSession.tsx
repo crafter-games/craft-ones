@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { createBridge } from "../game/GameBridge";
 import { acquireBattle, hasBattle } from "../lib/connection";
 import { BattlePanel } from "./BattlePanel";
-import { CharacterPicker } from "./MatchSetup";
+import { SeatPicker } from "./MatchSetup";
 
 export default function GameSession({
   roomId,
@@ -135,8 +135,9 @@ export default function GameSession({
           CRAFT <span>ONES</span>
         </Link>
         <h1 className="my-6 text-3xl font-black">Join the rivalry</h1>
-        <CharacterPicker
+        <SeatPicker
           label="Your critter"
+          seat="two"
           value={profile}
           onChange={setProfile}
         />

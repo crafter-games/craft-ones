@@ -11,7 +11,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BattlePanel } from "../../components/BattlePanel";
-import { CharacterPicker, MapPicker } from "../../components/MatchSetup";
+import { MapPicker, SeatPicker } from "../../components/MatchSetup";
 import { createBridge } from "../../game/GameBridge";
 
 export default function Playground() {
@@ -19,6 +19,10 @@ export default function Playground() {
   const initialProfile = {
     species: search.get("species"),
     coat: search.get("coat"),
+  };
+  const initialRival = {
+    species: search.get("species2"),
+    coat: search.get("coat2"),
   };
   const [mapId, setMapId] = useState<PlayableMapId>(
     PLAYABLE_MAP_IDS.find((id) => id === search.get("map")) ?? "andes",
@@ -38,10 +42,14 @@ export default function Playground() {
           coat: "caramel",
         },
   );
-  const [two, setTwo] = useState<PlayerOptions>({
-    species: "llama",
-    coat: "cream",
-  });
+  const [two, setTwo] = useState<PlayerOptions>(
+    validPlayerOptions(initialRival)
+      ? initialRival
+      : {
+          species: "llama",
+          coat: "cream",
+        },
+  );
   const [error, setError] = useState("");
   const profiles = useRef({ one, two });
   profiles.current = { one, two };
@@ -143,16 +151,18 @@ export default function Playground() {
             }}
           />
           <div className="grid gap-3 sm:grid-cols-2">
-            <CharacterPicker
+            <SeatPicker
               value={one}
+              seat="one"
               label="Player 1"
               onChange={(value) => {
                 setOne(value);
                 reset();
               }}
             />
-            <CharacterPicker
+            <SeatPicker
               value={two}
+              seat="two"
               label="Player 2"
               onChange={(value) => {
                 setTwo(value);

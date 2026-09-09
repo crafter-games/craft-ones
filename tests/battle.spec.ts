@@ -3,7 +3,8 @@ import { aimAtOpponent } from "./gameplay";
 
 async function createRoom(page: Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Create Game", exact: true }).click();
+  await page.getByRole("link", { name: "Create Game" }).click();
+  await page.getByRole("button", { name: "Start match" }).click();
   await expect(page).toHaveURL(/\/game\/[a-zA-Z0-9_-]+$/);
   await expect(page.getByTestId("battle")).toHaveAttribute(
     "data-phase",
@@ -259,7 +260,5 @@ test("missing rooms show a recoverable error", async ({ page }) => {
     "no longer exists",
   );
   await page.getByRole("link", { name: "Back to home" }).click();
-  await expect(
-    page.getByRole("button", { name: "Create Game", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Create Game" })).toBeVisible();
 });

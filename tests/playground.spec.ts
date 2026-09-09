@@ -4,8 +4,8 @@ import { aimAtOpponent, aimWorld, overview, settled } from "./gameplay";
 test("lineup selector wraps between characters, explains the default Cuy and carries coats into play", async ({
   page,
 }) => {
-  await page.goto("/");
-  const picker = page.getByRole("group", { name: "Your critter", exact: true });
+  await page.goto("/setup?mode=local");
+  const picker = page.getByRole("group", { name: "Player 1", exact: true });
   await picker.getByRole("button", { name: "Previous character" }).click();
   await expect(
     picker.getByRole("button", { name: "Ronsoco", exact: true }),
@@ -23,9 +23,7 @@ test("lineup selector wraps between characters, explains the default Cuy and car
     const button = picker.getByRole("button", { name, exact: true });
     await button.click();
     await expect(button).toHaveAttribute("aria-pressed", "true");
-    await expect(
-      picker.getByRole("heading", { name: ability, exact: true }),
-    ).toBeVisible();
+    await expect(picker.getByText(ability, { exact: true })).toBeVisible();
     await expect(
       picker.getByText(
         name === "Cuy" ? "STANDARD LOADOUT" : "UNIQUE ABILITY · 1 TURN",
@@ -33,9 +31,9 @@ test("lineup selector wraps between characters, explains the default Cuy and car
     ).toBeVisible();
   }
   await picker
-    .getByRole("button", { name: "Your critter: Slate", exact: true })
+    .getByRole("button", { name: "Player 1: Slate", exact: true })
     .click();
-  await page.getByRole("link", { name: "Playground" }).click();
+  await page.getByRole("button", { name: "Start match" }).click();
   await expect(page.getByTestId("player-1")).toHaveAttribute(
     "data-species",
     "ronsoco",
@@ -65,7 +63,7 @@ test("lineup selector wraps between characters, explains the default Cuy and car
 });
 
 for (const mapId of ["canopy", "caldera"]) {
-  test(`${mapId} can be selected from home, excavated offline and restarted`, async ({
+  test(`${mapId} can be selected in setup, excavated offline and restarted`, async ({
     page,
   }) => {
     const failures: string[] = [];
@@ -75,9 +73,9 @@ for (const mapId of ["canopy", "caldera"]) {
         failures.push(response.url());
     });
     await page.route("**/matchmake/**", (route) => route.abort());
-    await page.goto("/");
+    await page.goto("/setup?mode=local");
     await page.locator(`[data-map-id="${mapId}"]`).click();
-    await page.getByRole("link", { name: "Playground" }).click();
+    await page.getByRole("button", { name: "Start match" }).click();
     await expect(page.getByTestId("battle")).toHaveAttribute("data-map", mapId);
     await expect(page.getByTestId("battle")).toHaveAttribute(
       "data-phase",
@@ -118,9 +116,9 @@ test("lineup and expanded arsenal fit mobile and reduced-motion preferences", as
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
-  const picker = page.getByRole("group", { name: "Your critter", exact: true });
-  await picker.getByRole("button", { name: "Next character" }).focus();
+  await page.goto("/setup?mode=local");
+  const picker = page.getByRole("group", { name: "Player 1", exact: true });
+  await picker.getByRole("button", { name: "Llama", exact: true }).focus();
   await page.keyboard.press("Enter");
   await expect(
     picker.getByRole("button", { name: "Llama", exact: true }),
@@ -134,7 +132,7 @@ test("lineup and expanded arsenal fit mobile and reduced-motion preferences", as
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
-  await page.getByRole("link", { name: "Playground" }).click();
+  await page.getByRole("button", { name: "Start match" }).click();
   await expect(page.getByTestId("character-ability")).toBeVisible();
   await expect(
     page
@@ -155,15 +153,13 @@ for (const mapId of ["andes", "coast"]) {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await page.route("**/matchmake/**", (route) => route.abort());
-    await page.goto("/");
-    await page.getByRole("link", { name: "Playground" }).click();
-    await page.getByText("Match setup", { exact: false }).click();
+    await page.goto("/setup?mode=local");
     await page
       .getByRole("button", {
         name: mapId === "andes" ? "Cloudbreak Valley" : "Amber Hollows",
       })
       .click();
-    await page.getByText("Match setup", { exact: false }).click();
+    await page.getByRole("button", { name: "Start match" }).click();
     await expect(page.getByTestId("battle")).toHaveAttribute(
       "data-phase",
       "aiming",
@@ -413,16 +409,17 @@ test("character colors, every weapon, turn camera and crater feedback are playab
   expect(errors).toEqual([]);
 });
 
-test("home selections carry into local play and basic jump preserves the shot", async ({
+test("setup selections carry into local play and basic jump preserves the shot", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/setup?mode=local");
+  const seat = page.getByRole("group", { name: "Player 1", exact: true });
   await page.getByRole("button", { name: "Amber Hollows" }).click();
-  await page.getByRole("button", { name: "Llama", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Your critter: Sage", exact: true })
+  await seat.getByRole("button", { name: "Llama", exact: true }).click();
+  await seat
+    .getByRole("button", { name: "Player 1: Sage", exact: true })
     .click();
-  await page.getByRole("link", { name: "Playground" }).click();
+  await page.getByRole("button", { name: "Start match" }).click();
   await expect(page.getByTestId("battle")).toHaveAttribute("data-map", "coast");
   await expect(page.getByTestId("player-1")).toHaveAttribute(
     "data-species",
