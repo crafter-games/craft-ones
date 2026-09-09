@@ -17,10 +17,10 @@ import { weaponMarkup, weaponSvg } from "../src/game/weapons/design";
 
 const root = new URL("../public/art/", import.meta.url);
 const portraitFrames = {
-  cuy: "-45 -61 90 90",
+  cuy: "-50 -70 100 100",
   llama: "-56 -83 112 112",
-  zorro: "-52 -75 104 104",
-  ronsoco: "-40 -55 86 86",
+  zorro: "-60 -85 120 120",
+  ronsoco: "-50 -65 100 100",
 };
 const characterNotes = {
   cuy: "Knitted brows / clenched teeth / raised paw",
@@ -65,7 +65,7 @@ for (const [i, species] of SPECIES.entries()) {
 }
 await Bun.write(
   new URL("character-reference.svg", root),
-  `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1580" viewBox="0 0 1280 1580"><title>Craft Ones original character reference and cutouts</title><rect width="1280" height="1580" rx="28" fill="#f8eedb"/><g font-family="Arial, sans-serif"><text x="42" y="51" font-size="30" font-weight="bold" fill="#49332f">CRAFT ONES / CHARACTER WORKSHOP</text><text x="42" y="80" font-size="14" fill="#8b6b5a">Four original vector critters · warm contours · cream markings · inset color planes</text><text x="42" y="105" font-size="12" fill="#8b6b5a">80 × 100 transparent cutouts / coral dots mark the shared pivots / five coat palettes</text>${rows.join("")}<text x="42" y="1552" font-size="12" fill="#8b6b5a">Same source shapes in the arena and the gallery. Independent ears, eyes, hands and feet. No clothing or cast-shadow textures.</text></g></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1580" viewBox="0 0 1280 1580"><title>Craft Ones original character reference and cutouts</title><rect width="1280" height="1580" rx="28" fill="#f8eedb"/><g font-family="Arial, sans-serif"><text x="42" y="51" font-size="30" font-weight="bold" fill="#49332f">CRAFT ONES / CHARACTER WORKSHOP</text><text x="42" y="80" font-size="14" fill="#8b6b5a">Four original vector critters · warm contours · cream markings · inset color planes</text><text x="42" y="105" font-size="12" fill="#8b6b5a">80 × 100 transparent cutouts / coral dots mark the shared pivots / five coat palettes</text>${rows.join("")}<text x="42" y="1552" font-size="12" fill="#8b6b5a">Same source shapes in the arena and the gallery. Independent ears, eyes, floating hands and feet. No arms. No clothing or cast-shadow textures.</text></g></svg>`,
 );
 await Bun.write(
   new URL("duel-poster.svg", root),
@@ -96,7 +96,7 @@ for (const [row, species] of SPECIES.entries())
   }
 await Bun.write(
   new URL("pose-review.svg", root),
-  `<svg xmlns="http://www.w3.org/2000/svg" width="1750" height="1110" viewBox="0 0 1750 1110"><title>Character joints and all six weapon grips</title><rect width="1750" height="1110" fill="#f8eedb"/><g font-family="Arial" font-size="13" font-weight="bold" fill="#49332f"><text x="36" y="35" font-size="21">CRAFT ONES / JOINTS + AIM REVIEW</text><text x="36" y="59" font-size="12" font-weight="normal">Shared rig transforms / hands retain their shape while upper arms reach the weapon grips / mirrored and walking poses</text>${proofs.join("")}</g></svg>`,
+  `<svg xmlns="http://www.w3.org/2000/svg" width="1750" height="1110" viewBox="0 0 1750 1110"><title>Character joints and all six weapon grips</title><rect width="1750" height="1110" fill="#f8eedb"/><g font-family="Arial" font-size="13" font-weight="bold" fill="#49332f"><text x="36" y="35" font-size="21">CRAFT ONES / JOINTS + AIM REVIEW</text><text x="36" y="59" font-size="12" font-weight="normal">Shared rig transforms / independent floating paws / no arms / tool follows the leading hand / mirrored and walking poses</text>${proofs.join("")}</g></svg>`,
 );
 const weapons = (Object.keys(WEAPONS) as WeaponId[])
   .map(

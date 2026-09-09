@@ -7,14 +7,12 @@ import {
 } from "@craft-ones/shared";
 import * as Phaser from "phaser";
 import { joints, PARTS, type Part, type Species } from "./design";
-import { armPose, BODY_LAYERS, HEAD_SCALE } from "./pose";
+import { BODY_LAYERS, HEAD_SCALE, handPose, weaponPose } from "./pose";
 
 export class CharacterRig {
   readonly root: Phaser.GameObjects.Container;
   readonly body: Phaser.GameObjects.Container;
   readonly head: Phaser.GameObjects.Container;
-  readonly armBack: Phaser.GameObjects.Container;
-  readonly armFront: Phaser.GameObjects.Container;
   readonly legBack: Phaser.GameObjects.Container;
   readonly legFront: Phaser.GameObjects.Container;
   readonly handBack: Phaser.GameObjects.Container;
@@ -32,7 +30,6 @@ export class CharacterRig {
   private movedAt = -1000;
   private death = 0;
   private weaponImage: Phaser.GameObjects.Image;
-  private armImages: Phaser.GameObjects.Image[] = [];
   private weaponKind = "";
   private deadEyes: Phaser.GameObjects.Graphics;
 
@@ -67,8 +64,7 @@ export class CharacterRig {
     const tail = pivot("tail", [0, 0]);
     this.legBack = pivot("legBack", j.hipBack);
     this.footBack = pivot("footBack", j.ankle, this.legBack);
-    this.armBack = pivot("armBack", j.shoulderBack);
-    this.handBack = pivot("handBack", j.wrist, this.armBack);
+    this.handBack = pivot("handBack", [0, 0]);
     const torso = image("body");
     this.body.add(torso);
     this.legFront = pivot("legFront", j.hipFront);
@@ -93,20 +89,15 @@ export class CharacterRig {
       .setDisplaySize(64, 48);
     this.weapon.add(this.weaponImage);
     this.body.add(this.weapon);
-    this.armFront = pivot("armFront", j.shoulderFront);
-    this.handFront = pivot("handFront", j.wrist, this.armFront);
-    this.armImages = [
-      this.armBack.list[0] as Phaser.GameObjects.Image,
-      this.armFront.list[0] as Phaser.GameObjects.Image,
-    ];
+    this.handFront = pivot("handFront", [0, 0]);
     const layers = {
       tail,
       legBack: this.legBack,
       legFront: this.legFront,
-      armBack: this.armBack,
+      handBack: this.handBack,
       body: torso,
       weapon: this.weapon,
-      armFront: this.armFront,
+      handFront: this.handFront,
       head: this.head,
     };
     BODY_LAYERS.forEach((key, index) => {
@@ -174,16 +165,15 @@ export class CharacterRig {
     this.eyes.setVisible(player.hp > 0);
     this.eyes.scaleY = Math.sin(now / 780 + player.number) > 0.998 ? 0.32 : 0.5;
     this.deadEyes.setVisible(player.hp <= 0);
+    const origin = weaponPose();
     this.weapon
       .setVisible(player.hp > 0)
       .setRotation(localAngle)
-      .setPosition(-recoil * 3, 0);
-    // Scale only the upper arm; paws keep their round shape at every aim angle.
-    [this.armBack, this.armFront].forEach((arm, i) => {
-      const pose = armPose(this.species, i === 1, localAngle, kind);
-      arm.rotation = pose.angle;
-      this.armImages[i].scaleX = 0.5 * pose.length;
-      (i === 1 ? this.handFront : this.handBack).x = 12 * pose.length;
+      .setPosition(origin.x - recoil * 3, origin.y);
+    [this.handBack, this.handFront].forEach((hand, i) => {
+      const pose = handPose(this.species, i === 1, localAngle, kind);
+      hand.setPosition(pose.x - (i === 1 ? recoil * 3 : 0), pose.y);
+      hand.rotation = pose.angle;
     });
     this.legBack.rotation = Math.sin(now / 70) * this.moving * 0.45;
     this.legFront.rotation = -this.legBack.rotation;

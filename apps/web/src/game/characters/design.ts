@@ -4,7 +4,14 @@ import { weaponMarkup } from "../weapons/design";
  * Transparent 80 × 100 viewbox: pivot (40, 50), consistent scale and lighting.
  * Keep this source and regenerate assets with bun apps/web/scripts/character-art.ts.
  */
-import { armPose, BODY_LAYERS, HEAD_SCALE, joints, type Species } from "./pose";
+import {
+  BODY_LAYERS,
+  HEAD_SCALE,
+  handPose,
+  joints,
+  type Species,
+  weaponPose,
+} from "./pose";
 
 export { joints, type Species } from "./pose";
 export const PARTS = [
@@ -12,8 +19,6 @@ export const PARTS = [
   "head",
   "earBack",
   "earFront",
-  "armBack",
-  "armFront",
   "handBack",
   "handFront",
   "legBack",
@@ -225,42 +230,27 @@ export function partMarkup(
     if (part === "tail") return "";
   }
 
-  if (part.startsWith("arm")) {
-    // Open shoulder/wrist seams disappear inside the torso and paw. Species
-    // have distinct tapers, with a continuous contour rather than floating bars.
-    const outline = {
-      cuy: "M-3-5Q5-7 13-3L14 3Q7 6-3 5",
-      llama: "M-3-4L0-6L3-4L7-5L14-2L14 3L9 4L6 3L3 5L0 4L-3 5",
-      zorro: "M-3-4L2-5L5-3L13-2L14 2L5 4L1 6L-3 4",
-      ronsoco: "M-3-6Q4-9 10-5L14-3L14 4Q8 8 1 7L-3 5",
-    }[species];
-    return shape(
-      `<path fill="${limb}" stroke="none" d="${outline}Z"/>`,
-      `<path fill="${back ? paw : shade}" stroke="none" d="M0 2L6 3L13 1L13 3Q6 6 0 4Z"/>`,
-      `<path fill="none" stroke-width="2" d="${outline}"/>`,
-    );
-  }
   if (part.startsWith("hand")) {
     if (species === "llama")
       return shape(
-        `<path fill="${limb}" d="M-4-4L0-5L4-4L8-5L11-2L10 5L4 6L0 4L-4 4"/>`,
+        `<path fill="${limb}" d="M-4-4L0-5L4-4L8-5L11-2L10 5L4 6L0 4Q-7 2-4-4Z"/>`,
         `<path fill="${paw}" stroke="none" d="M3-4L8-4L10-1L9 4L4 5L2 2Z"/>`,
         `<path fill="none" stroke="${creamShade}" stroke-width="1.4" d="M7-2L6 3"/>`,
       );
     if (species === "ronsoco")
       return shape(
-        `<path fill="${limb}" d="M-4-5L0-5L1-7L6-7L10-4L12-1L11 6L6 8L-1 6L-4 4"/>`,
+        `<path fill="${limb}" d="M-4-5L0-5L1-7L6-7L10-4L12-1L11 6L6 8L-1 6Q-7 3-4-5Z"/>`,
         `<path fill="${shade}" stroke="none" d="M0 3L6 4L10 1L10 5L6 7L0 5Z"/>`,
         `<path fill="none" stroke-width="1.3" d="M2-3L5-1L9-1M4 2l5 1M5 5l3 1"/>`,
       );
     if (species === "zorro")
       return shape(
-        `<path fill="${paw}" d="M-4-3L-1-4L1-7L4-6L5-3L9-4L12-1L10 2L11 4L7 6L1 4L-4 3"/>`,
+        `<path fill="${paw}" d="M-4-3L-1-4L1-7L4-6L5-3L9-4L12-1L10 2L11 4L7 6L1 4Q-7 1-4-3Z"/>`,
         `<path fill="#a78068" stroke="none" d="M-2-2L1-3L3-5L3 0L1 2L-2 1Z"/>`,
         `<path fill="none" stroke="${creamShade}" stroke-width="1.2" d="M6-1l3 1M5 2l3 1"/>`,
       );
     return shape(
-      `<path fill="${limb}" d="M-4-3Q-1-5 1-4Q1-7 4-6L6-3Q10-3 10 1Q10 6 5 6Q1 7-1 4L-4 3"/>`,
+      `<path fill="${limb}" d="M-4-3Q-1-5 1-4Q1-7 4-6L6-3Q10-3 10 1Q10 6 5 6Q1 7-1 4Q-7 1-4-3Z"/>`,
       `<path fill="${back ? paw : shade}" stroke="none" d="M-1 2Q5 4 9 0Q10 5 5 5L1 5Z"/>`,
       `<path fill="none" stroke-width="1.2" d="M2-2l3 2M4 2l3 1"/>`,
     );
@@ -305,20 +295,21 @@ export function referenceCharacter(
     `<g transform="translate(${x} ${y})">${partMarkup(species, part, coat)}</g>`;
   const leg = (front: boolean) =>
     `<g transform="translate(${j[front ? "hipFront" : "hipBack"].join(" ")}) rotate(${stride * (front ? -1 : 1)})">${at(front ? "legFront" : "legBack")}${at(front ? "footFront" : "footBack", ...j.ankle)}</g>`;
-  const arm = (front: boolean) => {
-    const p = armPose(species, front, angle, weapon);
-    return `<g transform="translate(${j[front ? "shoulderFront" : "shoulderBack"].join(" ")}) rotate(${(p.angle * 180) / Math.PI})">${`<g transform="scale(${p.length} 1)">${at(front ? "armFront" : "armBack")}</g>`}${at(front ? "handFront" : "handBack", 12 * p.length, 0)}</g>`;
+  const hand = (front: boolean) => {
+    const p = handPose(species, front, angle, weapon);
+    return `<g transform="translate(${p.x} ${p.y}) rotate(${(p.angle * 180) / Math.PI})">${at(front ? "handFront" : "handBack")}</g>`;
   };
+  const origin = weaponPose();
   const layers = {
     tail: at("tail"),
     legBack: leg(false),
     legFront: leg(true),
-    armBack: arm(false),
+    handBack: hand(false),
     body: at("body"),
     weapon: weapon
-      ? `<g transform="rotate(${(angle * 180) / Math.PI})">${weaponMarkup(weapon)}</g>`
+      ? `<g transform="translate(${origin.x} ${origin.y}) rotate(${(angle * 180) / Math.PI})">${weaponMarkup(weapon)}</g>`
       : "",
-    armFront: arm(true),
+    handFront: hand(true),
     head: `<g transform="translate(${j.neck.join(" ")}) scale(${HEAD_SCALE})">${at("earBack", ...j.earBack)}${at("earFront", ...j.earFront)}${at("head")}${at("eyes")}</g>`,
   };
   return BODY_LAYERS.map((key) => layers[key]).join("");
