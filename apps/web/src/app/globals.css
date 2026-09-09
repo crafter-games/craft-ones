@@ -2061,7 +2061,7 @@ body {
     width: 180px;
   }
   .hud-jump {
-    position: absolute;
+    position: fixed;
     right: calc(env(safe-area-inset-right) + 52px);
     bottom: 14px;
     width: 76px;
@@ -2141,4 +2141,8 @@ body {
   .lineup-critter.is-selected img {
     animation: none;
   }
+}
+
+.game-canvas canvas:not([data-ready="true"]) {
+  visibility: hidden;
 }

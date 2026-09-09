@@ -25,16 +25,22 @@ let runtime: ReturnType<typeof Bun.spawn>;
 let endpoint = "";
 
 beforeAll(async () => {
-  const child = Bun.spawn(["node", "--import", "tsx", "src/index.ts"], {
-    cwd: fileURLToPath(new URL("..", import.meta.url)),
-    env: {
-      ...process.env,
-      PORT: "0",
-      WEB_ORIGIN: "http://192.168.1.5:3000, http://craft.local:3000",
+  const child = Bun.spawn(
+    process.env.TEST_SERVER_BUNDLE === "1"
+      ? ["node", "../../dist/game-server.mjs"]
+      : ["node", "--import", "tsx", "src/index.ts"],
+    {
+      cwd: fileURLToPath(new URL("..", import.meta.url)),
+      env: {
+        ...process.env,
+        PORT: "0",
+        CREATE_PER_MINUTE: "120",
+        WEB_ORIGIN: "http://192.168.1.5:3000, http://craft.local:3000",
+      },
+      stdout: "pipe",
+      stderr: "inherit",
     },
-    stdout: "pipe",
-    stderr: "inherit",
-  });
+  );
   runtime = child;
   void (async () => {
     let output = "";

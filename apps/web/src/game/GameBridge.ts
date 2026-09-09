@@ -11,6 +11,7 @@ export type GameBridge = {
   focus: boolean;
   sound: boolean;
   suspended: boolean;
+  paused: boolean;
   ready: boolean;
   movementDirection: -1 | 0 | 1;
   /** Screen-space edges the HUD covers, which the camera frames around. */
@@ -35,6 +36,7 @@ export function createBridge(charge: GameBridge["charge"]): GameBridge {
     focus: false,
     sound: true,
     suspended: false,
+    paused: false,
     ready: false,
     movementDirection: 0,
     hudInsets: { top: 0, bottom: 0, left: 0, right: 0 },

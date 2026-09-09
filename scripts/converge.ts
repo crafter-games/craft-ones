@@ -1,17 +1,4 @@
 #!/usr/bin/env bun
-/**
- * Craft Ones milestone convergence gate.
- *
- * Runs the five verification commands from AGENTS.md and reports every
- * milestone acceptance criterion against the test that actually backs it.
- * Evidence is checked by locating the referenced test title in its file, so a
- * renamed or deleted test breaks the map loudly instead of going unnoticed.
- *
- *   bun scripts/converge.ts                  run the whole gate
- *   bun scripts/converge.ts --list           print the evidence map only
- *   bun scripts/converge.ts --only=lint,e2e run a subset
- *   bun scripts/converge.ts --allow-busy-web build even with a dev server up
- */
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -43,10 +30,21 @@ const GATES: Gate[] = [
     command: ["bun", "run", "build"],
     purpose: "Next production build",
   },
+  { id: "audit", command: ["bun", "audit"], purpose: "dependency advisories" },
+  {
+    id: "bundle",
+    command: ["bun", "run", "test:server:bundle"],
+    purpose: "built Node server boundaries",
+  },
   {
     id: "e2e",
     command: ["bun", "run", "test:e2e"],
-    purpose: "Playwright browser suite",
+    purpose: "production browser suite",
+  },
+  {
+    id: "dev",
+    command: ["bun", "run", "test:e2e:dev"],
+    purpose: "development renderer lifecycle",
   },
 ];
 
@@ -171,7 +169,12 @@ function checkEvidence() {
       const source = cache.get(file) ?? "";
       if (!source) {
         missing.push(`${criterion.id} -> ${file} (file not found)`);
-      } else if (!source.includes(`test("${title}"`)) {
+      } else if (
+        !source
+          .replace(/\s+/g, " ")
+          .includes(`test(${JSON.stringify(title)}`) &&
+        !source.replace(/\s+/g, " ").includes(`test( ${JSON.stringify(title)}`)
+      ) {
         missing.push(`${criterion.id} -> ${file} :: "${title}"`);
       }
     }
@@ -198,15 +201,6 @@ function chromiumInstalled() {
         : join(homedir(), ".cache", "ms-playwright"));
   if (!existsSync(root)) return false;
   return readdirSync(root).some((entry) => entry.startsWith("chromium-"));
-}
-
-async function webServerUp() {
-  try {
-    await fetch("http://localhost:3000", { signal: AbortSignal.timeout(800) });
-    return true;
-  } catch (error) {
-    return (error as Error).name === "TimeoutError";
-  }
 }
 
 async function runGate(gate: Gate): Promise<number> {
@@ -238,18 +232,9 @@ if (flags.includes("--list")) {
 }
 
 const outcomes: Outcome[] = [];
-const busyWeb = await webServerUp();
 
 for (const gate of selected) {
-  if (gate.id === "build" && busyWeb && !flags.includes("--allow-busy-web")) {
-    outcomes.push({
-      gate,
-      status: "skip",
-      note: "a dev server holds localhost:3000 and shares apps/web/.next",
-    });
-    continue;
-  }
-  if (gate.id === "e2e" && !chromiumInstalled()) {
+  if (["e2e", "dev"].includes(gate.id) && !chromiumInstalled()) {
     outcomes.push({
       gate,
       status: "skip",

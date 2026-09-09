@@ -2,8 +2,8 @@ import { expect, type Page, test } from "@playwright/test";
 import { aimAtOpponent, power } from "./gameplay";
 
 async function createRoom(page: Page) {
-  // Home shows Create Game as "soon"; the setup step still hosts a room.
-  await page.goto("/setup?mode=create");
+  await page.goto("/");
+  await page.getByRole("link", { name: /Create Game/ }).click();
   await page.getByRole("button", { name: "Start match" }).click();
   await expect(page).toHaveURL(/\/game\/[a-zA-Z0-9_-]+$/);
   await expect(page.getByTestId("battle")).toHaveAttribute(
@@ -28,7 +28,7 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
   // The invite carries the host's critter and map so the join screen can name them.
   const invite = await page.evaluate(() => navigator.clipboard.readText());
   expect(invite).toBe(`${roomUrl}?host=cuy&coat=caramel&map=andes`);
-  const rivalContext = await browser.newContext();
+  const rivalContext = await browser.newContext({ ...test.info().project.use });
   const rival = await rivalContext.newPage();
   rival.on("pageerror", (error) => errors.push(error.message));
   try {
@@ -56,13 +56,6 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
       );
       await expect(client.locator("canvas")).toHaveCount(1);
     }
-    const third = await browser.newPage();
-    await third.goto(invite);
-    await third.getByRole("button", { name: "Join Game", exact: true }).click();
-    await expect(third.locator('main [role="alert"]')).toContainText(
-      "This room is full",
-    );
-    await third.close();
     for (let shot = 0; shot < 9; shot++) {
       if (
         (await page.getByTestId("battle").getAttribute("data-phase")) ===
@@ -126,6 +119,13 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
         elements.map((element) => element.getAttribute("data-hp")),
       );
     expect(hpValues).toContain("0");
+    const third = await browser.newPage({ ...test.info().project.use });
+    await third.goto(invite);
+    await third.getByRole("button", { name: "Join Game", exact: true }).click();
+    await expect(third.locator('main [role="alert"]')).toContainText(
+      "This room is full",
+    );
+    await third.close();
     const finalTurn = Number(
       await page.getByTestId("battle").getAttribute("data-turn"),
     );
@@ -164,7 +164,7 @@ test("idle timeout passes the turn and disconnect awards the remaining player", 
   page,
 }) => {
   const invite = await createRoom(page);
-  const context = await browser.newContext();
+  const context = await browser.newContext({ ...test.info().project.use });
   const rival = await context.newPage();
   try {
     await rival.goto(invite);
@@ -192,13 +192,14 @@ test("mobile touch charges and fires without scrolling the arena", async ({
   browser,
 }) => {
   const context = await browser.newContext({
+    ...test.info().project.use,
     viewport: { width: 390, height: 844 },
     isMobile: true,
     hasTouch: true,
     deviceScaleFactor: 2,
   });
   const page = await context.newPage();
-  const rivalContext = await browser.newContext();
+  const rivalContext = await browser.newContext({ ...test.info().project.use });
   const rival = await rivalContext.newPage();
   try {
     const invite = await createRoom(page);

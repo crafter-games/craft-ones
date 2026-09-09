@@ -532,7 +532,7 @@ test("walking range drains away from the origin and refills on the way back", as
   await page.keyboard.down("KeyA");
   await expect.poll(left).toBeGreaterThan(BUDGET / 2);
   expect(await at()).toBeLessThan(start + BUDGET);
-  await expect.poll(left).toBeGreaterThan(BUDGET - 24);
+  await expect.poll(left, { intervals: [20] }).toBeGreaterThan(BUDGET - 24);
   await page.keyboard.up("KeyA");
   expect(Math.abs((await at()) - start)).toBeLessThan(24);
   // Crossing the origin starts spending again on the other side.

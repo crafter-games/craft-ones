@@ -1,17 +1,22 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import {
   createServer,
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
+import { monitorEventLoopDelay } from "node:perf_hooks";
+import { env } from "node:process";
 import { matchMaker, Server, type ServerOptions } from "@colyseus/core";
 import { WebSocketTransport } from "@colyseus/ws-transport";
 import { BattleRoom } from "./BattleRoom";
+import { Admission } from "./limits";
 
 const MAX_PAYLOAD = 4_096;
 const DEFAULT_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"];
 
 export function parseWebOrigins(value: string | undefined): Set<string> {
-  const origins = new Set(DEFAULT_ORIGINS);
+  const production = env.NODE_ENV === "production";
+  const origins = new Set(production ? [] : DEFAULT_ORIGINS);
   for (const entry of value?.split(",") ?? []) {
     const candidate = entry.trim();
     if (!candidate) continue;
@@ -35,6 +40,7 @@ export function parseWebOrigins(value: string | undefined): Set<string> {
     }
     origins.add(url.origin);
   }
+  if (!origins.size) throw new Error("WEB_ORIGIN is required in production");
   return origins;
 }
 
@@ -54,6 +60,7 @@ function corsHeaders(
 }
 
 function reject(response: ServerResponse, status: number, message: string) {
+  if (response.writableEnded) return;
   response.writeHead(status, {
     "Content-Type": "application/json",
     Vary: "Origin",
@@ -64,6 +71,7 @@ function reject(response: ServerResponse, status: number, message: string) {
 class BattleServer extends Server {
   constructor(
     private readonly origins: Set<string>,
+    private readonly admission: Admission,
     options: ServerOptions,
   ) {
     super(options);
@@ -75,6 +83,25 @@ class BattleServer extends Server {
   ) {
     if (!originAllowed(request, this.origins)) {
       reject(response, 403, "Origin not allowed");
+      return;
+    }
+    for (const [key, value] of Object.entries(
+      corsHeaders(request, this.origins),
+    ))
+      response.setHeader(key, value);
+    if (
+      request.method !== "OPTIONS" &&
+      !this.admission.allowRequest(
+        request,
+        /\/matchmake\/(create|joinOrCreate)\//.test(request.url ?? ""),
+      )
+    ) {
+      response.setHeader("Retry-After", "60");
+      reject(
+        response,
+        this.admission.draining ? 503 : 429,
+        "Arena requests are limited. Try again shortly.",
+      );
       return;
     }
     if (!["OPTIONS", "POST", "GET"].includes(request.method ?? "")) {
@@ -103,6 +130,12 @@ export function createGameServer(
   options: { webOrigin?: string; gracefullyShutdown?: boolean } = {},
 ) {
   const origins = parseWebOrigins(options.webOrigin ?? process.env.WEB_ORIGIN);
+  const admission = new Admission();
+  const lag = monitorEventLoopDelay({ resolution: 20 });
+  lag.enable();
+  class ConfiguredBattleRoom extends BattleRoom {
+    protected admission = admission;
+  }
   Reflect.deleteProperty(
     matchMaker.controller.DEFAULT_CORS_HEADERS,
     "Access-Control-Allow-Origin",
@@ -116,17 +149,47 @@ export function createGameServer(
       return;
     }
     const path = request.url?.split("?", 1)[0];
+    if (path === "/metrics" && request.method === "GET") {
+      const token = process.env.METRICS_TOKEN;
+      const digest = (value: string) =>
+        createHash("sha256").update(value).digest();
+      if (
+        !token ||
+        !timingSafeEqual(
+          digest(request.headers.authorization ?? ""),
+          digest(`Bearer ${token}`),
+        )
+      ) {
+        reject(response, 404, "Not found");
+        return;
+      }
+      response.writeHead(200, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store",
+      });
+      response.end(
+        JSON.stringify({
+          ...admission.snapshot(),
+          uptimeSeconds: process.uptime(),
+          rssBytes: process.memoryUsage().rss,
+          eventLoopP99Ms: lag.percentile(99) / 1e6,
+        }),
+      );
+      return;
+    }
     if (
       path === "/health" &&
       (request.method === "GET" || request.method === "HEAD")
     ) {
-      response.writeHead(200, {
+      response.writeHead(admission.draining ? 503 : 200, {
         ...corsHeaders(request, origins),
         "Content-Type": "application/json",
         "Cache-Control": "no-store",
       });
       response.end(
-        request.method === "HEAD" ? undefined : JSON.stringify({ ok: true }),
+        request.method === "HEAD"
+          ? undefined
+          : JSON.stringify({ ok: !admission.draining }),
       );
       return;
     }
@@ -134,13 +197,15 @@ export function createGameServer(
   });
   httpServer.requestTimeout = 10_000;
   httpServer.headersTimeout = 10_000;
-  const server = new BattleServer(origins, {
+  httpServer.on("close", () => lag.disable());
+  const server = new BattleServer(origins, admission, {
     transport: new WebSocketTransport({
       server: httpServer,
       maxPayload: MAX_PAYLOAD,
       perMessageDeflate: false,
       verifyClient: ({ req }, accept) => {
-        const allowed = originAllowed(req, origins);
+        const allowed =
+          originAllowed(req, origins) && admission.reserveConnection(req);
         accept(
           allowed,
           allowed ? undefined : 403,
@@ -151,6 +216,9 @@ export function createGameServer(
     greet: false,
     gracefullyShutdown: options.gracefullyShutdown ?? true,
   });
-  server.define("battle", BattleRoom);
-  return { server, httpServer };
+  server.define("battle", ConfiguredBattleRoom);
+  server.onBeforeShutdown(() => {
+    admission.draining = true;
+  });
+  return { server, httpServer, admission };
 }

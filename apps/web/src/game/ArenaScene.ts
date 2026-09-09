@@ -33,6 +33,7 @@ export class ArenaScene extends Phaser.Scene {
   private heard: BattleView | null = null;
   private generation = -1;
   private firedAngle = -Math.PI / 4;
+  private lastFrame = 0;
 
   constructor(private bridge: GameBridge) {
     super("arena");
@@ -49,6 +50,9 @@ export class ArenaScene extends Phaser.Scene {
     }
   }
   create() {
+    this.lastFrame = performance.now();
+    this.bridge.ready = true;
+    this.game.canvas.dataset.ready = "true";
     this.map = new ArenaMap(this);
     this.ink = this.add.graphics().setDepth(5);
     this.controls = new ArenaInput(this, this.bridge);
@@ -73,6 +77,9 @@ export class ArenaScene extends Phaser.Scene {
     );
   }
   update(_time: number, dt: number) {
+    const now = performance.now();
+    const cameraDt = now - this.lastFrame;
+    this.lastFrame = now;
     const { state, sessionId } = this.bridge;
     if (!state || !this.ink) return;
     if (this.generation !== this.bridge.generation) {
@@ -94,7 +101,7 @@ export class ArenaScene extends Phaser.Scene {
     this.map.update(state);
     this.director.update(
       state,
-      dt,
+      cameraDt,
       this.bridge.focus,
       this.controls.power() > 0,
       this.bridge.hudInsets,
@@ -262,6 +269,11 @@ export class ArenaScene extends Phaser.Scene {
     this.effects.update(state);
     // Read-only camera diagnostics used by browser acceptance tests and the local lab.
     const canvas = this.game.canvas;
+    canvas.dataset.projectileElapsed = String(state.projectile.elapsedMs);
+    canvas.dataset.projectileX = String(state.projectile.x);
+    canvas.dataset.projectileY = String(state.projectile.y);
+    canvas.dataset.explosionX = String(state.explosion.x);
+    canvas.dataset.explosionY = String(state.explosion.y);
     canvas.dataset.cameraZoom = String(this.cameras.main.zoom);
     canvas.dataset.cameraScrollY = String(this.cameras.main.scrollY);
     canvas.dataset.cameraWidth = String(this.cameras.main.width);

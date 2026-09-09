@@ -19,6 +19,7 @@ export class ArenaInput {
     private scene: Phaser.Scene,
     private bridge: GameBridge,
   ) {
+    this.lastTurn = this.turnKey();
     const canvas = scene.game.canvas;
     canvas.tabIndex = 0;
     canvas.setAttribute("role", "application");
@@ -125,9 +126,11 @@ export class ArenaInput {
     return `${this.bridge.generation}:${this.bridge.state?.turnNumber}`;
   }
   canFire() {
+    this.syncTurn();
     const { state, connected, sessionId } = this.bridge;
     return (
       connected &&
+      this.bridge.ready &&
       !this.bridge.suspended &&
       state?.phase === "aiming" &&
       state.currentPlayer === sessionId &&
@@ -183,10 +186,9 @@ export class ArenaInput {
       this.bridge.charge(rounded);
     }
   }
-  update(dt: number) {
+  private syncTurn() {
     if (this.turnKey() !== this.lastTurn) {
       this.lastTurn = this.turnKey();
-      this.bridge.abilityAim = false;
       this.cancel();
       this.direction = 0;
       this.held.clear();
@@ -196,6 +198,9 @@ export class ArenaInput {
       );
       this.angle = me?.number === 2 ? (-3 * Math.PI) / 4 : -Math.PI / 4;
     }
+  }
+  update(dt: number) {
+    this.syncTurn();
     if (this.bridge.suspended) {
       this.direction = 0;
       this.angleDirection = 0;

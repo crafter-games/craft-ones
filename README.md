@@ -1,38 +1,40 @@
 # Craft Ones
 
-An original 1v1 artillery game with four customizable characters: Cuy, Llama, Zorro and Ronsoco and five default weapons/tools. Two large original cartoon arenas, 100 HP, 15-second turns and local pass-and-play.
+An original 1v1 artillery game by Crafter Station. Play locally on one screen or create a room and invite a friend. Nine characters, six weapons/tools, four destructible arenas, 100 HP and 15-second turns.
 
-## Play locally
+## Run locally
+
+Requires Bun 1.3.11 and Node 22 or newer.
 
 ```sh
 bun install --frozen-lockfile
 bun dev
 ```
 
-Open [Craft Ones](http://localhost:3000). **Playground** immediately starts a local match; you control both characters in alternating turns. It also works with only `bun dev:web` running. **Create Game** creates a server-authoritative room; choose its map/character on home, then copy its invite to a second browser. Guests choose their character and select **Join Game**. After a completed duel, Player 1 can choose **Play again** while both players are connected.
+Open [localhost:3000](http://localhost:3000). **Playground** opens setup for two local seats and runs without a game server. **Create Game** opens online setup. Start a room, copy the invite and open it in a second browser. Guests select their character before joining; a third player cannot join. The host can rematch after a completed duel while both players remain connected.
 
-- Mouse or touch: point/drag to aim, hold to charge, release to fire. Full charge takes 2.8 seconds. The idle dotted arc previews 50% power; while charging, it follows your actual power.
-- A / D or the two arrow buttons: move, while your 15-second turn clock is running. Walking and basic jumping do not spend your attack.
-- Focus the arena to use keyboard aiming (left/right arrows) and charging (hold/release Space).
-- W or **Jump** jumps vertically. Hold A/D while pressing W (or hold a movement button while tapping Jump on touch) for a directional hop. Landing is required before another jump; there is no jump-point cost.
-- Use the arsenal buttons to choose a rocket, bouncing grenade (3 s), mortar, dynamite (2 s) or grappling hook. Every shot/tool uses the turn; ammunition is unlimited. Hooks have an 880-unit range and pull toward the first terrain anchor, stopping at obstacles.
-- **Second wind** restores 25 HP to the Cuy. **Andean leap** launches the Llama toward its aim. **Quickstep** moves the Zorro up to 320 units along the ground, stopping at walls, ledges and opponents. **Iron hide** gives the Ronsoco a persistent shield against the next 30 blast damage; it does not stack or prevent void death. Each ability spends the turn and is available again on the character’s second subsequent turn. Unavailable healing/shielding does not spend a turn.
-- The camera focuses the active critter briefly, then pulls back. **Focus character** keeps a close view; **View whole map** restores overview. Camera motion pauses during charging.
-- Open **Match setup** in the playground to pick a map, any of the four characters for either seat, and five coat colors. The large radial selector on home shows idle breathing, the selected coat, role, ability description and turn cost; reduced-motion preferences disable breathing. Selections carry into both local play and room creation. Changes start a fresh match; **Restart** also works mid-flight.
-- Both 1792 × 1024 maps have stepped routes, tapered floating platforms, caves, irregular cliffs and open voids. Rocket/grenade/mortar/dynamite explosions excavate terrain; falling beyond the bottom eliminates a player. Expand **Lab tools** for infinite HP, trajectory, collision circles and the destruction toggle. Terrain resets on rematch.
+The web and game processes can also run separately with `bun dev:web` and `bun dev:server`. To use another frontend port:
 
-On a phone on the same network, open `http://<computer-LAN-IP>:3000/playground`. For multiplayer, start the server with `WEB_ORIGIN=http://<computer-LAN-IP>:3000 bun dev:server`; the browser derives the WebSocket host from the page hostname. No authentication, bots or reconnect/persistence are included.
+```sh
+bun run --cwd apps/web dev --port 3107
+WEB_ORIGIN=http://localhost:3107 bun dev:server
+```
 
-## Code and original art
+The frontend derives a WebSocket endpoint from its hostname on port 2567. Set `NEXT_PUBLIC_GAME_SERVER_URL` in `apps/web/.env.local` before building when the game server has a different address. HTTPS pages require a secure WebSocket endpoint. A relative path such as `/battle` supports the included reverse proxy.
 
-- `packages/shared/src/Battle.ts`: lifecycle, authoritative actions and combat resolution, shared by server and local play.
-- `packages/shared/src/worlds.ts`, `terrainGrid.ts`, `worldMotion.ts`, `projectiles.ts`, `arsenal.ts`: original layouts, occupancy collision, body gravity, weapon simulation and character palettes/abilities. The earlier flat-world modules remain regression baselines.
-- `apps/game-server/src/BattleRoom.ts`: network message boundary; lab settings are not accepted remotely.
-- `apps/web/src/game/`: independent input, camera, map, VFX and character-rig modules.
-- `apps/web/src/components/`: shared React HUD, controls and network session.
-- `apps/web/src/game/characters/design.ts`: original editable SVG shapes. `characters/pose.ts` shares neck/shoulder/wrist/hip/ankle transforms and layer ordering between the rig and SVG pose proofs. Both leg roots sit behind the torso; ears behind the head; front paws align with each weapon grip without stretching. The procedural rig animates idle, walk, aim, fire, hit and death.
+## Play
 
-Run `bun apps/web/scripts/character-art.ts` to regenerate the transparent cutouts, [character reference](http://localhost:3000/art/character-reference.svg) and home illustration, plus [aim/stride pose proofs](http://localhost:3000/art/pose-review.svg) and the [original arsenal](http://localhost:3000/art/weapons/reference.svg). Held weapons, HUD icons and projectiles share `game/weapons/design.ts`. Run `bun apps/web/scripts/map-art.ts` to regenerate original backgrounds and map previews. Scenery uses simple outlined silhouettes, flat colors and layered shadow planes; no realistic textures. Terrain strata and rim details are drawn through the live collision mask, including holes. All art is authored vector/canvas work with no third-party sprites, copied IP or clothing. Each part uses the same 80 × 100 local viewbox with a pivot at (40, 50), rasterized at double resolution by Phaser.
+- Aim with mouse or touch, hold to charge and release to fire. Full charge takes 2.8 seconds. Arrow keys aim; hold/release Space to fire.
+- A/D moves; W jumps. Hold A/D and press W to jump directionally. Touch movement and Jump controls are available in both orientations.
+- Walking and jumping keep your shot. Walking away from the turn's starting point spends the shared 240-point range; returning restores it. Each jump permanently spends 48 points for that turn.
+- Keys 1–6 choose rocket, grenade, sticky bomb, mortar, dynamite or grapple. All spend a turn. Grenades and sticky bombs have a 3-second fuse, dynamite 2 seconds. Grapples pull toward terrain and stop at obstacles.
+- Llama leaps, Fox dashes, Capybara shields, Puma pounces and Alpaca heals 25 HP. Guinea Pig has no ability. Freddy, Michi and Railly Hugo have aimed projectile powers with signature looks. Key 7 selects an ability; aimed abilities use the same charge/release controls. Abilities cost a turn and have a four-global-turn cooldown.
+- Explosions carve terrain. Characters fall onto remaining surfaces or lose in the void. The authoritative state determines damage, turns, projectiles and winner.
+- The camera briefly follows the active character, then frames the map. Camera focus is also available from the HUD/menu. Charging freezes the camera.
+- Sound is synthesized locally and starts after interaction. Mute persists across reloads.
+- The local menu pauses time and input. Online matches keep running while menus are open. Local lab tools include restart, infinite HP, trajectories, collision circles and terrain destruction.
+
+Disconnecting forfeits an online match. There is no account system, saved progress or reconnection. Server restarts discard rooms. Connected waiting rooms expire after 5 minutes, finished rooms after 2 minutes, and all rooms after 30 minutes by default.
 
 ## Verify
 
@@ -41,14 +43,32 @@ bun test
 bun run typecheck
 bun run lint
 bun run build
+bun audit
+bun run test:server:bundle
 bunx playwright install chromium
 bun run test:e2e
+bun run test:e2e:dev
+bun run test:container
 ```
 
-Unit tests cover malformed/stale actions, fixed-step physics, both maps, complete matches, movement limits, preview/impact parity for all explosive weapons, cavities, wall collision, craters, fuse timing, grappling, jump rejection, ability cooldowns, void falls and gravity. Real Colyseus clients cover map/palette selection, terrain-patch, Zorro dash and Ronsoco shield synchronization, and remote action rejection. Browser tests play full local and multiplayer matches using real input, replay, camera movement, mobile touch and viewport changes.
+`test:e2e` runs the built production web app and a real game server. It requires a completed build. `test:e2e:dev` checks rendering lifecycle and exclusive abilities under development/Strict Mode. Tests fail if their ports are occupied instead of silently testing an unrelated process. Set `E2E_WEB_PORT=3107` to change the web test port. Reusing servers requires the explicit `E2E_REUSE_SERVERS=1` setting. A custom `E2E_SERVER_PORT` must match `NEXT_PUBLIC_GAME_SERVER_URL` in the tested web build.
 
-### Verification status for the expanded arena
+`test:container` requires Docker and free local ports 3080, 3443 and 2569. It builds the deployment images, verifies the local HTTPS certificate with curl, runs the online browser tests through Caddy, and measures ten active rooms under a one-CPU/512-MiB game container limit. It removes its test containers on exit.
 
-118 unit and real-server tests, typecheck and lint pass. Production compilation was validated with `bun run --cwd apps/web build --webpack`; the default Turbopack build encounters an environment port-binding restriction. The authored SVG art and pose proofs were rendered and inspected. Browser acceptance cases have been updated for the four-character radial roster, ability descriptions, map/character selection, the larger camera transform, arsenal controls and crater feedback, but have not yet been rerun: automatic approval review blocked the previous browser interaction/E2E attempt. Visual inspection of the final browser build and final E2E results remain pending authorization. This is not a browser-verified release.
+`bun scripts/converge.ts` runs the primary gates and verifies the original acceptance references. Browser failures retain screenshots and traces under `test-results/`.
 
-Movement reference: [Gamezebo’s Wild Ones walkthrough](https://www.gamezebo.com/walkthroughs/wild-ones-walkthrough/) describes walking, jumping and shooting in the same timed turn, and W/Space as jump. Craft Ones uses W for jump and retains Space for charging. Basic movement follows the timer; character abilities and the current grappling tool remain turn-consuming actions. Post-shot retreat is not implemented.
+## Deploy and operate
+
+See [deployment and operations](docs/deployment.md) for the container stack, Vercel frontend configuration, HTTPS, limits, metrics and rollback. The game server is a long-running Node process; it cannot be deployed as a short-lived request handler.
+
+Colyseus core remains on 0.16.24. A checked-in Bun patch updates its two runtime imports to the named Nano ID 3 API, while the root override pins `nanoid` to 3.3.18. Both module formats retain Colyseus's ID length/alphabet contract. The game bundle uses the pure-JavaScript WebSocket/MessagePack implementations, without optional native accelerators.
+
+## Source and original art
+
+- `packages/shared/src/Battle.ts`: authoritative lifecycle, actions and combat, shared by server and local play.
+- `packages/shared/src/worlds.ts`, `terrainGrid.ts`, `worldMotion.ts`, `projectiles.ts`, `arsenal.ts`: maps, occupancy, movement, weapons and character definitions.
+- `apps/game-server/src/BattleRoom.ts`, `server.ts`, `limits.ts`: network boundaries, room lifecycle and resource controls.
+- `apps/web/src/game/`: input, camera, maps, effects, synthesized audio and original character rigs.
+- `apps/web/src/components/`: lobby, setup and HUD.
+
+Regenerate character art with `bun apps/web/scripts/character-art.ts` and maps with `bun apps/web/scripts/map-art.ts`. Original SVG cutouts, palettes, joint transforms and layered backgrounds are authored in the repository. Four 2688 × 1536 arenas share occupancy collision with previews and terrain destruction. Flat terrain remains an internal regression baseline.

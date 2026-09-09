@@ -46,10 +46,13 @@ export default function ArenaCanvas({
   useEffect(() => {
     const parent = host.current;
     if (!parent) return;
+    let active = true;
+    bridge.current.ready = false;
     let game: Phaser.Game | null = null;
     // A hidden tab never lays the page out, and a zero-sized parent boots a
     // dead renderer: wait for the arena to have room before starting.
     const fit = () => {
+      if (!active || document.hidden) return;
       const width = parent.clientWidth;
       const height = parent.clientHeight;
       if (!width || !height) return;
@@ -75,14 +78,20 @@ export default function ArenaCanvas({
     };
     const observer = new ResizeObserver(fit);
     observer.observe(parent);
-    fit();
+    const frame = requestAnimationFrame(fit);
     window.addEventListener("orientationchange", fit);
     document.addEventListener("visibilitychange", fit);
     return () => {
+      active = false;
+      cancelAnimationFrame(frame);
       observer.disconnect();
       window.removeEventListener("orientationchange", fit);
       document.removeEventListener("visibilitychange", fit);
-      game?.destroy(true);
+      if (game) {
+        game.canvas?.remove();
+        game.destroy(true);
+        game.loop.wake();
+      }
     };
   }, [bridge]);
 

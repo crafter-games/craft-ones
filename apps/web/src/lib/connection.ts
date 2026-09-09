@@ -18,7 +18,15 @@ function client() {
   const endpoint =
     process.env.NEXT_PUBLIC_GAME_SERVER_URL ||
     `${protocol}://${window.location.hostname}:2567`;
-  return new Client(endpoint);
+  const url = new URL(endpoint, window.location.origin);
+  if (url.protocol === "http:") url.protocol = "ws:";
+  if (url.protocol === "https:") url.protocol = "wss:";
+  if (
+    !["ws:", "wss:"].includes(url.protocol) ||
+    (window.location.protocol === "https:" && url.protocol !== "wss:")
+  )
+    throw new Error("The game server requires a secure WebSocket endpoint.");
+  return new Client(url.href);
 }
 
 function scheduleRelease(id: string, entry: Connection, delay: number) {

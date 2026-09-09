@@ -9,11 +9,28 @@
       "!!playwright-report",
       "!!**/test-results",
       "!!bun.lock",
-      "!!**/next-env.d.ts"
+      "!!**/next-env.d.ts",
+      "!!dist"
     ]
   },
-  "formatter": { "indentStyle": "space", "indentWidth": 2 },
-  "javascript": { "formatter": { "quoteStyle": "double" } },
-  "css": { "parser": { "tailwindDirectives": true } },
-  "linter": { "enabled": true, "rules": { "preset": "recommended" } }
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double"
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended"
+    }
+  }
 }

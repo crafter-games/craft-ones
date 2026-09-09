@@ -161,7 +161,7 @@ export function HudOverlay({
   const myTurn = current?.sessionId === sessionId;
   const charging = power > 0;
   const urgent = aiming && !charging && (state?.remainingMs ?? 0) < 5000;
-  const locked = !aiming || !myTurn || !connected || charging;
+  const locked = !aiming || !myTurn || !connected || charging || menu || setup;
   const result = finished ? (winner ? "win" : "draw") : null;
   const forfeit = finished && state?.finishReason === "forfeit";
   const blocked = !!error && !state;
@@ -169,7 +169,8 @@ export function HudOverlay({
   const modal = menu || setup || waiting || finished || !state;
   useEffect(() => {
     bridge.current.suspended = modal;
-  }, [bridge, modal]);
+    bridge.current.paused = local && (menu || setup);
+  }, [bridge, modal, local, menu, setup]);
   useEffect(() => {
     if (!menu && !setup) return;
     const onKey = (event: KeyboardEvent) => {
@@ -428,11 +429,11 @@ export function HudOverlay({
         >
           <div className="hud-modal is-menu">
             <div className="hud-menu-head">
-              <h2>Paused</h2>
+              <h2>{local ? "Paused" : "Menu"}</h2>
               <span>
                 {local
                   ? "PLAYGROUND · LOCAL"
-                  : `ROOM ${invite?.roomId ?? ""} · ONLINE`}
+                  : `ROOM ${invite?.roomId ?? ""} · MATCH CONTINUES`}
               </span>
             </div>
             <div className="hud-menu-list">
