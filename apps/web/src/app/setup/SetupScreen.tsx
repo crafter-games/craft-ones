@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
+import { Brand } from "../../components/Brand";
 import { MapPicker, SeatPicker } from "../../components/MatchSetup";
 import { createBattle } from "../../lib/connection";
 
@@ -63,9 +64,7 @@ export default function SetupScreen() {
   return (
     <main className="lobby setup">
       <header className="lobby-header">
-        <Link href="/" className="brand">
-          CRAFT <span>ONES</span>
-        </Link>
+        <Brand />
         <div className="step-line">
           <span className="step" aria-current="step">
             1 · SETUP

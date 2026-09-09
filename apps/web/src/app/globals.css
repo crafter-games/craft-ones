@@ -107,7 +107,10 @@ body {
   color: var(--cream);
   text-decoration: none;
 }
-.brand span {
+.brand-word {
+  white-space: nowrap;
+}
+.brand-word span {
   color: var(--gold);
 }
 .brand img {
@@ -188,20 +191,132 @@ body {
 .home {
   background: var(--panel);
 }
-.home-poster {
+/* The scrim only exists where the copy sits over the scene. */
+.home-scrim {
+  display: none;
+}
+.cta.is-soon {
+  margin: 0;
+  cursor: default;
+  color: var(--muted);
+  background: #1c2f2999;
+  box-shadow: 0 5px 0 var(--ink);
+}
+.cta.is-soon small {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #526a53;
+  color: var(--cream);
+  letter-spacing: 0.14em;
+}
+/* ---------- Hero: abstract isometric arena ---------- */
+.home-scene {
+  position: relative;
   margin: 20px 20px 0;
   overflow: hidden;
   aspect-ratio: 4 / 3;
   border: 3px solid var(--ink);
   border-radius: 22px;
   box-shadow: 0 5px 0 var(--ink);
-  background: #b6e3df;
+  background: radial-gradient(
+    ellipse at 50% 12%,
+    #24413a 0%,
+    #16241f 62%,
+    #101a17 100%
+  );
 }
-.home-poster img {
+.hero-art {
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: 50% 30%;
+}
+.hero-face-top {
+  fill: #a9c85f;
+}
+.hero-face-left {
+  fill: #8f5b3f;
+}
+.hero-face-right {
+  fill: #5b3f34;
+}
+.hero-art polygon {
+  stroke: var(--ink);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.hero-seam {
+  fill: none;
+  stroke: #0b151233;
+  stroke-width: 3;
+}
+.hero-shadow {
+  fill: #0b151259;
+}
+.hero-slab {
+  animation: hero-bob 7s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes hero-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+.hero-motes circle {
+  fill: #8cd5bb;
+  opacity: 0.45;
+  animation: hero-bob 5.5s ease-in-out infinite;
+}
+.hero-motes circle:nth-child(2n) {
+  fill: var(--gold);
+  animation-duration: 8s;
+  animation-delay: -2s;
+}
+.hero-arc {
+  stroke: #d2fb78;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 2 18;
+  animation: hero-travel 2.4s linear infinite;
+}
+@keyframes hero-travel {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+.hero-impact circle {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 3;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hero-blast 2.4s ease-out infinite;
+}
+.hero-impact circle:last-child {
+  animation-delay: -1.2s;
+}
+@keyframes hero-blast {
+  0% {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  70%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-slab,
+  .hero-motes circle,
+  .hero-arc,
+  .hero-impact circle {
+    animation: none;
+  }
 }
 .home-copy {
   display: flex;
@@ -258,19 +373,19 @@ body {
     overflow: hidden;
     background: #b6e3df;
   }
-  .home-scene {
+  /* The copy sits over the scene, so the left half fades to ink. */
+  .home-scrim {
+    display: block;
     position: absolute;
     inset: 0;
-    background:
-      linear-gradient(
-        90deg,
-        #111512f7 0%,
-        #111512ea 40%,
-        #111512a6 58%,
-        #11151233 74%
-      ),
-      url("/art/duel-poster.svg") right bottom / auto 100% no-repeat,
-      #14251f;
+    z-index: 1;
+    background: linear-gradient(
+      90deg,
+      #111512f7 0%,
+      #111512f0 42%,
+      #111512b8 62%,
+      #11151200 84%
+    );
   }
   .home .pill {
     border: 2px solid var(--ink);
@@ -279,26 +394,43 @@ body {
   .home-actions .home-note {
     flex-basis: 100%;
   }
-  .home > *:not(.home-scene) {
+  .home > *:not(.home-scene):not(.home-scrim) {
     position: relative;
+    z-index: 2;
   }
   .lobby-header {
     padding: 28px 48px;
   }
-  .home-poster {
-    display: none;
+  .home-scene {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    aspect-ratio: auto;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  /* The scene sits to the right of the copy instead of behind all of it. */
+  .hero-art {
+    position: absolute;
+    top: 50%;
+    right: -1%;
+    width: min(56%, 820px);
+    height: auto;
+    aspect-ratio: 640 / 440;
+    transform: translateY(-50%);
   }
   .home-copy {
     gap: 28px;
     padding: min(9vh, 96px) 48px 0;
-    max-width: 700px;
+    max-width: 780px;
   }
   .hero-kicker {
     font-size: 13px;
     letter-spacing: 0.18em;
   }
   .hero-title {
-    font-size: clamp(72px, 7.8vw, 112px);
+    font-size: clamp(64px, 6.8vw, 104px);
   }
   .hero-lead {
     font-size: 20px;
@@ -1967,3 +2099,4 @@ body {
     animation: none;
   }
 }
+

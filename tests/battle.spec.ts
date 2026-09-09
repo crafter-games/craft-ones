@@ -2,8 +2,8 @@ import { expect, type Page, test } from "@playwright/test";
 import { aimAtOpponent, power } from "./gameplay";
 
 async function createRoom(page: Page) {
-  await page.goto("/");
-  await page.getByRole("link", { name: "Create Game" }).click();
+  // Home shows Create Game as "soon"; the setup step still hosts a room.
+  await page.goto("/setup?mode=create");
   await page.getByRole("button", { name: "Start match" }).click();
   await expect(page).toHaveURL(/\/game\/[a-zA-Z0-9_-]+$/);
   await expect(page.getByTestId("battle")).toHaveAttribute(
@@ -259,5 +259,5 @@ test("missing rooms show a recoverable error", async ({ page }) => {
     "no longer exists",
   );
   await page.getByRole("link", { name: "Back to home" }).click();
-  await expect(page.getByRole("link", { name: "Create Game" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Playground/ })).toBeVisible();
 });

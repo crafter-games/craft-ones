@@ -7,7 +7,7 @@
       "!!**/node_modules",
       "!!.devin",
       "!!playwright-report",
-      "!!test-results",
+      "!!**/test-results",
       "!!bun.lock",
       "!!**/next-env.d.ts"
     ]

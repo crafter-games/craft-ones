@@ -40,7 +40,7 @@
 
 
 ## First playable acceptance
-- Home exposes Playground and Create Game; both open the `/setup` step, which starts the match. Playground starts one canvas immediately, even with the game server unavailable.
+- Home exposes Playground, which opens the `/setup` step; Create Game is held back as "soon" on Home while `/setup?mode=create` still hosts a room. Playground starts one canvas immediately, even with the game server unavailable.
 - Every critter is an original SVG cutout with independent joints; render code is split into rig, input, map, effects and camera modules.
 - Both maps support complete matches through normal pointer input, victory and restart. Restart clears projectiles, restores HP and positions, and does not leak canvases or timers.
 - Move is constrained by turn, sequence, rate, time, map walls and player separation. Rematch is host-only after a finished game, with both players connected; old fire intents stay stale.
@@ -50,8 +50,9 @@
 - Regenerate original character assets with `bun apps/web/scripts/character-art.ts`. Joint coordinates and source shapes live in `apps/web/src/game/characters/design.ts`.
 
 ## Expanded arena acceptance
-- Original cartoon art uses flat colored shapes, contours and inset shadow planes. No realistic scenery, photographs, clothing or borrowed game assets.
+- Original cartoon art uses flat colored shapes, contours and inset shadow planes. No realistic scenery, photographs or borrowed game assets. The three requested exclusive guest adaptations use hand-authored SVG cutouts and their signature outfits.
 - The roster is six critters — guinea pig, llama, fox, capybara, puma and alpaca — and any of them can occupy either seat with one of five validated coat palettes. The setup step visibly offers map/character selectors that carry into local play and room creation; invite guests choose their character before joining.
+- Three exclusive guests join the six base critters: Freddy, Michi and Railly Hugo, with fixed signature looks. Their abilities arm aim/charge/release, spend one turn and use the shared authoritative projectile collision and cooldown. Freddy fires a damaging dimensional orb; Michi fires a damaging cosmic meow; Railly fires three consecutive triangular shurikens with one aim and one turn. These are original game powers, not claims about series canon.
 - Maps have suspended islands, obstacles, enclosed caves and open voids. Explosions remove occupancy cells; bodies fall onto new surfaces or lose when falling out of the world.
 - Rocket, grenade, sticky bomb, mortar, dynamite and grappling hook are available by default. Each shot/tool spends a turn; grenade/dynamite fuse and bounce are authoritative. Sticky bombs attach to terrain or characters and explode after a 3-second fuse. Hooks pull along a collision-checked line.
 - Basic walk/jump preserve the shot and share a 240 point range measured from where the turn began: walking or steering away spends it, walking back hands it straight back, and crossing the origin spends it again on the other side. Jumping costs a flat 48 that never returns. The HUD shows the synchronized remaining range and keeps the control that leads home live at zero; the arena draws the anchor and both edges. Jumping rejects repeated airborne jumps. W jumps vertically, A/D+W jumps directionally; the touch Jump control is adjacent to movement. Llama leaps toward aim, fox dashes, capybara shields, puma pounces low and far, alpaca heals 25 HP, and the guinea pig has no ability. Abilities spend a turn and become available four global turn numbers later.
