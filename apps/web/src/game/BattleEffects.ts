@@ -1,4 +1,8 @@
-import { type BattleView, WEAPONS } from "@craft-ones/shared";
+import {
+  type BattleView,
+  PROJECTILES,
+  type ProjectileKind,
+} from "@craft-ones/shared";
 import type * as Phaser from "phaser";
 import { WEAPON_ART } from "./weapons/design";
 
@@ -48,16 +52,20 @@ export class BattleEffects {
         .setDisplaySize(size[0], size[1])
         .setPosition(p.x, p.y)
         .setRotation(
-          p.kind === "grenade" || p.kind === "dynamite" || p.kind === "sticky"
-            ? p.stuck
-              ? 0
-              : p.elapsedMs / 180
-            : Math.atan2(p.vy, p.vx),
+          p.kind === "shuriken" || p.kind === "rift"
+            ? p.elapsedMs / (p.kind === "shuriken" ? 70 : 400)
+            : p.kind === "grenade" ||
+                p.kind === "dynamite" ||
+                p.kind === "sticky"
+              ? p.stuck
+                ? 0
+                : p.elapsedMs / 180
+              : Math.atan2(p.vy, p.vx),
         );
       this.fuse
         .setPosition(p.x, p.y - 29)
         .setText(
-          `${Math.max(0, (WEAPONS[p.kind].fuse - p.elapsedMs) / 1000).toFixed(1)}s`,
+          `${Math.max(0, (PROJECTILES[p.kind].fuse - p.elapsedMs) / 1000).toFixed(1)}s`,
         );
     }
     if ((p.active && p.kind === "grapple") || state.phase === "grappling") {
@@ -75,16 +83,26 @@ export class BattleEffects {
         this.trail.push({ x: p.x, y: p.y });
       if (this.trail.length > 24) this.trail.shift();
       this.trail.forEach((point, i) => {
-        g.fillStyle(0xfff5d8, (i / this.trail.length) * 0.6).fillCircle(
-          point.x,
-          point.y,
-          2 + (1 - i / this.trail.length) * 5,
-        );
+        g.fillStyle(
+          p.kind === "rift"
+            ? 0xb79bd1
+            : p.kind === "meow"
+              ? 0xccebdc
+              : p.kind === "shuriken"
+                ? 0xc4c2d2
+                : 0xfff5d8,
+          (i / this.trail.length) * 0.6,
+        ).fillCircle(point.x, point.y, 2 + (1 - i / this.trail.length) * 5);
       });
     } else this.trail = [];
     if (state.explosion.id !== this.explosionId) {
       this.explosionId = state.explosion.id;
-      this.burst(state.explosion.x, state.explosion.y, state.explosion.radius);
+      this.burst(
+        state.explosion.x,
+        state.explosion.y,
+        state.explosion.radius,
+        p.kind,
+      );
     }
     state.players.forEach((player, i) => {
       const damage = (this.hp[i] ?? 100) - player.hp;
@@ -117,10 +135,18 @@ export class BattleEffects {
       this.hp[i] = player.hp;
     });
   }
-  private burst(x: number, y: number, radius: number) {
+  private burst(x: number, y: number, radius: number, kind: ProjectileKind) {
+    const palette =
+      kind === "rift"
+        ? [0x8555aa, 0xd1a3f0, 0xf3dcff]
+        : kind === "meow"
+          ? [0x6faea6, 0xb3efd7, 0xfffbdd]
+          : kind === "shuriken"
+            ? [0x484954, 0xb2b5cc, 0xf0edf8]
+            : [0x786362, 0xffb35f, 0xffedac];
     this.scene.cameras.main.shake(140, 0.003);
     const ring = this.scene.add
-      .circle(x, y, 10, 0xffedac, 0.7)
+      .circle(x, y, 10, palette[2], 0.7)
       .setStrokeStyle(3, 0xfff6d1)
       .setDepth(25);
     this.scene.tweens.add({
@@ -135,12 +161,7 @@ export class BattleEffects {
       const angle = i * 2.399;
       const distance = 24 + (i % 5) * 17;
       const part = this.scene.add
-        .circle(
-          x,
-          y,
-          3 + (i % 5),
-          i % 3 === 0 ? 0x786362 : i % 3 === 1 ? 0xffb35f : 0xffedac,
-        )
+        .circle(x, y, 3 + (i % 5), palette[i % 3])
         .setDepth(24);
       this.scene.tweens.add({
         targets: part,

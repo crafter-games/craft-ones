@@ -4,6 +4,7 @@ import {
   CHARACTERS,
   COATS,
   type CoatId,
+  isExclusive,
   PLAYABLE_MAP_IDS,
   type PlayableMapId,
   type PlayerOptions,
@@ -12,7 +13,7 @@ import {
 } from "@craft-ones/shared";
 import Image from "next/image";
 
-/** One seat: lineup, species tabs, coat swatches and the ability note. */
+/** One seat: the roster lineup, coat swatches and the ability note. */
 export function SeatPicker({
   value,
   onChange,
@@ -35,6 +36,12 @@ export function SeatPicker({
   return (
     <fieldset className={`panel seat is-${seat}`}>
       <legend>{label}</legend>
+      {isExclusive(value.species) ? (
+        <p className="exclusive-bubble">
+          <i aria-hidden="true" />
+          Exclusive guest
+        </p>
+      ) : null}
       <div className="character-lineup" aria-hidden="true">
         <div className="lineup-stage" />
         {SPECIES.map((species, i) => {
@@ -91,18 +98,6 @@ export function SeatPicker({
           ›
         </button>
       </div>
-      <fieldset className="species-tabs" aria-label={`${label} character`}>
-        {SPECIES.map((species) => (
-          <button
-            key={species}
-            type="button"
-            aria-pressed={value.species === species}
-            onClick={() => onChange({ ...value, species })}
-          >
-            {CHARACTERS[species].name}
-          </button>
-        ))}
-      </fieldset>
       <div className="seat-identity">
         <div aria-live="polite" aria-atomic="true">
           <span className="critter-role">
@@ -111,22 +106,26 @@ export function SeatPicker({
           <span className="critter-name">{character.name}</span>{" "}
           <span className="critter-tagline">{character.tagline}</span>
         </div>
-        <fieldset className="coat-options" aria-label={`${label} coat color`}>
-          {(Object.entries(COATS) as [CoatId, (typeof COATS)[CoatId]][]).map(
-            ([coat, palette]) => (
-              <button
-                key={coat}
-                type="button"
-                title={palette.name}
-                aria-label={`${label}: ${palette.name}`}
-                aria-pressed={coat === value.coat}
-                className="coat-swatch"
-                style={{ background: palette.fur }}
-                onClick={() => onChange({ ...value, coat })}
-              />
-            ),
-          )}
-        </fieldset>
+        {isExclusive(value.species) ? (
+          <span className="signature-look">Signature look</span>
+        ) : (
+          <fieldset className="coat-options" aria-label={`${label} coat color`}>
+            {(Object.entries(COATS) as [CoatId, (typeof COATS)[CoatId]][]).map(
+              ([coat, palette]) => (
+                <button
+                  key={coat}
+                  type="button"
+                  title={palette.name}
+                  aria-label={`${label}: ${palette.name}`}
+                  aria-pressed={coat === value.coat}
+                  className="coat-swatch"
+                  style={{ background: palette.fur }}
+                  onClick={() => onChange({ ...value, coat })}
+                />
+              ),
+            )}
+          </fieldset>
+        )}
       </div>
       <div className="ability-note">
         <span>{ability ? "UNIQUE ABILITY · 1 TURN" : "STANDARD LOADOUT"}</span>

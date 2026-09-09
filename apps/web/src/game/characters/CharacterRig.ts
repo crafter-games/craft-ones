@@ -2,8 +2,8 @@ import {
   COATS,
   type CoatId,
   type PlayerView,
+  type ProjectileKind,
   SPECIES,
-  type WeaponId,
 } from "@craft-ones/shared";
 import * as Phaser from "phaser";
 import { joints, PARTS, type Part, type Species } from "./design";
@@ -115,7 +115,7 @@ export class CharacterRig {
     angle: number,
     power: number,
     dt: number,
-    kind: WeaponId = "rocket",
+    kind: ProjectileKind = "rocket",
   ) {
     if (this.weaponKind !== kind) {
       this.weaponKind = kind;
@@ -165,7 +165,7 @@ export class CharacterRig {
     this.eyes.setVisible(player.hp > 0);
     this.eyes.scaleY = Math.sin(now / 780 + player.number) > 0.998 ? 0.32 : 0.5;
     this.deadEyes.setVisible(player.hp <= 0);
-    const origin = weaponPose();
+    const origin = weaponPose(this.species, localAngle);
     this.weapon
       .setVisible(player.hp > 0)
       .setRotation(localAngle)

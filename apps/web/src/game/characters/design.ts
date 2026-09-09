@@ -1,5 +1,6 @@
-import { COATS, type CoatId, type WeaponId } from "@craft-ones/shared";
+import { COATS, type CoatId, type ProjectileKind } from "@craft-ones/shared";
 import { weaponMarkup } from "../weapons/design";
+import { exclusivePart } from "./exclusiveArt";
 /** Original vector cutouts. Coordinates are relative to each named joint.
  * Transparent 80 × 100 viewbox: pivot (40, 50), consistent scale and lighting.
  * Keep this source and regenerate assets with bun apps/web/scripts/character-art.ts.
@@ -36,6 +37,8 @@ export function partMarkup(
   part: Part,
   coat?: CoatId,
 ): string {
+  const guest = exclusivePart(species, part);
+  if (guest !== null) return guest;
   const { fur, light, shade } =
     COATS[coat ?? (species === "llama" ? "cream" : "caramel")];
   const back = part.endsWith("Back");
@@ -332,7 +335,7 @@ export function partSvg(species: Species, part: Part, coat?: CoatId) {
 export function referenceCharacter(
   species: Species,
   coat?: CoatId,
-  weapon?: WeaponId,
+  weapon?: ProjectileKind,
   angle = -0.25,
   stride = 0,
 ) {
@@ -345,7 +348,7 @@ export function referenceCharacter(
     const p = handPose(species, front, angle, weapon);
     return `<g transform="translate(${p.x} ${p.y}) rotate(${(p.angle * 180) / Math.PI})">${at(front ? "handFront" : "handBack")}</g>`;
   };
-  const origin = weaponPose();
+  const origin = weaponPose(species, angle);
   const layers = {
     tail: at("tail"),
     legBack: leg(false),

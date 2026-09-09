@@ -1,4 +1,4 @@
-import { WEAPONS, type WeaponId } from "./arsenal";
+import { PROJECTILES, type ProjectileKind } from "./arsenal";
 import { advanceRocket, clamp } from "./ballistics";
 import { ARENA } from "./config";
 import type { PlayerView } from "./schema";
@@ -9,7 +9,7 @@ export type Shot = {
   y: number;
   vx: number;
   vy: number;
-  kind: WeaponId;
+  kind: ProjectileKind;
   elapsedMs: number;
   bounces: number;
   stuck: boolean;
@@ -24,9 +24,9 @@ export function launchShot(
   player: { x: number; y: number },
   angle: number,
   power: number,
-  kind: WeaponId,
+  kind: ProjectileKind,
 ): Shot {
-  const spec = WEAPONS[kind];
+  const spec = PROJECTILES[kind];
   const speed = spec.minSpeed + power * (spec.maxSpeed - spec.minSpeed);
   const reach = ARENA.playerRadius + 4;
   const x = clamp(player.x + Math.cos(angle) * reach, 1, world.worldWidth - 1);
@@ -79,7 +79,7 @@ export function advanceShot(
   world: Geometry,
   players: Iterable<Pick<PlayerView, "x" | "y" | "hp">>,
 ): Impact {
-  const spec = WEAPONS[shot.kind],
+  const spec = PROJECTILES[shot.kind],
     dt = ARENA.stepMs / 1000;
   shot.elapsedMs += ARENA.stepMs;
   const bodies = Array.from(players);
@@ -158,7 +158,7 @@ export function shotTrajectory(
   player: PlayerView,
   angle: number,
   power: number,
-  kind: WeaponId,
+  kind: ProjectileKind,
 ) {
   const shot = launchShot(world, player, angle, power, kind);
   const points = [{ x: shot.x, y: shot.y }];

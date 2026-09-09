@@ -1,4 +1,4 @@
-import { isWeapon, WEAPONS } from "./arsenal";
+import { abilityProjectile, isWeapon, PROJECTILES, WEAPONS } from "./arsenal";
 import { clamp, launch } from "./ballistics";
 import {
   defaultAppearance,
@@ -52,6 +52,12 @@ function isFireAction(value: unknown): value is FireAction {
 
 export class Battle {
   readonly state = new BattleState();
+  private volley: {
+    sessionId: string;
+    angle: number;
+    power: number;
+    remaining: number;
+  } | null = null;
   private accumulator = 0;
   private bodyAccumulator = 0;
   private lastNow = Number.NEGATIVE_INFINITY;
@@ -326,6 +332,7 @@ export class Battle {
         now + EPSILON >= this.explosionDeadline &&
         !this.finishIfEliminated()
       ) {
+        if (this.continueVolley(now)) return;
         if (
           this.state.terrainRows.length &&
           !this.state.players.every((p) => grounded(this.state, p.x, p.y))
@@ -343,7 +350,8 @@ export class Battle {
         ) ||
           now >= this.resolveDeadline + 2500)
       ) {
-        if (!this.finishIfEliminated()) this.nextTurn(now);
+        if (!this.finishIfEliminated() && !this.continueVolley(now))
+          this.nextTurn(now);
       }
       return;
     }
@@ -401,6 +409,7 @@ export class Battle {
   private startTurn(index: number, now: number) {
     for (const player of this.controlledMotion) player.vx = 0;
     this.controlledMotion.clear();
+    this.volley = null;
     this.state.phase = "aiming";
     this.state.currentPlayer = this.state.players[index].sessionId;
     this.state.turnNumber++;
@@ -483,6 +492,22 @@ export class Battle {
       return "Ability unavailable";
     if (player.species === "cuy")
       return "This character has no special ability";
+    const projectile = abilityProjectile(player.species);
+    if (projectile) {
+      if (!isFireAction(payload)) return "Invalid ability aim";
+      player.abilityReadyTurn = this.state.turnNumber + 4;
+      this.volley =
+        projectile === "shuriken"
+          ? {
+              sessionId,
+              angle: payload.angle,
+              power: payload.power,
+              remaining: 2,
+            }
+          : null;
+      this.launchAbility(player, payload.angle, payload.power, now);
+      return null;
+    }
     if (player.species === "ronsoco") {
       if (player.shield > 0) return "Shield already active";
       player.shield = 30;
@@ -532,6 +557,44 @@ export class Battle {
     return null;
   }
 
+  private launchAbility(
+    player: Player,
+    angle: number,
+    power: number,
+    now: number,
+  ) {
+    const kind = abilityProjectile(player.species);
+    if (!kind) return;
+    this.controlledMotion.delete(player);
+    Object.assign(
+      this.state.projectile,
+      launchShot(this.state, player, angle, power, kind),
+      { active: true },
+    );
+    this.state.lastAction = kind;
+    this.state.phase = "flying";
+    this.state.remainingMs = 0;
+    this.accumulator = 0;
+    this.bodyAccumulator = 0;
+    this.flightMs = 0;
+    this.flightDeadline = now + PROJECTILES[kind].fuse;
+  }
+
+  private continueVolley(now: number) {
+    const volley = this.volley;
+    if (!volley || volley.remaining <= 0) return false;
+    const owner = this.state.players.find(
+      (p) => p.sessionId === volley.sessionId && p.hp > 0 && p.connected,
+    );
+    if (!owner) {
+      this.volley = null;
+      return false;
+    }
+    volley.remaining--;
+    this.launchAbility(owner, volley.angle, volley.power, now);
+    return true;
+  }
+
   private explode(now: number) {
     const { projectile, explosion } = this.state;
     projectile.active = false;
@@ -540,7 +603,7 @@ export class Battle {
     explosion.y = projectile.y;
     this.state.phase = "exploding";
     this.explosionDeadline = now + ARENA.explosionMs;
-    const weapon = WEAPONS[projectile.kind];
+    const weapon = PROJECTILES[projectile.kind];
     explosion.radius = weapon.radius;
     if (this.destructible && this.state.terrainRows.length) {
       eraseCircle(
@@ -613,6 +676,7 @@ export class Battle {
   }
 
   private finish(winner: string, reason: string) {
+    this.volley = null;
     this.state.phase = "finished";
     this.state.winner = winner;
     this.state.finishReason = reason;

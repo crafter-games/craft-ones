@@ -1,11 +1,12 @@
 import {
   ARENA,
+  abilityProjectile,
   type BattleView,
   CHARACTERS,
+  PROJECTILES,
   shotTrajectory,
   soundCues,
   trajectory,
-  WEAPONS,
 } from "@craft-ones/shared";
 import * as Phaser from "phaser";
 import { ArenaCamera } from "./ArenaCamera";
@@ -39,7 +40,7 @@ export class ArenaScene extends Phaser.Scene {
   preload() {
     CharacterRig.preload(this);
     ArenaMap.preload(this);
-    for (const kind of Object.keys(WEAPONS)) {
+    for (const kind of Object.keys(PROJECTILES)) {
       this.load.svg(`weapon-${kind}`, `/art/weapons/${kind}.svg`);
       this.load.svg(
         `projectile-${kind}`,
@@ -101,6 +102,11 @@ export class ArenaScene extends Phaser.Scene {
     this.map.cover(this.cameras.main);
     const g = this.ink.clear();
     const power = this.controls.power();
+    const owner = state.players.find((p) => p.sessionId === sessionId);
+    const selectedShot =
+      this.bridge.abilityAim && owner
+        ? (abilityProjectile(owner.species) ?? this.bridge.weapon)
+        : this.bridge.weapon;
     if (state.phase === "flying" && this.lastPhase !== "flying") {
       this.firedAngle = Math.atan2(state.projectile.vy, state.projectile.vx);
       const i = state.players.findIndex(
@@ -138,7 +144,7 @@ export class ArenaScene extends Phaser.Scene {
         active && state.phase !== "aiming"
           ? state.projectile.kind
           : active
-            ? this.bridge.weapon
+            ? selectedShot
             : "rocket",
       );
       this.labels[i]?.setPosition(player.x, player.y + 38);
@@ -218,7 +224,7 @@ export class ArenaScene extends Phaser.Scene {
                 player,
                 this.controls.angle,
                 power || 0.5,
-                this.bridge.weapon,
+                selectedShot,
               )
             : trajectory(state, player, this.controls.angle, power || 0.5);
           points.forEach((p, n) => {

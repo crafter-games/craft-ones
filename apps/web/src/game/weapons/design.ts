@@ -1,7 +1,10 @@
-import type { WeaponId } from "@craft-ones/shared";
+import type { ProjectileKind } from "@craft-ones/shared";
 
 const INK = "#34333e";
 export const WEAPON_ART = {
+  rift: { backGrip: [0, 8], frontGrip: [0, 10], shotSize: [42, 42] },
+  meow: { backGrip: [0, 8], frontGrip: [0, 10], shotSize: [40, 34] },
+  shuriken: { backGrip: [0, 8], frontGrip: [0, 10], shotSize: [30, 30] },
   rocket: { backGrip: [-5, 7], frontGrip: [13, 6], shotSize: [30, 22] },
   sticky: { backGrip: [0, 6], frontGrip: [10, 7], shotSize: [26, 26] },
   grenade: { backGrip: [2, 6], frontGrip: [10, 7], shotSize: [24, 24] },
@@ -10,9 +13,21 @@ export const WEAPON_ART = {
   grapple: { backGrip: [-7, 8], frontGrip: [10, 7], shotSize: [28, 22] },
 } as const;
 /** Original toy-like silhouettes, flat shadow planes and warm metal highlights. */
-export function weaponMarkup(kind: WeaponId, projectile = false): string {
+export function weaponMarkup(kind: ProjectileKind, projectile = false): string {
   const wrap = (s: string) =>
     `<g stroke="${INK}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">${s}</g>`;
+  if (kind === "rift")
+    return wrap(
+      `<ellipse rx="18" ry="17" fill="#876da0"/><ellipse rx="12" ry="11" fill="#38364d"/><path d="M-10-8Q12-18 14 2Q12 13-4 9Q-14 5-3-3Q5-8 8 1" fill="none" stroke="#cfb9ec" stroke-width="3"/><path d="M-24 2L-18-2M18-13L23-17M4 18L6 23" stroke="#b0d5a1"/>`,
+    );
+  if (kind === "meow")
+    return wrap(
+      `<path d="M-16 7L-17-15L-7-10Q1-13 8-9L18-16L16 8Q2 18-16 7Z" fill="#f9f4de"/><path d="M-9 0L-4-2M7-2L12 0" stroke="#b293b2" stroke-width="3"/><path d="M-1 4L3 4L1 8Z" fill="#df9c70"/><path d="M-23-7Q-29 0-23 8M23-7Q29 0 23 8" fill="none" stroke="#b3cbbf" stroke-width="3"/>`,
+    );
+  if (kind === "shuriken")
+    return wrap(
+      `<path d="M0-20L19 13H-19Z" fill="#f4eedf"/><path d="M0-20L3 5L19 13H-19L0 1Z" fill="#9394a2" stroke="none"/><path d="M0-10L9 7H-9Z" fill="#34333e"/><path d="M0-19L-18 12" fill="none" stroke="#ffffff" stroke-width="2"/>`,
+    );
   if (kind === "sticky")
     return wrap(
       `<path d="M-7-5L-11-9L-14-5L-10 0L-13 5L-9 9L-5 7L0 13L5 10L11 12L14 7L19 5L17 0L20-5L15-9L10-7L6-12L1-9L-3-11Z" fill="#b4c782"/><path d="M-7-4Q4-12 13-4Q20 5 10 11Q1 15-6 8Q-12 3-7-4Z" fill="#829b69"/><path d="M7-6Q16-3 13 6Q8 12 0 9L5 4Z" fill="#586f56" stroke="none"/><path d="M-5-2L0-5L-1 1L-6 3Z" fill="#dce7a9" stroke="none"/><circle cx="5" cy="2" r="4" fill="#e6ac70"/><path d="M5-2V2L8 3" fill="none"/><path d="M4-9L5-15Q11-19 13-14" fill="none" stroke="#f1d7a1" stroke-width="2.5"/><path d="m13-14 4-3m-4 3 5 1" stroke="#f3b55c"/>`,
@@ -49,6 +64,6 @@ export function weaponMarkup(kind: WeaponId, projectile = false): string {
     `<path d="M-18 4L-20 15L-12 16L-6 3" fill="#ae8059"/><path d="M-18-7L-10-10H12L17-5V5L10 9H-16Z" fill="#5c8b8c"/><path d="M-16 3H14L10 9H-16Z" fill="#3f656d" stroke="none"/><circle cx="-7" cy="0" r="7" fill="#d3b887"/><circle cx="-7" cy="0" r="4.5" fill="none" stroke="#876e56"/><circle cx="-7" cy="0" r="2" fill="#e9d9ad" stroke="none"/><path d="M1-4H22V2H1Z" fill="#afc9bf"/><path d="M17-1L25-12L29-10L25-4M17 1L25 12L29 10L25 4" fill="none" stroke="#34333e" stroke-width="4"/><path d="M17-1L25-11L28-10M17 1L25 11L28 10" fill="none" stroke="#d4e1cf" stroke-width="1.6"/>`,
   );
 }
-export function weaponSvg(kind: WeaponId, projectile = false) {
+export function weaponSvg(kind: ProjectileKind, projectile = false) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-32 -24 64 48" width="192" height="144"><title>${kind}${projectile ? " projectile" : ""}</title>${weaponMarkup(kind, projectile)}</svg>`;
 }

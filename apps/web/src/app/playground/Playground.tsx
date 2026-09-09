@@ -93,17 +93,25 @@ export default function Playground() {
       });
       sync();
     };
-    for (const action of ["jump", "ability"] as const)
-      bridge.current[action] = (direction?: -1 | 0 | 1) => {
-        setError(
-          engine[action](engine.state.currentPlayer, {
-            turnNumber: engine.state.turnNumber,
-            direction:
-              action === "jump" ? (direction ?? 0) : bridge.current.direction,
-          }) ?? "",
-        );
-        sync();
-      };
+    bridge.current.jump = (direction = 0) => {
+      setError(
+        engine.jump(engine.state.currentPlayer, {
+          turnNumber: engine.state.turnNumber,
+          direction,
+        }) ?? "",
+      );
+      sync();
+    };
+    bridge.current.ability = (aim) => {
+      setError(
+        engine.ability(engine.state.currentPlayer, {
+          turnNumber: engine.state.turnNumber,
+          direction: bridge.current.direction,
+          ...aim,
+        }) ?? "",
+      );
+      sync();
+    };
     setError("");
     sync();
     let previous = performance.now(),

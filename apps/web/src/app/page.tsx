@@ -9,7 +9,7 @@ export default function Home() {
       <div className="home-scrim" aria-hidden="true" />
       <header className="lobby-header">
         <Brand as="span" />
-        <span className="pill">Crafter Station · Play Lab</span>
+        <span className="pill">Play Lab · Prototype</span>
       </header>
       <HeroStage />
       <div className="home-copy">

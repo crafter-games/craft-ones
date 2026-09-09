@@ -1,5 +1,5 @@
 import { ArraySchema, defineTypes, Schema } from "@colyseus/schema";
-import type { CoatId, Species, WeaponId } from "./arsenal";
+import type { CoatId, ProjectileKind, Species, WeaponId } from "./arsenal";
 
 import { ARENA } from "./config";
 
@@ -80,7 +80,7 @@ defineTypes(Player, {
 });
 
 export class Projectile extends Schema {
-  declare kind: WeaponId;
+  declare kind: ProjectileKind;
   declare elapsedMs: number;
   declare bounces: number;
   declare stuck: boolean;

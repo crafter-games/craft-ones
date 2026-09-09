@@ -7,6 +7,7 @@ import {
   openMenu,
   openSetup,
   overview,
+  pickCritter,
   power,
   restartMatch,
   settled,
@@ -18,13 +19,9 @@ test("lineup selector wraps between characters, explains the default critter and
   await page.goto("/setup?mode=local");
   const picker = page.getByRole("group", { name: "Player 1", exact: true });
   await picker.getByRole("button", { name: "Previous character" }).click();
-  await expect(
-    picker.getByRole("button", { name: "Alpaca", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(picker.locator(".critter-name")).toHaveText("Railly Hugo");
   await picker.getByRole("button", { name: "Next character" }).click();
-  await expect(
-    picker.getByRole("button", { name: "Guinea Pig", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(picker.locator(".critter-name")).toHaveText("Guinea Pig");
   for (const [name, ability] of [
     ["Guinea Pig", "No special ability"],
     ["Llama", "Andean leap"],
@@ -33,9 +30,7 @@ test("lineup selector wraps between characters, explains the default critter and
     ["Puma", "Pounce"],
     ["Alpaca", "Second wind"],
   ]) {
-    const button = picker.getByRole("button", { name, exact: true });
-    await button.click();
-    await expect(button).toHaveAttribute("aria-pressed", "true");
+    await pickCritter(picker, name);
     await expect(picker.getByText(ability, { exact: true })).toBeVisible();
     await expect(
       picker.getByText(
@@ -43,7 +38,7 @@ test("lineup selector wraps between characters, explains the default critter and
       ),
     ).toBeVisible();
   }
-  await picker.getByRole("button", { name: "Capybara", exact: true }).click();
+  await pickCritter(picker, "Capybara");
   await picker
     .getByRole("button", { name: "Player 1: Slate", exact: true })
     .click();
@@ -132,11 +127,9 @@ test("lineup and expanded arsenal fit mobile and reduced-motion preferences", as
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/setup?mode=local");
   const picker = page.getByRole("group", { name: "Player 1", exact: true });
-  await picker.getByRole("button", { name: "Llama", exact: true }).focus();
+  await picker.getByRole("button", { name: "Next character" }).focus();
   await page.keyboard.press("Enter");
-  await expect(
-    picker.getByRole("button", { name: "Llama", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+  await expect(picker.locator(".critter-name")).toHaveText("Llama");
   await expect(picker.locator(".lineup-critter.is-selected img")).toHaveCSS(
     "animation-name",
     "none",
@@ -336,10 +329,10 @@ test("character colors, every weapon, turn camera and crater feedback are playab
   await page.goto("/playground");
   await expect(page.locator("canvas")).toBeVisible();
   await openSetup(page);
-  await page
-    .getByRole("group", { name: "Player 1", exact: true })
-    .getByRole("button", { name: "Llama", exact: true })
-    .click();
+  await pickCritter(
+    page.getByRole("group", { name: "Player 1", exact: true }),
+    "Llama",
+  );
   await page
     .getByRole("button", { name: "Player 1: Rose", exact: true })
     .click();
@@ -427,7 +420,7 @@ test("setup selections carry into local play and basic jump preserves the shot",
   await page.goto("/setup?mode=local");
   const seat = page.getByRole("group", { name: "Player 1", exact: true });
   await page.getByRole("button", { name: "Amber Hollows" }).click();
-  await seat.getByRole("button", { name: "Llama", exact: true }).click();
+  await pickCritter(seat, "Llama");
   await seat
     .getByRole("button", { name: "Player 1: Sage", exact: true })
     .click();

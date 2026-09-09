@@ -1,4 +1,4 @@
-import type { WeaponId } from "./arsenal";
+import type { ProjectileKind } from "./arsenal";
 import { ARENA } from "./config";
 import type { BattleView } from "./schema";
 
@@ -8,7 +8,7 @@ import type { BattleView } from "./schema";
  * playground hear the same match without the client inventing anything.
  */
 export type SoundCue =
-  | { kind: "fire"; weapon: WeaponId }
+  | { kind: "fire"; weapon: ProjectileKind }
   | { kind: "bounce" }
   | { kind: "stick" }
   | { kind: "blast"; radius: number }

@@ -10,10 +10,10 @@ import {
   WORLD_MAPS,
 } from "@craft-ones/shared";
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createBridge } from "../game/GameBridge";
 import { acquireBattle, hasBattle } from "../lib/connection";
+import { Brand } from "./Brand";
 import { HudOverlay } from "./HudOverlay";
 import { SeatPicker } from "./MatchSetup";
 
@@ -78,13 +78,17 @@ export default function GameSession({
             sequence: ++sequence,
             turnNumber: bridge.current.state?.turnNumber,
           });
-        for (const action of ["jump", "ability"] as const)
-          bridge.current[action] = (direction?: -1 | 0 | 1) =>
-            room.send(action, {
-              turnNumber: bridge.current.state?.turnNumber,
-              direction:
-                action === "jump" ? (direction ?? 0) : bridge.current.direction,
-            });
+        bridge.current.jump = (direction = 0) =>
+          room.send("jump", {
+            turnNumber: bridge.current.state?.turnNumber,
+            direction,
+          });
+        bridge.current.ability = (aim) =>
+          room.send("ability", {
+            turnNumber: bridge.current.state?.turnNumber,
+            direction: bridge.current.direction,
+            ...aim,
+          });
         restart.current = () =>
           room.send("restart", {
             turnNumber: bridge.current.state?.turnNumber,
@@ -166,9 +170,7 @@ export default function GameSession({
     return (
       <main className="lobby join">
         <header className="lobby-header">
-          <Link href="/" className="brand">
-            CRAFT <span>ONES</span>
-          </Link>
+          <Brand />
           <span className="font-mono text-xs text-[#a9b7a5]">
             room {roomId}
           </span>

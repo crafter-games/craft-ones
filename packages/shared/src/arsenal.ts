@@ -89,8 +89,30 @@ export const SPECIES = [
   "ronsoco",
   "puma",
   "alpaca",
+  "freddy",
+  "michi",
+  "railly",
 ] as const;
+export const EXCLUSIVE_SPECIES = ["freddy", "michi", "railly"] as const;
+export function isExclusive(species: Species) {
+  return (EXCLUSIVE_SPECIES as readonly string[]).includes(species);
+}
 export const CHARACTERS = {
+  freddy: {
+    name: "Freddy",
+    role: "Interdimensional guest",
+    tagline: "One cuy. Too many dimensions.",
+  },
+  michi: {
+    name: "Michi",
+    role: "Cosmic troublemaker",
+    tagline: "White fur. Loud consequences.",
+  },
+  railly: {
+    name: "Railly Hugo",
+    role: "Triangle master",
+    tagline: "Ship fast. Aim faster.",
+  },
   cuy: {
     name: "Guinea Pig",
     role: "All-rounder",
@@ -119,6 +141,21 @@ export const CHARACTERS = {
   },
 } as const;
 export const ABILITIES = {
+  freddy: {
+    name: "Dimensional rift",
+    description:
+      "Aim and charge a rift orb. Its impact deals up to 70 area damage and carves a crater. Costs this turn; 2-turn cooldown.",
+  },
+  michi: {
+    name: "Cosmic meow",
+    description:
+      "Aim a fast, low-gravity sonic pulse. Deals up to 55 area damage. Costs this turn; 2-turn cooldown.",
+  },
+  railly: {
+    name: "Triangle barrage",
+    description:
+      "Aim and charge, then release three triangular shurikens along the same line. Up to 24 damage each. Costs one turn; 2-turn cooldown.",
+  },
   cuy: null,
   zorro: {
     name: "Quickstep",
@@ -169,4 +206,54 @@ export function validPlayerOptions(value: unknown): value is PlayerOptions {
     typeof coat === "string" &&
     Object.hasOwn(COATS, coat)
   );
+}
+
+// Skills have their own projectile specs, never accepted by the public fire action.
+export const ABILITY_PROJECTILES = {
+  rift: {
+    name: "Dimensional rift",
+    minSpeed: 300,
+    maxSpeed: 1080,
+    gravity: 0.8,
+    radius: 150,
+    damage: 70,
+    crater: 90,
+    fuse: 8000,
+    bounce: 0,
+  },
+  meow: {
+    name: "Cosmic meow",
+    minSpeed: 600,
+    maxSpeed: 1200,
+    gravity: 0.18,
+    radius: 110,
+    damage: 55,
+    crater: 38,
+    fuse: 5000,
+    bounce: 0,
+  },
+  shuriken: {
+    name: "Triangle barrage",
+    minSpeed: 700,
+    maxSpeed: 1300,
+    gravity: 0.12,
+    radius: 58,
+    damage: 24,
+    crater: 24,
+    fuse: 3000,
+    bounce: 0,
+  },
+} as const;
+export const PROJECTILES = { ...WEAPONS, ...ABILITY_PROJECTILES };
+export type ProjectileKind = keyof typeof PROJECTILES;
+export function abilityProjectile(
+  species: Species,
+): keyof typeof ABILITY_PROJECTILES | null {
+  return species === "freddy"
+    ? "rift"
+    : species === "michi"
+      ? "meow"
+      : species === "railly"
+        ? "shuriken"
+        : null;
 }

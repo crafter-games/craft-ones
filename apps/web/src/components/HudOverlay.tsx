@@ -224,6 +224,7 @@ export function HudOverlay({
       className="arena"
       data-testid="battle"
       data-phase={state?.phase ?? "connecting"}
+      data-projectile-kind={state?.projectile.kind ?? ""}
       data-turn={state?.turnNumber ?? 0}
       data-current-player={current?.number ?? 0}
       data-connected={connected}

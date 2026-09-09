@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 const CHARGE_MS = 2800;
 const GRAVITY = 420;
@@ -15,6 +15,16 @@ type Arena = {
   vw: number;
   vh: number;
 };
+
+/** The seat cycles with arrows now, so tests walk the roster the same way. */
+export async function pickCritter(seat: Locator, name: string) {
+  const shown = seat.locator(".critter-name");
+  for (let step = 0; step < 16; step++) {
+    if ((await shown.textContent())?.trim() === name) return;
+    await seat.getByRole("button", { name: "Next character" }).click();
+  }
+  throw new Error(`The roster never reached ${name}`);
+}
 
 /** The HUD keeps settings, restart and the setup drawer behind MENU. */
 export async function openMenu(page: Page) {

@@ -1,13 +1,14 @@
 "use client";
 import {
   ABILITIES,
+  abilityProjectile,
   type BattleView,
   CHARACTERS,
   WEAPONS,
   type WeaponId,
 } from "@craft-ones/shared";
 import Image from "next/image";
-import { type RefObject, useEffect, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import type { GameBridge } from "../game/GameBridge";
 
 const IDS = Object.keys(WEAPONS) as WeaponId[];
@@ -26,6 +27,8 @@ export function Hotbar({
   const me = state?.players.find(
     (p) => p.sessionId === bridge.current.sessionId,
   );
+  const [aimingAbility, setAimingAbility] = useState(false);
+  const aimed = me ? abilityProjectile(me.species) : null;
   const ability = me ? ABILITIES[me.species] : null;
   const cooldown = me
     ? Math.max(
@@ -39,7 +42,22 @@ export function Hotbar({
     : cooldown
       ? `${cooldown} turn${cooldown === 1 ? "" : "s"} cooldown`
       : "1 turn";
-  // Keys 1–6 pick a tool, 7 spends the ability.
+  const selectAbility = () => {
+    if (disabled || !ability || cooldown || shieldActive) return;
+    if (aimed) {
+      bridge.current.abilityAim = !bridge.current.abilityAim;
+      setAimingAbility(bridge.current.abilityAim);
+    } else bridge.current.ability();
+  };
+  const selectionKey = `${bridge.current.generation}:${state?.turnNumber}:${state?.phase}`;
+  const previousSelection = useRef(selectionKey);
+  useEffect(() => {
+    if (previousSelection.current === selectionKey) return;
+    previousSelection.current = selectionKey;
+    bridge.current.abilityAim = false;
+    setAimingAbility(false);
+  }, [bridge, selectionKey]);
+  // Keys 1–6 pick a tool; 7 arms an aimed skill or uses an instant one.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey || disabled) return;
@@ -48,21 +66,32 @@ export function Hotbar({
       const slot = Number(event.key);
       if (!Number.isInteger(slot) || slot < 1 || slot > 7) return;
       if (slot === 7) {
-        if (ability && !cooldown && !shieldActive) bridge.current.ability();
+        if (ability && !cooldown && !shieldActive) {
+          if (aimed) {
+            bridge.current.abilityAim = !bridge.current.abilityAim;
+            setAimingAbility(bridge.current.abilityAim);
+          } else bridge.current.ability();
+        }
         return;
       }
       const id = IDS[slot - 1];
       if (!id) return;
       setWeapon(id);
       bridge.current.weapon = id;
+      bridge.current.abilityAim = false;
+      setAimingAbility(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [bridge, disabled, ability, cooldown, shieldActive]);
+  }, [bridge, disabled, ability, cooldown, shieldActive, aimed]);
   return (
     <div className="hud-hotbar">
       <p className="hud-weapon-label hud-panel">
-        <strong>{WEAPONS[weapon].name}</strong> · {WEAPONS[weapon].description}
+        <strong>{aimingAbility ? ability?.name : WEAPONS[weapon].name}</strong>{" "}
+        ·{" "}
+        {aimingAbility
+          ? "Aim · hold to charge · release to use skill. Press 7 again to cancel."
+          : WEAPONS[weapon].description}
         <span className="hud-hint">
           drag to aim · hold to charge · 1–7 pick
         </span>
@@ -73,12 +102,14 @@ export function Hotbar({
             key={id}
             type="button"
             className="hud-tile"
-            aria-pressed={weapon === id}
+            aria-pressed={!aimingAbility && weapon === id}
             aria-label={WEAPONS[id].name}
             disabled={disabled}
             onClick={() => {
               setWeapon(id);
               bridge.current.weapon = id;
+              bridge.current.abilityAim = false;
+              setAimingAbility(false);
             }}
             title={WEAPONS[id].description}
           >
@@ -99,9 +130,10 @@ export function Hotbar({
               className="hud-tile hud-ability"
               data-testid="character-ability"
               aria-label={`${ability.name} · ${abilityStatus}`}
-              title={`${CHARACTERS[me.species].name} exclusive · ${ability.description}`}
+              title={`${CHARACTERS[me.species].name} · ${ability.description}`}
               disabled={disabled || cooldown > 0 || shieldActive}
-              onClick={() => bridge.current.ability()}
+              aria-pressed={aimingAbility}
+              onClick={selectAbility}
             >
               <Image
                 src={`/art/${me.species}/${me.coat}/portrait.svg`}

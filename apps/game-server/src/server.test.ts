@@ -632,3 +632,59 @@ test("movement budget and sticky fuse replicate to both seats through normal int
     clients.delete(two);
   }
 }, 20000);
+
+test.each(["freddy", "michi", "railly"])(
+  "%s ability and exclusive appearance replicate through real room intentions",
+  async (species) => {
+    const one = await new Client(endpoint).create<BattleView>("battle", {
+      mapId: "andes",
+      player: { species, coat: "cream" },
+    });
+    const two = await new Client(endpoint).joinById<BattleView>(one.roomId, {
+      player: { species, coat: "cream" },
+    });
+    const errors: string[] = [];
+    for (const room of [one, two]) {
+      clients.add(room);
+      room.onMessage("actionError", (error: string) => errors.push(error));
+    }
+    try {
+      await waitFor(
+        () => one.state.players.length === 2 && two.state.phase === "aiming",
+      );
+      expect(two.state.players.every((p) => p.species === species)).toBe(true);
+      one.send("ability", { angle: Math.PI / 2, power: 0, turnNumber: 1 });
+      await waitFor(
+        () =>
+          one.state.players[0].abilityReadyTurn === 5 &&
+          two.state.players[0].abilityReadyTurn === 5,
+      );
+      const kind =
+        species === "freddy"
+          ? "rift"
+          : species === "michi"
+            ? "meow"
+            : "shuriken";
+      expect(one.state.projectile.kind).toBe(kind);
+      expect(two.state.projectile.kind).toBe(kind);
+      await waitFor(
+        () => one.state.turnNumber === 2 && two.state.turnNumber === 2,
+        12000,
+      );
+      expect(two.state.explosion.id).toBe(species === "railly" ? 3 : 1);
+      expect(two.state.explosion.id).toBe(one.state.explosion.id);
+      expect([...two.state.terrainRows]).toEqual([...one.state.terrainRows]);
+      expect(two.state.players.map((p) => p.hp)).toEqual(
+        one.state.players.map((p) => p.hp),
+      );
+      expect(two.state.players[0].hp).toBeLessThan(100);
+      expect(errors).toEqual([]);
+    } finally {
+      await one.leave();
+      await two.leave();
+      clients.delete(one);
+      clients.delete(two);
+    }
+  },
+  15000,
+);

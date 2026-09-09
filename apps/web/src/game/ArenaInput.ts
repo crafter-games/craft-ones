@@ -160,12 +160,14 @@ export class ArenaInput {
       this.sentTurn = this.turnKey();
       this.scene.game.canvas.dataset.fireAngle = String(this.angle);
       this.scene.game.canvas.dataset.firePower = String(this.power());
-      this.bridge.fire({
-        angle: this.angle,
-        power: this.power(),
-        weapon: this.bridge.weapon,
-        turnNumber: this.bridge.state.turnNumber,
-      });
+      const aim = { angle: this.angle, power: this.power() };
+      if (this.bridge.abilityAim) this.bridge.ability(aim);
+      else
+        this.bridge.fire({
+          ...aim,
+          weapon: this.bridge.weapon,
+          turnNumber: this.bridge.state.turnNumber,
+        });
     }
     this.cancel();
   }
@@ -184,6 +186,7 @@ export class ArenaInput {
   update(dt: number) {
     if (this.turnKey() !== this.lastTurn) {
       this.lastTurn = this.turnKey();
+      this.bridge.abilityAim = false;
       this.cancel();
       this.direction = 0;
       this.held.clear();

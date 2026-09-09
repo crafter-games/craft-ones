@@ -41,7 +41,7 @@
 
 ## First playable acceptance
 - Home exposes Playground, which opens the `/setup` step; Create Game is held back as "soon" on Home while `/setup?mode=create` still hosts a room. Playground starts one canvas immediately, even with the game server unavailable.
-- Every critter is an original SVG cutout with independent joints; render code is split into rig, input, map, effects and camera modules.
+- Every critter is an original SVG cutout with independent joints; render code is split into rig, input, map, effects and camera modules. Floating hands sit close to each character’s body width; armed grips follow that same placement and keep raised barrels clear of the face.
 - Both maps support complete matches through normal pointer input, victory and restart. Restart clears projectiles, restores HP and positions, and does not leak canvases or timers.
 - Move is constrained by turn, sequence, rate, time, map walls and player separation. Rematch is host-only after a finished game, with both players connected; old fire intents stay stale.
 - Trajectory preview and authoritative rockets share the same launch and swept-collision code. Player gravity continues during flight.

@@ -7,6 +7,7 @@ export type GameBridge = {
   showTrajectory: boolean;
   debug: boolean;
   weapon: WeaponId;
+  abilityAim: boolean;
   focus: boolean;
   sound: boolean;
   suspended: boolean;
@@ -16,7 +17,7 @@ export type GameBridge = {
   hudInsets: { top: number; bottom: number; left: number; right: number };
   direction: -1 | 1;
   jump: (direction?: -1 | 0 | 1) => void;
-  ability: () => void;
+  ability: (aim?: { angle: number; power: number }) => void;
   fire: (action: FireAction) => void;
   move: (direction: -1 | 1) => void;
   charge: (power: number) => void;
@@ -30,6 +31,7 @@ export function createBridge(charge: GameBridge["charge"]): GameBridge {
     showTrajectory: true,
     debug: false,
     weapon: "rocket",
+    abilityAim: false,
     focus: false,
     sound: true,
     suspended: false,

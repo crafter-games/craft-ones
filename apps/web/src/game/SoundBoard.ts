@@ -1,4 +1,4 @@
-import type { SoundCue, WeaponId } from "@craft-ones/shared";
+import type { ProjectileKind, SoundCue } from "@craft-ones/shared";
 
 /**
  * Every sound in Craft Ones is synthesised here from oscillators and noise.
@@ -262,8 +262,47 @@ export class SoundBoard {
     source.stop(at + decay + 0.02);
   }
 
-  private fire(weapon: WeaponId) {
+  private fire(weapon: ProjectileKind) {
     switch (weapon) {
+      case "rift":
+        this.tone({
+          from: 180,
+          to: 740,
+          type: "sine",
+          decay: 0.35,
+          gain: 0.15,
+        });
+        return this.tone({
+          from: 510,
+          to: 120,
+          type: "triangle",
+          decay: 0.3,
+          gain: 0.12,
+        });
+      case "meow":
+        this.tone({
+          from: 620,
+          to: 950,
+          type: "triangle",
+          decay: 0.12,
+          gain: 0.12,
+        });
+        return this.tone({
+          from: 900,
+          to: 260,
+          type: "sine",
+          decay: 0.38,
+          gain: 0.15,
+        });
+      case "shuriken":
+        this.tone({
+          from: 1700,
+          to: 850,
+          type: "triangle",
+          decay: 0.12,
+          gain: 0.09,
+        });
+        return this.hiss({ from: 3200, to: 900, decay: 0.14, gain: 0.1 });
       case "grenade":
         this.tone({
           from: 420,
