@@ -14,7 +14,7 @@ export default function Home() {
       <div className="home-poster">
         <Image
           src="/art/duel-poster.svg"
-          alt="An original caramel Cuy and a cream Llama face off in cartoon Andean grasslands."
+          alt="An original caramel guinea pig and a cream llama face off in cartoon Andean grasslands."
           width={720}
           height={620}
           priority

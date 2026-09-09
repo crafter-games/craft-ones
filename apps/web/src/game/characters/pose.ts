@@ -36,6 +36,22 @@ export const joints = {
     earFront: [7, -23],
     ankle: [0, 7],
   },
+  puma: {
+    neck: [1, -19],
+    hipBack: [-11, 11],
+    hipFront: [10, 11],
+    earBack: [-12, -24],
+    earFront: [9, -25],
+    ankle: [0, 7],
+  },
+  alpaca: {
+    neck: [1, -22],
+    hipBack: [-9, 10],
+    hipFront: [9, 10],
+    earBack: [-9, -21],
+    earFront: [7, -22],
+    ankle: [0, 7],
+  },
 } satisfies Record<Species, Record<string, number[]>>;
 
 /** The same ordered silhouettes and joint transforms drive SVG proofs and Phaser. */
@@ -65,6 +81,8 @@ export function handPose(
     llama: { front: [31, 5, -1.2], back: [-31, -16, -1.6] },
     zorro: { front: [35, 9, -1.5], back: [-47, 3, -1.05] },
     ronsoco: { front: [36, 5, -1.3], back: [-36, -3, -1.5] },
+    puma: { front: [35, 8, -1.45], back: [-45, 2, -1.1] },
+    alpaca: { front: [32, 4, -1.25], back: [-32, -13, -1.55] },
   }[species][front ? "front" : "back"];
   if (!weapon || !front) return { x: rest[0], y: rest[1], angle: rest[2] };
   const grip = WEAPON_ART[weapon].frontGrip;

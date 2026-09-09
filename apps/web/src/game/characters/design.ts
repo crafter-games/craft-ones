@@ -230,6 +230,52 @@ export function partMarkup(
     if (part === "tail") return "";
   }
 
+  // A puma is built on the fox rig: same lean frame, rounded ears, heavy tail.
+  if (species === "puma") {
+    if (part.startsWith("ear"))
+      return shape(
+        `<path fill="${limb}" d="${back ? "M-8 6Q-13-3-10-13Q-8-20-1-19Q6-18 7-10L6 5Z" : "M-8 6L-9-9Q-9-19-2-20Q6-20 8-11Q9-2 6 6Z"}"/>`,
+        `<path fill="${innerEar}" stroke="none" d="M-4 2Q-7-8-3-13Q1-16 4-11L4 1Z"/>`,
+        `<path fill="${cream}" stroke="none" d="M-6-13Q-3-17 1-16L-2-12L-5-9Z"/>`,
+        `<path fill="none" stroke-width="1.3" d="M-3 3L1-2"/>`,
+      );
+    if (part === "eyes")
+      return shape(
+        `<path fill="#fff9e9" stroke-width="1.6" d="M16-12L23-16L22-8L18-7Z"/>`,
+        `<path fill="${INK}" stroke="none" d="M20-14L23-13L22-9L19-9Z"/>`,
+        `<path fill="#fff9e9" stroke-width="2" d="M-9-15Q0-18 10-12Q8-3 0-5Q-8-7-9-15Z"/>`,
+        `<path fill="${INK}" stroke="none" d="M3-15Q8-14 7-8Q4-4 1-7Q0-11 3-15Z"/>`,
+        `<circle fill="#fff9e9" stroke="none" cx="5" cy="-11" r="1.2"/>`,
+        `<path fill="${INK}" stroke="none" d="M-11-23L-1-20L11-14L10-10L-1-15L-10-18Z M15-16L22-21L24-18L16-11Z"/>`,
+        `<path fill="none" stroke="${shade}" stroke-width="1.3" d="M-9-3l4 2"/>`,
+      );
+    if (part === "tail")
+      return shape(
+        `<path fill="${fur}" d="M-11 9Q-26 11-33 1Q-38-8-33-18Q-29-25-22-26L-20-19Q-27-17-28-9Q-27-1-18 0Q-12 1-10 0Z"/>`,
+        `<path fill="${shade}" stroke="none" d="M-30-4Q-27 6-16 6L-11 5L-11 8Q-25 10-30-4Z"/>`,
+        `<path fill="${paw}" stroke="none" d="M-22-26Q-16-27-15-21Q-14-16-19-15L-21-20Z"/>`,
+      );
+    return partMarkup("zorro", part, coat ?? "caramel");
+  }
+
+  // An alpaca is a shorter, fluffier llama: stubby ears and a pom-pom tail.
+  if (species === "alpaca") {
+    if (part.startsWith("ear"))
+      return shape(
+        `<path fill="${limb}" d="${back ? "M-6 6Q-11-2-9-12Q-7-19-1-18Q5-17 5-9L4 6Z" : "M-6 6L-7-10Q-7-18-1-18Q6-18 7-9Q7-2 4 6Z"}"/>`,
+        `<path fill="${innerEar}" stroke="none" d="M-3 2Q-6-7-3-12Q0-15 2-10L2 1Z"/>`,
+        `<path fill="${light}" stroke="none" d="M-5-11Q-3-16 0-15L-2-11L-4-8Z"/>`,
+        `<path fill="none" stroke-width="1.3" d="M-2 3L1-2"/>`,
+      );
+    if (part === "tail")
+      return shape(
+        `<path fill="${fur}" d="M-13 6Q-21 6-24-1Q-26-7-21-10Q-15-12-12-6Q-10-1-11 5Z"/>`,
+        `<path fill="${shade}" stroke="none" d="M-22-3Q-20 3-13 3L-12 5Q-21 5-22-3Z"/>`,
+        `<path fill="${light}" stroke="none" d="M-21-8Q-18-11-15-9L-18-6L-20-4Z"/>`,
+      );
+    return partMarkup("llama", part, coat ?? "caramel");
+  }
+
   if (part.startsWith("hand")) {
     if (species === "llama")
       return shape(

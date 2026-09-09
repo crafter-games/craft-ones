@@ -82,10 +82,17 @@ export type WeaponId = keyof typeof WEAPONS;
 export function isWeapon(value: unknown): value is WeaponId {
   return typeof value === "string" && Object.hasOwn(WEAPONS, value);
 }
-export const SPECIES = ["cuy", "llama", "zorro", "ronsoco"] as const;
+export const SPECIES = [
+  "cuy",
+  "llama",
+  "zorro",
+  "ronsoco",
+  "puma",
+  "alpaca",
+] as const;
 export const CHARACTERS = {
   cuy: {
-    name: "Cuy",
+    name: "Guinea Pig",
     role: "All-rounder",
     tagline: "No tricks. Just good aim.",
   },
@@ -94,11 +101,21 @@ export const CHARACTERS = {
     role: "High ground",
     tagline: "Always looking down on trouble.",
   },
-  zorro: { name: "Zorro", role: "Flanker", tagline: "One step ahead. Always." },
+  zorro: { name: "Fox", role: "Flanker", tagline: "One step ahead. Always." },
   ronsoco: {
-    name: "Ronsoco",
+    name: "Capybara",
     role: "Defender",
     tagline: "Immovable. Unimpressed.",
+  },
+  puma: {
+    name: "Puma",
+    role: "Ambusher",
+    tagline: "Quiet feet. Loud landings.",
+  },
+  alpaca: {
+    name: "Alpaca",
+    role: "Survivor",
+    tagline: "Fluffy, stubborn, hard to finish.",
   },
 } as const;
 export const ABILITIES = {
@@ -116,6 +133,16 @@ export const ABILITIES = {
   llama: {
     name: "Andean leap",
     description: "Leap toward your aim. Costs this turn; 2-turn cooldown.",
+  },
+  puma: {
+    name: "Pounce",
+    description:
+      "Spring low and far toward your aim, further than a leap but closer to the ground. Costs this turn; 2-turn cooldown.",
+  },
+  alpaca: {
+    name: "Second wind",
+    description:
+      "Shake off 25 damage, up to full health. Costs this turn; 2-turn cooldown.",
   },
 } as const;
 export type Species = (typeof SPECIES)[number];

@@ -38,14 +38,23 @@ export function SeatPicker({
       <div className="character-lineup" aria-hidden="true">
         <div className="lineup-stage" />
         {SPECIES.map((species, i) => {
+          // Only the pick and its two neighbours are on stage; the rest wait.
           const slot = (i - index + SPECIES.length) % SPECIES.length;
+          const place =
+            slot === 0
+              ? 0
+              : slot === 1
+                ? 1
+                : slot === SPECIES.length - 1
+                  ? -1
+                  : 2;
           return (
             <div
               key={species}
-              className={`lineup-critter ${slot === 0 ? "is-selected" : ""} ${slot === 2 ? "is-distant" : ""}`}
+              className={`lineup-critter ${place === 0 ? "is-selected" : ""} ${place === 2 ? "is-distant" : ""}`}
               style={{
-                left: `${[50, 83, 50, 17][slot]}%`,
-                zIndex: slot === 0 ? 4 : slot === 2 ? 1 : 2,
+                left: `${place === 0 ? 50 : place === 1 ? 83 : place === -1 ? 17 : 50}%`,
+                zIndex: place === 0 ? 4 : place === 2 ? 1 : 2,
               }}
             >
               <Image

@@ -10,7 +10,7 @@ import {
   SPECIES,
 } from "@craft-ones/shared";
 
-function fixture(species: "zorro" | "ronsoco") {
+function fixture(species: "zorro" | "ronsoco" | "puma" | "alpaca") {
   let now = 0;
   const battle = new Battle(() => now, "andes");
   battle.addPlayer("one", { species, coat: "slate" });
@@ -116,6 +116,41 @@ test("invalid, airborne, stale and out-of-turn dash attempts do not mutate the m
   expect(battle.ability("one", { direction: 1, turnNumber: 1 })).toBeString();
   expect(p.x).toBe(x);
   expect(s.phase).toBe("aiming");
+});
+test("Puma pounces flatter and further than a leap, and only from the ground", () => {
+  const { battle, s, p, until } = fixture("puma");
+  expect(battle.ability("one", { direction: 1, turnNumber: 1 })).toBeNull();
+  let highest = p.y;
+  const start = p.x;
+  until(() => {
+    highest = Math.min(highest, p.y);
+    return s.phase === "aiming";
+  });
+  expect(p.x - start).toBeGreaterThan(200);
+  // A llama's leap climbs higher; the pounce trades height for distance.
+  expect(622 - highest).toBeLessThan(160);
+  const airborne = fixture("puma");
+  airborne.p.y -= 120;
+  expect(
+    airborne.battle.ability("one", { direction: 1, turnNumber: 1 }),
+  ).toBeString();
+});
+test("Alpaca heals 25 up to full health, spends the turn and respects cooldown", () => {
+  const { battle, s, p, until, tick } = fixture("alpaca");
+  expect(battle.ability("one", { turnNumber: 1 })).toBe(
+    "Already at full health",
+  );
+  p.hp = 60;
+  expect(battle.ability("one", { turnNumber: 1 })).toBeNull();
+  expect(p.hp).toBe(85);
+  until(() => s.phase === "aiming");
+  expect(s.turnNumber).toBe(2);
+  p.hp = 40;
+  expect(battle.ability("one", { turnNumber: 2 })).toBeString();
+  expect(p.hp).toBe(40);
+  for (let i = 0; i < 3; i++) tick(ARENA.turnMs);
+  expect(battle.ability("one", { turnNumber: s.turnNumber })).toBeNull();
+  expect(p.hp).toBe(65);
 });
 test("Ronsoco shield survives turns, cannot stack and absorbs exactly 30 damage", () => {
   const protectedMatch = fixture("ronsoco"),

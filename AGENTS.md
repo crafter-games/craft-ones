@@ -2,7 +2,7 @@
 
 ## Principles
 - Original, tiny 1v1 turn-based artillery prototype for Crafter Station. No copied code or assets.
-- Scope: two players, 100 HP, two 2688 × 1536 maps with platforms/caves, six default weapons/tools, turn-cost character abilities, gravity, splash damage, knockback, basic movement bounded by a shared turn budget and timer, 15-second turns, invite links, winner and rematch.
+- Scope: two players, 100 HP, four 2688 × 1536 maps with platforms/caves, six default weapons/tools, turn-cost character abilities, gravity, splash damage, knockback, basic movement bounded by a shared turn budget and timer, 15-second turns, invite links, winner and rematch.
 - No auth, database, economy, bots, matchmaking, inventories or future-feature frameworks. Terrain destruction is enabled in both local and multiplayer matches; local lab controls can disable it.
 - Server alone decides physics, damage, positions, turns and winner. Multiplayer browsers send move/jump/fire/ability/restart intentions and render synchronized state. `/playground` runs the identical shared engine locally with alternating seats and no network dependency.
 - Keep Phaser client-only and lazy-loaded. React owns the lobby and HUD; Phaser owns the canvas and pointer input.
@@ -41,7 +41,7 @@
 
 ## First playable acceptance
 - Home exposes Playground and Create Game; both open the `/setup` step, which starts the match. Playground starts one canvas immediately, even with the game server unavailable.
-- Cuy and Llama are original SVG cutouts with independent joints; render code is split into rig, input, map, effects and camera modules.
+- Every critter is an original SVG cutout with independent joints; render code is split into rig, input, map, effects and camera modules.
 - Both maps support complete matches through normal pointer input, victory and restart. Restart clears projectiles, restores HP and positions, and does not leak canvases or timers.
 - Move is constrained by turn, sequence, rate, time, map walls and player separation. Rematch is host-only after a finished game, with both players connected; old fire intents stay stale.
 - Trajectory preview and authoritative rockets share the same launch and swept-collision code. Player gravity continues during flight.
@@ -51,10 +51,10 @@
 
 ## Expanded arena acceptance
 - Original cartoon art uses flat colored shapes, contours and inset shadow planes. No realistic scenery, photographs, clothing or borrowed game assets.
-- Both species can occupy either seat with one of five validated coat palettes. The setup step visibly offers map/character selectors that carry into local play and room creation; invite guests choose their character before joining.
+- The roster is six critters — guinea pig, llama, fox, capybara, puma and alpaca — and any of them can occupy either seat with one of five validated coat palettes. The setup step visibly offers map/character selectors that carry into local play and room creation; invite guests choose their character before joining.
 - Maps have suspended islands, obstacles, enclosed caves and open voids. Explosions remove occupancy cells; bodies fall onto new surfaces or lose when falling out of the world.
 - Rocket, grenade, sticky bomb, mortar, dynamite and grappling hook are available by default. Each shot/tool spends a turn; grenade/dynamite fuse and bounce are authoritative. Sticky bombs attach to terrain or characters and explode after a 3-second fuse. Hooks pull along a collision-checked line.
-- Basic walk/jump preserve the shot and share a 240 point range measured from where the turn began: walking or steering away spends it, walking back hands it straight back, and crossing the origin spends it again on the other side. Jumping costs a flat 48 that never returns. The HUD shows the synchronized remaining range and keeps the control that leads home live at zero; the arena draws the anchor and both edges. Jumping rejects repeated airborne jumps. W jumps vertically, A/D+W jumps directionally; the touch Jump control is adjacent to movement. Cuy heals 25 HP; Llama leaps toward aim. Abilities spend a turn and become available four global turn numbers later.
+- Basic walk/jump preserve the shot and share a 240 point range measured from where the turn began: walking or steering away spends it, walking back hands it straight back, and crossing the origin spends it again on the other side. Jumping costs a flat 48 that never returns. The HUD shows the synchronized remaining range and keeps the control that leads home live at zero; the arena draws the anchor and both edges. Jumping rejects repeated airborne jumps. W jumps vertically, A/D+W jumps directionally; the touch Jump control is adjacent to movement. Llama leaps toward aim, fox dashes, capybara shields, puma pounces low and far, alpaca heals 25 HP, and the guinea pig has no ability. Abilities spend a turn and become available four global turn numbers later.
 - Turn camera briefly focuses the active character, pulls back to the map, and includes high projectiles. Manual focus is available; charging freezes camera movement.
 - Shared occupancy collision drives previews, damage craters and physical movement. Flat terrain remains an internal baseline for regression tests, not a player-facing map.
 - Regenerate original layered backgrounds/previews with `bun apps/web/scripts/map-art.ts`; character generation also creates all coat variants and portraits.

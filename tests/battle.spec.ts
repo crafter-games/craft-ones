@@ -34,7 +34,7 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
   try {
     await rival.goto(invite);
     await expect(rival.locator(".host-card")).toContainText(
-      "Cuy is waiting in Cloudbreak Valley",
+      "Guinea Pig is waiting in Cloudbreak Valley",
     );
     await rival.getByRole("button", { name: "Join Game", exact: true }).click();
     for (const client of [page, rival]) {

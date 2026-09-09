@@ -509,6 +509,10 @@ export class Battle {
       }
       if (Math.abs(player.x - start) < 1) return "No room to dash";
       this.state.lastAction = "dash";
+    } else if (player.species === "alpaca") {
+      if (player.hp >= 100) return "Already at full health";
+      player.hp = Math.min(100, player.hp + 25);
+      this.state.lastAction = "shield";
     } else {
       const direction = (payload as { direction?: unknown }).direction;
       if (
@@ -516,8 +520,10 @@ export class Battle {
         !grounded(this.state, player.x, player.y)
       )
         return "Land before leaping";
-      player.vx = direction * 360;
-      player.vy = -480;
+      // A puma springs flatter and further than a llama's high leap.
+      const pounce = player.species === "puma";
+      player.vx = direction * (pounce ? 470 : 360);
+      player.vy = pounce ? -360 : -480;
       this.state.lastAction = "leap";
     }
     this.controlledMotion.delete(player);

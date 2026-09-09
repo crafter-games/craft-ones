@@ -1,6 +1,7 @@
 import {
   ARENA,
   type BattleView,
+  CHARACTERS,
   shotTrajectory,
   soundCues,
   trajectory,
@@ -56,9 +57,9 @@ export class ArenaScene extends Phaser.Scene {
     // Browsers keep audio asleep until the player acts, and aiming is an act.
     this.input.on("pointerdown", () => this.speakers.resume());
     this.events.once("shutdown", () => this.speakers.dispose());
-    this.labels = [0, 1].map((i) =>
+    this.labels = [0, 1].map(() =>
       this.add
-        .text(0, 0, i === 0 ? "CUY" : "LLAMA", {
+        .text(0, 0, "", {
           fontFamily: "Arial",
           fontSize: "11px",
           fontStyle: "bold",
@@ -117,7 +118,7 @@ export class ArenaScene extends Phaser.Scene {
         this.rigKeys[i] = key;
       }
       this.labels[i]?.setText(
-        `${player.species.toUpperCase()} · P${player.number}`,
+        `${CHARACTERS[player.species].name.toUpperCase()} · P${player.number}`,
       );
       const active = state.currentPlayer === player.sessionId;
       const angle =

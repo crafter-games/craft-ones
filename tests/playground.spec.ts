@@ -12,24 +12,26 @@ import {
   settled,
 } from "./gameplay";
 
-test("lineup selector wraps between characters, explains the default Cuy and carries coats into play", async ({
+test("lineup selector wraps between characters, explains the default critter and carries coats into play", async ({
   page,
 }) => {
   await page.goto("/setup?mode=local");
   const picker = page.getByRole("group", { name: "Player 1", exact: true });
   await picker.getByRole("button", { name: "Previous character" }).click();
   await expect(
-    picker.getByRole("button", { name: "Ronsoco", exact: true }),
+    picker.getByRole("button", { name: "Alpaca", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   await picker.getByRole("button", { name: "Next character" }).click();
   await expect(
-    picker.getByRole("button", { name: "Cuy", exact: true }),
+    picker.getByRole("button", { name: "Guinea Pig", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
   for (const [name, ability] of [
-    ["Cuy", "No special ability"],
+    ["Guinea Pig", "No special ability"],
     ["Llama", "Andean leap"],
-    ["Zorro", "Quickstep"],
-    ["Ronsoco", "Iron hide"],
+    ["Fox", "Quickstep"],
+    ["Capybara", "Iron hide"],
+    ["Puma", "Pounce"],
+    ["Alpaca", "Second wind"],
   ]) {
     const button = picker.getByRole("button", { name, exact: true });
     await button.click();
@@ -37,10 +39,11 @@ test("lineup selector wraps between characters, explains the default Cuy and car
     await expect(picker.getByText(ability, { exact: true })).toBeVisible();
     await expect(
       picker.getByText(
-        name === "Cuy" ? "STANDARD LOADOUT" : "UNIQUE ABILITY · 1 TURN",
+        name === "Guinea Pig" ? "STANDARD LOADOUT" : "UNIQUE ABILITY · 1 TURN",
       ),
     ).toBeVisible();
   }
+  await picker.getByRole("button", { name: "Capybara", exact: true }).click();
   await picker
     .getByRole("button", { name: "Player 1: Slate", exact: true })
     .click();
