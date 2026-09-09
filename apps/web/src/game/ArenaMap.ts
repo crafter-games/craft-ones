@@ -16,6 +16,7 @@ export class ArenaMap {
   private terrain: Phaser.GameObjects.Image;
   private texture: Phaser.Textures.CanvasTexture;
   private key = "";
+  private world = { width: WORLD_WIDTH, height: WORLD_HEIGHT };
   constructor(private scene: Phaser.Scene) {
     this.background = scene.add
       .image(0, 0, `map-${PLAYABLE_MAP_IDS[0]}`)
@@ -38,6 +39,20 @@ export class ArenaMap {
     for (const id of PLAYABLE_MAP_IDS)
       scene.load.svg(`map-${id}`, `/art/${WORLD_MAPS[id].background}`);
   }
+  /**
+   * Stretch the painted scenery over whatever the camera can see. Pulling back
+   * to frame the whole map leaves room around the world, and the sky, hills and
+   * clouds have to reach the edges instead of stopping at a visible seam.
+   */
+  cover(camera: Phaser.Cameras.Scene2D.Camera) {
+    const view = camera.worldView;
+    const left = Math.min(0, view.x);
+    const top = Math.min(0, view.y);
+    const right = Math.max(this.world.width, view.right);
+    const bottom = Math.max(this.world.height, view.bottom);
+    this.background.setPosition(left, top);
+    this.background.setDisplaySize(right - left, bottom - top);
+  }
   update(state: BattleView) {
     const key = `${state.mapId}:${state.terrainRevision}:${state.terrainRows.length}`;
     if (key === this.key) return;
@@ -46,9 +61,8 @@ export class ArenaMap {
       PLAYABLE_MAP_IDS.find((id) => id === state.mapId) ?? PLAYABLE_MAP_IDS[0];
     const palette = WORLD_MAPS[id].palette;
     this.scene.cameras.main.setBackgroundColor(palette.sky);
-    this.background
-      .setTexture(`map-${id}`)
-      .setDisplaySize(state.worldWidth, state.worldHeight);
+    this.world = { width: state.worldWidth, height: state.worldHeight };
+    this.background.setTexture(`map-${id}`);
     const ctx = this.texture.context,
       w = state.worldWidth,
       h = state.worldHeight;

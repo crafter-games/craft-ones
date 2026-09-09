@@ -12,6 +12,8 @@ export type GameBridge = {
   suspended: boolean;
   ready: boolean;
   movementDirection: -1 | 0 | 1;
+  /** Screen-space edges the HUD covers, which the camera frames around. */
+  hudInsets: { top: number; bottom: number; left: number; right: number };
   direction: -1 | 1;
   jump: (direction?: -1 | 0 | 1) => void;
   ability: () => void;
@@ -33,6 +35,7 @@ export function createBridge(charge: GameBridge["charge"]): GameBridge {
     suspended: false,
     ready: false,
     movementDirection: 0,
+    hudInsets: { top: 0, bottom: 0, left: 0, right: 0 },
     direction: 1,
     jump: () => {},
     ability: () => {},

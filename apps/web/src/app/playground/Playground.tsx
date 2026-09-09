@@ -7,10 +7,9 @@ import {
   type PlayerOptions,
   validPlayerOptions,
 } from "@craft-ones/shared";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { BattlePanel } from "../../components/BattlePanel";
+import { HudOverlay } from "../../components/HudOverlay";
 import { MapPicker, SeatPicker } from "../../components/MatchSetup";
 import { createBridge } from "../../game/GameBridge";
 
@@ -127,115 +126,87 @@ export default function Playground() {
     };
   }, [mapId, revision]);
   const reset = () => setRevision((value) => value + 1);
-  return (
-    <main className="game-shell mx-auto min-h-svh max-w-6xl px-3 py-5 sm:px-8">
-      <header className="game-header">
-        <Link href="/" className="brand">
-          CRAFT <span>ONES</span>
-        </Link>
-        <span className="lab-badge">PLAYGROUND · LOCAL</span>
-        <button type="button" onClick={reset} className="secondary-button">
-          Restart
-        </button>
-      </header>
-      <details className="match-setup mb-4">
-        <summary>
-          Match setup <span>Maps · critters · colors</span>
-        </summary>
-        <div className="setup-grid">
-          <MapPicker
-            value={mapId}
-            onChange={(id) => {
-              setMapId(id);
-              reset();
-            }}
+  const lab = (
+    <fieldset className="hud-lab">
+      <legend>LAB TOOLS</legend>
+      <div>
+        <label>
+          <input
+            type="checkbox"
+            checked={infiniteHp}
+            onChange={(e) => setInfiniteHp(e.target.checked)}
           />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <SeatPicker
-              value={one}
-              seat="one"
-              label="Player 1"
-              onChange={(value) => {
-                setOne(value);
-                reset();
-              }}
-            />
-            <SeatPicker
-              value={two}
-              seat="two"
-              label="Player 2"
-              onChange={(value) => {
-                setTwo(value);
-                reset();
-              }}
-            />
-          </div>
-        </div>
-        <p className="mt-3 text-xs text-[#a9b7a5]">
-          Changing a map or critter starts a fresh match.
-        </p>
-      </details>
-      {error ? (
-        <p role="alert" className="mb-3 text-xs text-[#ffc69b]">
-          {error}
-        </p>
-      ) : null}
-      <BattlePanel
-        state={state}
-        sessionId={state?.currentPlayer ?? ""}
-        connected={!!state}
-        bridge={bridge}
-        power={power}
-        local
-        restart={reset}
+          Infinite HP
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={showTrajectory}
+            onChange={(e) => setShowTrajectory(e.target.checked)}
+          />
+          Show trajectory
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={debug}
+            onChange={(e) => setDebug(e.target.checked)}
+          />
+          Show collisions
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={destructible}
+            onChange={(e) => setDestructible(e.target.checked)}
+          />
+          Destructible ground
+        </label>
+      </div>
+    </fieldset>
+  );
+  // Changing a map or critter in the drawer starts a fresh match.
+  const setup = (
+    <>
+      <MapPicker
+        value={mapId}
+        onChange={(id) => {
+          setMapId(id);
+          reset();
+        }}
       />
-      <details className="lab-tools mt-6">
-        <summary>
-          Lab tools <span className="text-[#82947f]">/ quick experiments</span>
-        </summary>
-        <div className="mt-4 flex flex-wrap gap-x-6 gap-y-4">
-          <label>
-            <input
-              type="checkbox"
-              checked={infiniteHp}
-              onChange={(e) => setInfiniteHp(e.target.checked)}
-            />{" "}
-            Infinite HP
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={showTrajectory}
-              onChange={(e) => setShowTrajectory(e.target.checked)}
-            />{" "}
-            Show trajectory
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={debug}
-              onChange={(e) => setDebug(e.target.checked)}
-            />{" "}
-            Show collisions
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={destructible}
-              onChange={(e) => setDestructible(e.target.checked)}
-            />{" "}
-            Destructible ground
-          </label>
-          <a
-            href="/art/character-reference.svg"
-            target="_blank"
-            rel="noreferrer"
-            className="underline text-[#b7c4b1]"
-          >
-            Character sheet ↗
-          </a>
-        </div>
-      </details>
-    </main>
+      <SeatPicker
+        value={one}
+        seat="one"
+        label="Player 1"
+        onChange={(value) => {
+          setOne(value);
+          reset();
+        }}
+      />
+      <SeatPicker
+        value={two}
+        seat="two"
+        label="Player 2"
+        onChange={(value) => {
+          setTwo(value);
+          reset();
+        }}
+      />
+    </>
+  );
+  return (
+    <HudOverlay
+      state={state}
+      sessionId={state?.currentPlayer ?? ""}
+      connected={!!state}
+      bridge={bridge}
+      power={power}
+      local
+      restart={reset}
+      labTools={lab}
+      setupDrawer={setup}
+      error={error}
+    />
   );
 }

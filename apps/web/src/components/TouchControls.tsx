@@ -3,7 +3,8 @@ import { ARENA } from "@craft-ones/shared";
 import { type RefObject, useEffect, useRef } from "react";
 import type { GameBridge } from "../game/GameBridge";
 
-export function MovementControls({
+/** Walk, jump and the range left, as hold buttons anchored to the thumbs. */
+export function TouchControls({
   bridge,
   disabled,
   budget,
@@ -45,42 +46,64 @@ export function MovementControls({
       window.removeEventListener("blur", cancel);
     };
   }, [disabled]);
+  const percent = Math.round((budget / ARENA.moveBudget) * 100);
   return (
-    <div className="flex items-center gap-2">
-      {([-1, 1] as const).map((direction) => (
-        <button
-          key={direction}
-          type="button"
-          aria-label={direction === -1 ? "Move left" : "Move right"}
-          disabled={disabled || (budget <= 0 && direction !== home)}
-          className="move-button"
-          onPointerDown={(event) => {
-            event.preventDefault();
-            event.currentTarget.setPointerCapture(event.pointerId);
-            stop();
-            heldDirection.current = direction;
-            bridge.current.move(direction);
-            timer.current = setInterval(
-              () => bridge.current.move(direction),
-              100,
-            );
-          }}
-          onPointerUp={stop}
-          onPointerCancel={stop}
-          onLostPointerCapture={stop}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              bridge.current.move(direction);
-            }
-          }}
+    <>
+      <div className="hud-range hud-panel">
+        <div>
+          <span>RANGE</span>
+          <strong data-testid="movement-left">
+            {Math.ceil(budget)} / {ARENA.moveBudget}
+          </strong>
+        </div>
+        {/* biome-ignore lint/a11y/useSemanticElements: a <meter> cannot carry the HUD's flat segmented styling */}
+        <div
+          className="hud-bar"
+          role="meter"
+          aria-label="Range remaining"
+          aria-valuemin={0}
+          aria-valuemax={ARENA.moveBudget}
+          aria-valuenow={Math.ceil(budget)}
         >
-          {direction === -1 ? "←" : "→"}
-        </button>
-      ))}
+          <i style={{ width: `${percent}%`, background: "#d2fb78" }} />
+        </div>
+      </div>
+      <div className="hud-walk">
+        {([-1, 1] as const).map((direction) => (
+          <button
+            key={direction}
+            type="button"
+            aria-label={direction === -1 ? "Move left" : "Move right"}
+            disabled={disabled || (budget <= 0 && direction !== home)}
+            className="hud-hold"
+            onPointerDown={(event) => {
+              event.preventDefault();
+              event.currentTarget.setPointerCapture(event.pointerId);
+              stop();
+              heldDirection.current = direction;
+              bridge.current.move(direction);
+              timer.current = setInterval(
+                () => bridge.current.move(direction),
+                100,
+              );
+            }}
+            onPointerUp={stop}
+            onPointerCancel={stop}
+            onLostPointerCapture={stop}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                bridge.current.move(direction);
+              }
+            }}
+          >
+            {direction === -1 ? "←" : "→"}
+          </button>
+        ))}
+      </div>
       <button
         type="button"
-        className="move-button jump-button"
+        className="hud-hold hud-jump"
         aria-label="Jump"
         title={`W jumps; A/D sets direction. Jump spends ${ARENA.jumpCost} of your range for good. Keeps your shot.`}
         disabled={disabled || budget < ARENA.jumpCost}
@@ -97,28 +120,8 @@ export function MovementControls({
             );
         }}
       >
-        ↥ <span>Jump</span>
+        <span aria-hidden="true">↥</span>JUMP
       </button>
-      <div className="min-w-24 flex-1 text-[10px] leading-tight text-[#b5bfb3]">
-        <div className="mb-1 flex justify-between gap-2">
-          <span>RANGE</span>
-          <strong data-testid="movement-left">
-            {Math.ceil(budget)} / {ARENA.moveBudget}
-          </strong>
-        </div>
-        <meter
-          aria-label="Range remaining"
-          min={0}
-          max={ARENA.moveBudget}
-          value={budget}
-          className="block h-2 w-full"
-        />
-        <span className="mt-1 block">
-          {budget <= 0
-            ? "At the edge · walk back to refill"
-            : `Range from where your turn began · jump costs ${ARENA.jumpCost}`}
-        </span>
-      </div>
-    </div>
+    </>
   );
 }

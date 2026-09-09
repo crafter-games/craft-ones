@@ -11,7 +11,33 @@ type Arena = {
   zoom: number;
   cx: number;
   cy: number;
+  /** The camera viewport in game units, which now follows the window. */
+  vw: number;
+  vh: number;
 };
+
+/** The HUD keeps settings, restart and the setup drawer behind MENU. */
+export async function openMenu(page: Page) {
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+}
+export async function closeMenu(page: Page) {
+  await page.getByRole("button", { name: "Resume", exact: true }).click();
+}
+export async function restartMatch(page: Page) {
+  await openMenu(page);
+  await page.getByRole("button", { name: "Restart match" }).click();
+}
+export async function openSetup(page: Page) {
+  await openMenu(page);
+  await page.getByRole("button", { name: "Match setup" }).click();
+}
+export async function closeSetup(page: Page) {
+  await page.getByRole("button", { name: "Back to the match" }).click();
+}
+/** The charge the power gauge is showing right now. */
+export async function power(page: Page) {
+  return Number(await page.locator("#power").getAttribute("data-value"));
+}
 
 /** One round trip for everything aiming needs; the turn clock is only 15s. */
 function readArena(page: Page, number: number): Promise<Arena> {
@@ -32,15 +58,17 @@ function readArena(page: Page, number: number): Promise<Arena> {
       zoom: Number(canvas.dataset.cameraZoom),
       cx: Number(canvas.dataset.cameraCenterX),
       cy: Number(canvas.dataset.cameraCenterY),
+      vw: Number(canvas.dataset.cameraWidth),
+      vh: Number(canvas.dataset.cameraHeight),
     };
   }, number);
 }
 
 function toScreen(arena: Arena, x: number, y: number) {
-  const { box, zoom, cx, cy } = arena;
+  const { box, zoom, cx, cy, vw, vh } = arena;
   return {
-    x: box.x + (((x - cx) * zoom + 480) * box.width) / 960,
-    y: box.y + (((y - cy) * zoom + 270) * box.height) / 540,
+    x: box.x + (((x - cx) * zoom + vw / 2) * box.width) / vw,
+    y: box.y + (((y - cy) * zoom + vh / 2) * box.height) / vh,
   };
 }
 
@@ -243,11 +271,17 @@ export async function settled(page: Page) {
 
 /** Wait until the camera frames the whole map. */
 export async function overview(page: Page) {
+  const canvas = page.locator("canvas");
   await expect
     .poll(async () =>
       Math.abs(
-        Number(await page.locator("canvas").getAttribute("data-camera-zoom")) -
-          Math.min(960 / 2688, 540 / 1536), // ARENA viewport / expanded world
+        Number(await canvas.getAttribute("data-camera-zoom")) -
+          // The framing excludes the HUD, so read the free area from the scene.
+          Math.min(
+            Number(await canvas.getAttribute("data-camera-frame-width")) / 2688,
+            Number(await canvas.getAttribute("data-camera-frame-height")) /
+              1536,
+          ),
       ),
     )
     // The camera eases in asymptotically and never lands exactly. The turn
@@ -265,7 +299,9 @@ export async function aimWorld(page: Page, x: number, y: number) {
   const zoom = Number(await canvas.getAttribute("data-camera-zoom"));
   const cx = Number(await canvas.getAttribute("data-camera-center-x")),
     cy = Number(await canvas.getAttribute("data-camera-center-y"));
-  const at = toScreen({ box, zoom, cx, cy } as Arena, x, y);
+  const vw = Number(await canvas.getAttribute("data-camera-width")),
+    vh = Number(await canvas.getAttribute("data-camera-height"));
+  const at = toScreen({ box, zoom, cx, cy, vw, vh } as Arena, x, y);
   await page.mouse.move(at.x, at.y);
   return at;
 }

@@ -1,5 +1,16 @@
 import { expect, test } from "@playwright/test";
-import { aimAtOpponent, aimWorld, overview, settled } from "./gameplay";
+import {
+  aimAtOpponent,
+  aimWorld,
+  closeMenu,
+  closeSetup,
+  openMenu,
+  openSetup,
+  overview,
+  power,
+  restartMatch,
+  settled,
+} from "./gameplay";
 
 test("lineup selector wraps between characters, explains the default Cuy and carries coats into play", async ({
   page,
@@ -42,12 +53,12 @@ test("lineup selector wraps between characters, explains the default Cuy and car
     "data-coat",
     "slate",
   );
-  const arsenal = page.getByRole("group", { name: "Arsenal", exact: true });
+  const arsenal = page.getByRole("toolbar", { name: "Arsenal", exact: true });
   await expect(arsenal.getByRole("button")).toHaveCount(7);
   await arsenal
     .getByRole("button", { name: "Iron hide · 1 turn", exact: true })
     .click();
-  await expect(page.getByTestId("player-1")).toContainText("+30 shield");
+  await expect(page.getByTestId("player-1")).toContainText("SHIELD +30");
   await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "2");
   await expect(
     arsenal.getByRole("button", { name: "Andean leap · 1 turn", exact: true }),
@@ -83,7 +94,7 @@ for (const mapId of ["canopy", "caldera"]) {
     );
     await expect(
       page
-        .getByRole("group", { name: "Arsenal", exact: true })
+        .getByRole("toolbar", { name: "Arsenal", exact: true })
         .getByRole("button"),
     ).toHaveCount(6);
     await expect(page.getByTestId("character-ability")).toHaveCount(0);
@@ -98,7 +109,7 @@ for (const mapId of ["canopy", "caldera"]) {
       "data-terrain-revision",
       "1",
     );
-    await page.getByRole("button", { name: "Restart", exact: true }).click();
+    await restartMatch(page);
     await expect(page.getByTestId("battle")).toHaveAttribute(
       "data-terrain-revision",
       "0",
@@ -136,7 +147,7 @@ test("lineup and expanded arsenal fit mobile and reduced-motion preferences", as
   await expect(page.getByTestId("character-ability")).toBeVisible();
   await expect(
     page
-      .getByRole("group", { name: "Arsenal", exact: true })
+      .getByRole("toolbar", { name: "Arsenal", exact: true })
       .getByRole("button"),
   ).toHaveCount(7);
   expect(
@@ -228,25 +239,21 @@ test("metered movement, lab options, high-shot camera and restarting during flig
     .toBeGreaterThan(384);
   await page.keyboard.up("KeyD");
   await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "1");
-  await page.getByText("Lab tools", { exact: false }).click();
+  await openMenu(page);
   await page.getByLabel("Infinite HP", { exact: true }).check();
   await page.getByLabel("Show collisions", { exact: true }).check();
   await page.getByLabel("Destructible ground", { exact: true }).check();
-  await page.getByRole("button", { name: "Restart", exact: true }).click();
+  await page.getByRole("button", { name: "Restart match" }).click();
   const canvas = page.locator("canvas");
   await overview(page);
   await aimWorld(page, 288, 100);
   await page.mouse.down();
-  await expect
-    .poll(async () =>
-      Number(await page.locator("#power").getAttribute("value")),
-    )
-    .toBe(100);
+  await expect.poll(async () => await power(page)).toBe(100);
   await page.mouse.up();
   await expect
     .poll(async () => Number(await canvas.getAttribute("data-camera-zoom")))
     .toBeLessThan(0.8);
-  await page.getByRole("button", { name: "Restart", exact: true }).click();
+  await restartMatch(page);
   await expect(page.getByTestId("battle")).toHaveAttribute(
     "data-phase",
     "aiming",
@@ -287,11 +294,7 @@ test("mobile local movement and touch aim survive portrait-to-landscape resize",
       type: "touchStart",
       touchPoints: [point],
     });
-    await expect
-      .poll(async () =>
-        Number(await page.locator("#power").getAttribute("value")),
-      )
-      .toBeGreaterThan(20);
+    await expect.poll(async () => await power(page)).toBeGreaterThan(20);
     await cdp.send("Input.dispatchTouchEvent", {
       type: "touchMove",
       touchPoints: [{ x: point.x + 8, y: point.y - 8 }],
@@ -329,7 +332,7 @@ test("character colors, every weapon, turn camera and crater feedback are playab
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/playground");
   await expect(page.locator("canvas")).toBeVisible();
-  await page.getByText("Match setup", { exact: false }).click();
+  await openSetup(page);
   await page
     .getByRole("group", { name: "Player 1", exact: true })
     .getByRole("button", { name: "Llama", exact: true })
@@ -349,10 +352,12 @@ test("character colors, every weapon, turn camera and crater feedback are playab
     path: "test-results/match-setup.png",
     fullPage: true,
   });
-  await page.getByText("Match setup", { exact: false }).click();
+  await closeSetup(page);
+  await openMenu(page);
   await page
     .getByRole("button", { name: "Focus character", exact: true })
     .click();
+  await closeMenu(page);
   await expect
     .poll(async () =>
       Number(await page.locator("canvas").getAttribute("data-camera-zoom")),
@@ -362,9 +367,11 @@ test("character colors, every weapon, turn camera and crater feedback are playab
     path: "test-results/character-focus.png",
     fullPage: true,
   });
+  await openMenu(page);
   await page
     .getByRole("button", { name: "View whole map", exact: true })
     .click();
+  await closeMenu(page);
   await overview(page);
   for (const name of [
     "Rocket",
@@ -381,7 +388,9 @@ test("character colors, every weapon, turn camera and crater feedback are playab
   await aimWorld(page, 675, 855);
   await page.mouse.down();
   await page.waitForFunction(
-    () => Number(document.querySelector("#power")?.getAttribute("value")) >= 10,
+    () =>
+      Number(document.querySelector("#power")?.getAttribute("data-value")) >=
+      10,
   );
   await page.mouse.up();
   await expect(page.getByTestId("battle")).toHaveAttribute(
@@ -462,9 +471,9 @@ test("movement bar empties, blocks walk and jump, and keeps sticky bombs availab
   const canvas = page.locator("canvas");
   await expect(canvas).toBeFocused();
   const meter = page.getByRole("meter", { name: "Range remaining" });
-  await expect(meter).toHaveAttribute("value", "240");
+  await expect(meter).toHaveAttribute("aria-valuenow", "240");
   await page.keyboard.down("KeyD");
-  await expect(meter).toHaveAttribute("value", "0");
+  await expect(meter).toHaveAttribute("aria-valuenow", "0");
   await page.keyboard.up("KeyD");
   const player = page.getByTestId("player-1");
   const x = Number(await player.getAttribute("data-x"));
@@ -495,10 +504,10 @@ test("movement bar empties, blocks walk and jump, and keeps sticky bombs availab
     "1",
   );
   await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "2");
-  await expect(meter).toHaveAttribute("value", "240");
+  await expect(meter).toHaveAttribute("aria-valuenow", "240");
   await expect(sticky).toBeEnabled();
   await page.getByRole("button", { name: "Jump", exact: true }).click();
-  await expect(meter).toHaveAttribute("value", "192");
+  await expect(meter).toHaveAttribute("aria-valuenow", "192");
   await page.screenshot({
     path: "test-results/movement-sticky.png",
     fullPage: true,
@@ -583,7 +592,7 @@ test("the arena makes noise, the toggle silences it, and the choice sticks", asy
   await toggle.click();
   await expect(battle).toHaveAttribute("data-sound", "off");
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
-  await page.getByRole("button", { name: "Restart", exact: true }).click();
+  await restartMatch(page);
   const silent = await notes();
   await page.keyboard.down("KeyD");
   await page.waitForTimeout(600);

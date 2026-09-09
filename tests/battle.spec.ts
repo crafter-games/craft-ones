@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { aimAtOpponent } from "./gameplay";
+import { aimAtOpponent, power } from "./gameplay";
 
 async function createRoom(page: Page) {
   await page.goto("/");
@@ -182,7 +182,7 @@ test("idle timeout passes the turn and disconnect awards the remaining player", 
     );
     await rival.close();
     await expect(page.getByTestId("match-status")).toHaveText("Player 1 wins!");
-    await expect(page.getByText("Your opponent disconnected.")).toBeVisible();
+    await expect(page.getByText("Your rival disconnected.")).toBeVisible();
   } finally {
     await context.close();
   }
@@ -227,11 +227,7 @@ test("mobile touch charges and fires without scrolling the arena", async ({
       type: "touchStart",
       touchPoints: [point],
     });
-    await expect
-      .poll(async () =>
-        Number(await page.locator("#power").getAttribute("value")),
-      )
-      .toBeGreaterThan(10);
+    await expect.poll(async () => await power(page)).toBeGreaterThan(10);
     await cdp.send("Input.dispatchTouchEvent", {
       type: "touchMove",
       touchPoints: [{ x: point.x + 8, y: point.y - 8 }],

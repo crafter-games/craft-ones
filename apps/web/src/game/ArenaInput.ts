@@ -57,7 +57,7 @@ export class ArenaInput {
         target?.closest(
           'input,textarea,select,[contenteditable="true"],dialog',
         ) ||
-        (target && target !== document.body && !target.closest(".battle-panel"))
+        (target && target !== document.body && !target.closest(".arena"))
       )
         return;
       if (

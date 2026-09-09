@@ -95,7 +95,9 @@ export class ArenaScene extends Phaser.Scene {
       dt,
       this.bridge.focus,
       this.controls.power() > 0,
+      this.bridge.hudInsets,
     );
+    this.map.cover(this.cameras.main);
     const g = this.ink.clear();
     const power = this.controls.power();
     if (state.phase === "flying" && this.lastPhase !== "flying") {
@@ -255,11 +257,15 @@ export class ArenaScene extends Phaser.Scene {
     const canvas = this.game.canvas;
     canvas.dataset.cameraZoom = String(this.cameras.main.zoom);
     canvas.dataset.cameraScrollY = String(this.cameras.main.scrollY);
+    canvas.dataset.cameraWidth = String(this.cameras.main.width);
+    canvas.dataset.cameraHeight = String(this.cameras.main.height);
+    canvas.dataset.cameraFrameWidth = String(this.director.frame.width);
+    canvas.dataset.cameraFrameHeight = String(this.director.frame.height);
     canvas.dataset.cameraCenterX = String(
-      this.cameras.main.scrollX + ARENA.width / 2,
+      this.cameras.main.scrollX + this.cameras.main.width / 2,
     );
     canvas.dataset.cameraCenterY = String(
-      this.cameras.main.scrollY + ARENA.height / 2,
+      this.cameras.main.scrollY + this.cameras.main.height / 2,
     );
     // Where the previewed arc currently lands, the same circle the player sees.
     if (aimImpact) {

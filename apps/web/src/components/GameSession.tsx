@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createBridge } from "../game/GameBridge";
 import { acquireBattle, hasBattle } from "../lib/connection";
-import { BattlePanel } from "./BattlePanel";
+import { HudOverlay } from "./HudOverlay";
 import { SeatPicker } from "./MatchSetup";
 
 export default function GameSession({
@@ -228,55 +228,15 @@ export default function GameSession({
     );
   }
   return (
-    <main className="game-shell mx-auto min-h-svh max-w-6xl px-3 py-5 sm:px-8">
-      <header className="game-header">
-        <Link href="/" className="brand">
-          CRAFT <span>ONES</span>
-        </Link>
-        <div className="flex items-center gap-3">
-          <span className="hidden font-mono text-xs text-[#a9b7a5] sm:inline">
-            Room {roomId}
-          </span>
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={copyInvite}
-          >
-            {copied ? "Link copied" : "Copy Invite Link"}
-          </button>
-        </div>
-      </header>
-      {manualLink ? (
-        <label className="mb-4 block text-xs">
-          Copy this invite URL
-          <input
-            aria-label="Invite link"
-            readOnly
-            value={manualLink}
-            onFocus={(event) => event.target.select()}
-            className="mt-2 w-full rounded border border-white/20 p-3"
-          />
-        </label>
-      ) : null}
-      {error ? (
-        <div
-          role="alert"
-          className="mb-4 rounded-lg bg-[#ffae9d]/10 p-4 text-sm text-[#ffae9d]"
-        >
-          {error}{" "}
-          <Link href="/" className="underline">
-            Back to home
-          </Link>
-        </div>
-      ) : null}
-      <BattlePanel
-        state={state}
-        sessionId={sessionId}
-        connected={connected}
-        bridge={bridge}
-        power={power}
-        restart={canRestart ? () => restart.current() : undefined}
-      />
-    </main>
+    <HudOverlay
+      state={state}
+      sessionId={sessionId}
+      connected={connected}
+      bridge={bridge}
+      power={power}
+      restart={canRestart ? () => restart.current() : undefined}
+      invite={{ roomId, copied, manualLink, copy: copyInvite }}
+      error={error}
+    />
   );
 }
