@@ -92,10 +92,13 @@ export function terrainContours(rows: ArrayLike<string>): Point[][] {
         Math.hypot(points[split].x - points[0].x, points[split].y - points[0].y)
       )
         split = i;
-    loops.push([
+    const simplified = [
       ...simplify(points.slice(0, split + 1)).slice(0, -1),
       ...simplify([...points.slice(split), points[0]]).slice(0, -1),
-    ]);
+    ];
+    // A single-cell fragment can collapse to a diagonal under the tolerance.
+    // Keep its boundary so destructible debris never becomes invisible collision.
+    loops.push(simplified.length >= 3 ? simplified : points);
   }
   return loops;
 }

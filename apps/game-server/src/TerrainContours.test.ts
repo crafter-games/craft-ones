@@ -57,3 +57,12 @@ test("craters produce compact curved boundaries without changing occupancy", () 
     expect(Math.abs(Math.hypot(p.x - 160, p.y - 160) - 100)).toBeLessThan(CELL);
   expect(rows).toEqual(before);
 });
+
+test("single-cell debris remains a visible closed shape after smoothing", () => {
+  const loops = terrainContours(["1"]);
+  expect(loops).toHaveLength(1);
+  expect(loops[0].length).toBeGreaterThanOrEqual(3);
+  const path = contourPaths(loops).land;
+  expect(path).not.toContain("NaN");
+  expect(path).toEndWith("Z");
+});
