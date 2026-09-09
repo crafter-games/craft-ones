@@ -1,6 +1,15 @@
 "use client";
 
-import type { BattleView, PlayerOptions } from "@craft-ones/shared";
+import {
+  type BattleView,
+  CHARACTERS,
+  PLAYABLE_MAP_IDS,
+  type PlayableMapId,
+  type PlayerOptions,
+  validPlayerOptions,
+  WORLD_MAPS,
+} from "@craft-ones/shared";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createBridge } from "../game/GameBridge";
@@ -25,7 +34,23 @@ export default function GameSession({
   const bridge = useRef(createBridge(setPower));
   const restart = useRef(() => {});
   const [joined, setJoined] = useState<boolean | null>(null);
+  // The host stamps its critter and map on the invite so the guest sees them.
+  const [invited, setInvited] = useState<{
+    host: PlayerOptions | null;
+    mapId: PlayableMapId | null;
+  }>({ host: null, mapId: null });
   useEffect(() => setJoined(hasBattle(roomId)), [roomId]);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const host = {
+      species: params.get("host"),
+      coat: params.get("coat"),
+    };
+    setInvited({
+      host: validPlayerOptions(host) ? host : null,
+      mapId: PLAYABLE_MAP_IDS.find((id) => id === params.get("map")) ?? null,
+    });
+  }, []);
   const [profile, setProfile] = useState<PlayerOptions>({
     species: "llama",
     coat: "cream",
@@ -110,15 +135,22 @@ export default function GameSession({
   }, [roomId, joined]);
 
   async function copyInvite() {
-    const url = invitePath
-      ? new URL(invitePath, window.location.origin).href
-      : window.location.href;
+    const url = new URL(
+      invitePath ?? window.location.pathname,
+      window.location.origin,
+    );
+    const host = state?.players[0];
+    if (host) {
+      url.searchParams.set("host", host.species);
+      url.searchParams.set("coat", host.coat);
+    }
+    if (state?.mapId) url.searchParams.set("map", state.mapId);
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(url.href);
       setCopied(true);
       setManualLink("");
     } catch {
-      setManualLink(url);
+      setManualLink(url.href);
     }
   }
 
@@ -128,28 +160,73 @@ export default function GameSession({
     state.players.every((p) => p.connected);
   if (joined === null)
     return <main className="mx-auto max-w-lg px-5 py-12">Opening arena…</main>;
-  if (!joined)
+  if (!joined) {
+    const { host } = invited;
+    const map = invited.mapId ? WORLD_MAPS[invited.mapId] : null;
     return (
-      <main className="mx-auto max-w-lg px-5 py-12">
-        <Link href="/" className="brand">
-          CRAFT <span>ONES</span>
-        </Link>
-        <h1 className="my-6 text-3xl font-black">Join the rivalry</h1>
-        <SeatPicker
-          label="Your critter"
-          seat="two"
-          value={profile}
-          onChange={setProfile}
-        />
-        <button
-          type="button"
-          className="primary-button mt-6 w-full"
-          onClick={() => setJoined(true)}
-        >
-          Join Game
-        </button>
+      <main className="lobby join">
+        <header className="lobby-header">
+          <Link href="/" className="brand">
+            CRAFT <span>ONES</span>
+          </Link>
+          <span className="font-mono text-xs text-[#a9b7a5]">
+            room {roomId}
+          </span>
+        </header>
+        <div className="join-body">
+          <div className="join-intro">
+            <p className="hero-kicker">You’ve been challenged</p>
+            <h1 className="hero-title">
+              Join the <span>rivalry.</span>
+            </h1>
+            <p className="host-card">
+              {host ? (
+                <Image
+                  src={`/art/${host.species}/${host.coat}/portrait.svg`}
+                  alt=""
+                  width={60}
+                  height={62}
+                />
+              ) : null}
+              <span>
+                {host ? (
+                  <strong>{CHARACTERS[host.species].name}</strong>
+                ) : (
+                  "Your rival"
+                )}{" "}
+                is waiting
+                {map ? (
+                  <>
+                    {" "}
+                    in <b>{map.name}</b>
+                  </>
+                ) : null}
+              </span>
+            </p>
+            <p className="hero-lead">
+              Pick your critter and coat. The match starts the moment you join —
+              15-second turns, 100 HP each.
+            </p>
+          </div>
+          <SeatPicker
+            label="Your critter"
+            seat="two"
+            value={profile}
+            onChange={setProfile}
+          />
+          <div className="join-actions">
+            <button
+              type="button"
+              className="cta gold"
+              onClick={() => setJoined(true)}
+            >
+              Join Game
+            </button>
+          </div>
+        </div>
       </main>
     );
+  }
   return (
     <main className="game-shell mx-auto min-h-svh max-w-6xl px-3 py-5 sm:px-8">
       <header className="game-header">

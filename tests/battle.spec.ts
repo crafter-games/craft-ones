@@ -22,17 +22,20 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-  const invite = await createRoom(page);
+  const roomUrl = await createRoom(page);
   await page.getByRole("button", { name: "Copy Invite Link" }).click();
   await expect(page.getByRole("button", { name: "Link copied" })).toBeVisible();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
-    invite,
-  );
+  // The invite carries the host's critter and map so the join screen can name them.
+  const invite = await page.evaluate(() => navigator.clipboard.readText());
+  expect(invite).toBe(`${roomUrl}?host=cuy&coat=caramel&map=andes`);
   const rivalContext = await browser.newContext();
   const rival = await rivalContext.newPage();
   rival.on("pageerror", (error) => errors.push(error.message));
   try {
     await rival.goto(invite);
+    await expect(rival.locator(".host-card")).toContainText(
+      "Cuy is waiting in Cloudbreak Valley",
+    );
     await rival.getByRole("button", { name: "Join Game", exact: true }).click();
     for (const client of [page, rival]) {
       await expect(client.getByTestId("battle")).toHaveAttribute(
