@@ -9,7 +9,7 @@ export default function Home() {
       <div className="home-scrim" aria-hidden="true" />
       <header className="lobby-header">
         <Brand as="span" />
-        <span className="pill">Play Lab · Prototype</span>
+        <span className="pill">Local + online</span>
       </header>
       <HeroStage />
       <div className="home-copy">
@@ -20,7 +20,7 @@ export default function Home() {
           <span>Big trouble.</span>
         </h1>
         <p className="hero-lead">
-          Six rivals. Six tools. Plenty of bad ideas.
+          Six critters. Three guests. Plenty of bad ideas.
           <br />
           Aim, charge, and send your friendly rivalry flying.
         </p>
@@ -29,9 +29,9 @@ export default function Home() {
         <CtaLink href="/setup?mode=local" className="cta gold">
           Playground <small>LOCAL · 2 SEATS</small>
         </CtaLink>
-        <p className="cta dark is-soon" aria-disabled="true">
-          Create Game <small>SOON</small>
-        </p>
+        <CtaLink href="/setup?mode=create" className="cta dark">
+          Create Game <small>ONLINE · INVITE A FRIEND</small>
+        </CtaLink>
         <p className="home-note">
           Playground opens a one-screen setup: pick a map, a critter and a coat.
           No sign-up.
@@ -39,7 +39,7 @@ export default function Home() {
         <p className="home-stats">100 HP · 15-second turns · 4 maps</p>
       </div>
       <footer className="lobby-footer">
-        <span>Six critters · 100 HP · 15-second turns</span>
+        <span>Nine characters · 100 HP · 15-second turns</span>
         <a
           className="made-by"
           href="https://crafter.run"

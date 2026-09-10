@@ -22,7 +22,8 @@ export class ArenaMap {
       .image(0, 0, `map-${PLAYABLE_MAP_IDS[0]}`)
       .setOrigin(0)
       .setDepth(-30);
-    scene.textures.remove("live-terrain");
+    if (scene.textures.exists("live-terrain"))
+      scene.textures.remove("live-terrain");
     const texture = scene.textures.createCanvas(
       "live-terrain",
       WORLD_WIDTH,

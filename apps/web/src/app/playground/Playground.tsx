@@ -66,7 +66,8 @@ export default function Playground() {
   }, [infiniteHp, destructible, showTrajectory, debug]);
   // One simulation, two local seats. No socket or server needed by this route.
   useEffect(() => {
-    const engine = new Battle(undefined, mapId);
+    let elapsed = 0;
+    const engine = new Battle(() => elapsed, mapId);
     engine.infiniteHp = options.current.infiniteHp;
     engine.destructible = options.current.destructible;
     engine.addPlayer("local-cuy", profiles.current.one);
@@ -116,10 +117,23 @@ export default function Playground() {
     sync();
     let previous = performance.now(),
       reported = previous;
+    const visibility = () => {
+      previous = performance.now();
+    };
+    document.addEventListener("visibilitychange", visibility);
     const timer = setInterval(() => {
       const now = performance.now();
-      engine.step(now - previous);
+      const delta = now - previous;
       previous = now;
+      if (!bridge.current.ready || bridge.current.paused || document.hidden)
+        return;
+      let remaining = Math.min(delta, 5000);
+      while (remaining > 0) {
+        const step = Math.min(remaining, 100);
+        elapsed += step;
+        engine.step(step);
+        remaining -= step;
+      }
       bridge.current.state = engine.state.toJSON() as BattleView;
       bridge.current.sessionId = engine.state.currentPlayer;
       if (now - reported >= 40) {
@@ -129,6 +143,7 @@ export default function Playground() {
     }, 1000 / 60);
     return () => {
       clearInterval(timer);
+      document.removeEventListener("visibilitychange", visibility);
       bridge.current.connected = false;
       battle.current = null;
     };

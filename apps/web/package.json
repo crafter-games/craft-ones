@@ -3,8 +3,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0",
-    "build": "next build",
-    "start": "next start --hostname 0.0.0.0",
+    "build": "next build && bun ../../scripts/prepare-web.ts",
+    "start": "node .next/standalone/apps/web/server.js",
     "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {

@@ -5,24 +5,25 @@
 - Scope: two players, 100 HP, four 2688 × 1536 maps with platforms/caves, six default weapons/tools, turn-cost character abilities, gravity, splash damage, knockback, basic movement bounded by a shared turn budget and timer, 15-second turns, invite links, winner and rematch.
 - No auth, database, economy, bots, matchmaking, inventories or future-feature frameworks. Terrain destruction is enabled in both local and multiplayer matches; local lab controls can disable it.
 - Server alone decides physics, damage, positions, turns and winner. Multiplayer browsers send move/jump/fire/ability/restart intentions and render synchronized state. `/playground` runs the identical shared engine locally with alternating seats and no network dependency.
-- Keep Phaser client-only and lazy-loaded. React owns the lobby and HUD; Phaser owns the canvas and pointer input.
+- Keep Phaser client-only and lazy-loaded. React owns the lobby and HUD; Phaser owns the canvas and pointer input. Use WebGL with hardware acceleration and Canvas 2D when WebGL is unavailable or reports a software renderer.
 - Use Spec Kit's specify → plan → tasks → implement → converge flow, with acceptance criteria verified in tests.
 - Keep agent configuration in `.devin/`. Never commit secrets.
 
 ## Workspace
 - Bun workspaces: `apps/web`, `apps/game-server`, `packages/shared`.
 - Frontend: Next.js App Router, React, Tailwind CSS, Phaser 3. Server: Colyseus 0.16 and schema 3.
-- `@colyseus/core` is pinned to 0.16.24: 0.16.25 publishes an unresolved `workspace:^` dependency.
+- `@colyseus/core` is pinned to 0.16.24 with a checked-in Nano ID 3 import compatibility patch. The root override pins nanoid 3.3.18; frozen installs must apply the patch.
 - Install with `bun install --frozen-lockfile`.
 - `bun dev` runs frontend (3000) and multiplayer server (2567). Use `bun dev:web` / `bun dev:server` separately if needed.
-- Verification commands: `bun test`, `bun run typecheck`, `bun run lint`, `bun run build`, `bun run test:e2e`.
+- Verification commands: `bun test`, `bun run typecheck`, `bun run lint`, `bun run build`, `bun run test:e2e`, `bun audit`, `bun run test:server:bundle`, `bun run test:e2e:dev`, and `bun run test:container`.
 - Install browser test runtime with `bunx playwright install chromium` before the first E2E run.
 - Bun tests are scoped to the server by `bunfig.toml`; Playwright owns browser tests. The typecheck command also checks browser tests and Playwright configuration.
+- Browser tests collect full traces on a diagnostic retry and fail on flaky tests. Use `test.info().outputPath()` for explicit screenshots so production, development, and container evidence remain separate. Browser verification must include Linux Chromium.
 - Touch E2E tests must activate the page and await canvas actionability before measuring CDP coordinates; focus/Phaser resizing can otherwise move the touch target.
 - Server restart discards rooms. No persistence or reconnection is part of this milestone.
-- Node 22+ runs Colyseus via `tsx`; Bun 1.3.5's built-in `ws` compatibility layer ignores `maxPayload`. Network tests spawn the real Node server rather than an in-process Bun server.
+- Node 22+ runs Colyseus (via `tsx` in development and a bundle in production); Bun 1.3.11 is the package/build runtime. Node's `ws` implementation is the verified network boundary. Network tests spawn the real Node server rather than an in-process Bun server.
 - Schema classes use `declare` fields and constructor assignments: emitted native class fields overwrite Colyseus change-tracking accessors.
-- Server `PORT` defaults to 2567 (0 allocates an ephemeral test port); `WEB_ORIGIN` accepts comma-separated additional browser origins. Localhost:3000 and 127.0.0.1:3000 are allowed by default.
+- Server `PORT` defaults to 2567 (0 allocates an ephemeral test port); `WEB_ORIGIN` accepts comma-separated additional browser origins. Localhost:3000 and 127.0.0.1:3000 are allowed by default only in development. Production requires explicit WEB_ORIGIN.
 - Frontend derives the WebSocket host from the page hostname. Override with `NEXT_PUBLIC_GAME_SERVER_URL` in `apps/web/.env.local` when needed.
 
 ## Spec Kit
@@ -40,7 +41,7 @@
 
 
 ## First playable acceptance
-- Home exposes Playground, which opens the `/setup` step; Create Game is held back as "soon" on Home while `/setup?mode=create` still hosts a room. Playground starts one canvas immediately, even with the game server unavailable.
+- Home exposes Playground and Create Game, opening `/setup?mode=local` and `/setup?mode=create` respectively. Playground starts one canvas immediately, even with the game server unavailable.
 - Every critter is an original SVG cutout with independent joints; render code is split into rig, input, map, effects and camera modules. Floating hands sit close to each character’s body width; armed grips follow that same placement and keep raised barrels clear of the face.
 - Both maps support complete matches through normal pointer input, victory and restart. Restart clears projectiles, restores HP and positions, and does not leak canvases or timers.
 - Move is constrained by turn, sequence, rate, time, map walls and player separation. Rematch is host-only after a finished game, with both players connected; old fire intents stay stale.
@@ -66,3 +67,10 @@
 - Fire, bounce, stick, blast, damage, heal, shield, leap, dash, jump, footstep, turn change and the result each have their own cue. Blasts scale with radius, damage with its size, and the turn chime differs for your own turn.
 - Charging hums while the shot winds up and stops on release or cancel.
 - The HUD carries a sound toggle: it mutes immediately, is remembered across reloads, and a muted battle schedules no audio at all. Audio only starts once the player has interacted with the page.
+
+## Production acceptance
+- The local menu freezes simulation and turn time; online menus explicitly say the match continues.
+- Portrait and landscape touch controls have distinct hit targets. A selected exclusive power survives renderer initialization and fires its declared projectile.
+- Production browser tests use the built app, with a separate development lifecycle check. Occupied ports fail unless reuse is explicitly requested.
+- Room, connection, message and creation limits reject abuse, release capacity on disconnect and expire abandoned rooms. Metrics require a private token.
+- The container stack uses HTTPS, runs non-root application processes and publishes only its proxy. Follow docs/deployment.md for release verification and rollback.
