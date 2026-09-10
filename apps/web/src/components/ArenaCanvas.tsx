@@ -5,6 +5,23 @@ import { type RefObject, useEffect, useRef } from "react";
 import type { HudInsets } from "../game/ArenaCamera";
 import { ArenaScene, type GameBridge } from "../game/ArenaScene";
 
+function rendererType() {
+  const probe = document.createElement("canvas");
+  const gl = probe.getContext("webgl", { failIfMajorPerformanceCaveat: true });
+  if (!gl) return Phaser.CANVAS;
+  try {
+    const info = gl.getExtension("WEBGL_debug_renderer_info");
+    const renderer = info
+      ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL))
+      : "";
+    return /swiftshader|llvmpipe|softpipe|software rasterizer/i.test(renderer)
+      ? Phaser.CANVAS
+      : Phaser.WEBGL;
+  } finally {
+    gl.getExtension("WEBGL_lose_context")?.loseContext();
+  }
+}
+
 /** Edges the fixed HUD covers at this size, in CSS pixels. */
 function hudInsets(): HudInsets {
   const probe = document.createElement("div");
@@ -62,7 +79,7 @@ export default function ArenaCanvas({
         return;
       }
       game = new Phaser.Game({
-        type: Phaser.AUTO,
+        type: rendererType(),
         parent,
         width,
         height,

@@ -114,7 +114,9 @@ test("Railly can aim and release his exclusive skill on a touch screen", async (
       "data-phase",
       "flying",
     );
-    await page.screenshot({ path: "test-results/railly-touch-skill.png" });
+    await page.screenshot({
+      path: test.info().outputPath("railly-touch-skill.png"),
+    });
   } finally {
     await context.close();
   }

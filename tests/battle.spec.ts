@@ -92,11 +92,15 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
       );
       for (const player of [1, 2]) {
         for (const field of ["data-hp", "data-x"]) {
-          await expect(rival.getByTestId(`player-${player}`)).toHaveAttribute(
-            field,
-            (await page.getByTestId(`player-${player}`).getAttribute(field)) ??
-              "",
-          );
+          await expect
+            .poll(async () => {
+              const [left, right] = await Promise.all([
+                page.getByTestId(`player-${player}`).getAttribute(field),
+                rival.getByTestId(`player-${player}`).getAttribute(field),
+              ]);
+              return left !== null && left === right;
+            })
+            .toBe(true);
         }
       }
       if (phase !== "finished") {

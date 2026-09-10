@@ -11,8 +11,11 @@ const reuseExistingServer = process.env.E2E_REUSE_SERVERS === "1";
 
 export default defineConfig({
   testDir: "./tests",
+  outputDir: development ? "test-results/dev" : "test-results/production",
   fullyParallel: false,
   workers: 1,
+  retries: 1,
+  failOnFlakyTests: true,
   timeout: 150_000,
   expect: { timeout: 8_000 },
   reporter: "list",
@@ -20,7 +23,7 @@ export default defineConfig({
     baseURL,
     browserName: "chromium",
     viewport: { width: 1280, height: 900 },
-    trace: "retain-on-failure",
+    trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
   webServer: [

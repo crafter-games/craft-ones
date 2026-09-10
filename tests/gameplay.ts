@@ -1,6 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-const CHARGE_MS = 2800;
 const GRAVITY = 420;
 const ROCKET_MAX_SPEED = 1000;
 
@@ -155,12 +154,11 @@ export async function aimAtOpponent(
   if (!box) throw new Error("Missing arena");
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
-  const held = Date.now();
   // Charging freezes the camera, so the critters settle inside the wind-up
   // instead of before it, which keeps a whole shot inside one turn.
   await settled(page);
   // Full power: the client clamps the charge, so the release can take its time.
-  await page.waitForTimeout(Math.max(0, CHARGE_MS + 80 - (Date.now() - held)));
+  await expect.poll(() => power(page)).toBe(100);
   const arena = await readArena(page, number);
   const { from, to } = arena;
   const show = async (angle: number) => {

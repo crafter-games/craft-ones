@@ -313,7 +313,7 @@ test("mobile local movement and touch aim survive portrait-to-landscape resize",
     ).toBe(true);
     await expect(canvas).toBeVisible();
     await page.screenshot({
-      path: "test-results/playground-mobile-landscape.png",
+      path: test.info().outputPath("playground-mobile-landscape.png"),
       fullPage: true,
     });
   } finally {
@@ -345,7 +345,7 @@ test("character colors, every weapon, turn camera and crater feedback are playab
     "rose",
   );
   await page.screenshot({
-    path: "test-results/match-setup.png",
+    path: test.info().outputPath("match-setup.png"),
     fullPage: true,
   });
   await closeSetup(page);
@@ -360,7 +360,7 @@ test("character colors, every weapon, turn camera and crater feedback are playab
     )
     .toBeGreaterThan(1.1);
   await page.screenshot({
-    path: "test-results/character-focus.png",
+    path: test.info().outputPath("character-focus.png"),
     fullPage: true,
   });
   await openMenu(page);
@@ -400,7 +400,7 @@ test("character colors, every weapon, turn camera and crater feedback are playab
   await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "2");
   await overview(page);
   await page.screenshot({
-    path: "test-results/layered-arena-crater.png",
+    path: test.info().outputPath("layered-arena-crater.png"),
     fullPage: true,
   });
   await page
@@ -505,7 +505,7 @@ test("movement bar empties, blocks walk and jump, and keeps sticky bombs availab
   await page.getByRole("button", { name: "Jump", exact: true }).click();
   await expect(meter).toHaveAttribute("aria-valuenow", "192");
   await page.screenshot({
-    path: "test-results/movement-sticky.png",
+    path: test.info().outputPath("movement-sticky.png"),
     fullPage: true,
   });
 });

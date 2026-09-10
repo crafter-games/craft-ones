@@ -55,7 +55,7 @@ bun run test:container
 
 `test:container` requires Docker and free local ports 3080, 3443 and 2569. It builds the deployment images, verifies the local HTTPS certificate with curl, runs the online browser tests through Caddy, and measures ten active rooms under a one-CPU/512-MiB game container limit. It removes its test containers on exit.
 
-`bun scripts/converge.ts` runs the primary gates and verifies the original acceptance references. Browser failures retain screenshots and traces under `test-results/`.
+`bun scripts/converge.ts` runs the primary gates and verifies the original acceptance references. Browser failures retain screenshots under separate `test-results/production/`, `test-results/dev/`, and `test-results/container/` directories. A failed test gets one diagnostic retry with a full trace; a passing retry still fails the gate. Continuous tracing is disabled on the first attempt because it can distort real-time input timings. The arena uses Canvas 2D when WebGL is unavailable or reports SwiftShader, llvmpipe, softpipe, or Software Rasterizer; hardware-accelerated browsers keep WebGL. Test aiming waits for the browser power meter instead of inferring charge from the worker clock. Validate browser changes on Linux as well as macOS.
 
 ## Deploy and operate
 
