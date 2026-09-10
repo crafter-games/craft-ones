@@ -228,15 +228,15 @@ export class ArenaScene extends Phaser.Scene {
               )
             : trajectory(state, player, this.controls.angle, power || 0.5);
           points.forEach((p, n) => {
-            g.fillStyle(0x403c4b, 0.65 - (n / points.length) * 0.3).fillCircle(
+            g.fillStyle(0x292733, 0.96 - (n / points.length) * 0.16).fillCircle(
               p.x,
               p.y,
-              n % 2 === 0 ? 2.3 : 1.7,
+              n % 2 === 0 ? 3 : 2.25,
             );
           });
           const end = points.at(-1);
           if (end) {
-            g.lineStyle(2, 0x403c4b, 0.4).strokeCircle(end.x, end.y, 8);
+            g.lineStyle(3, 0x292733, 0.9).strokeCircle(end.x, end.y, 8);
             aimImpact = end;
           }
         }
