@@ -18,6 +18,16 @@ test("lineup selector wraps between characters, explains the default critter and
 }) => {
   await page.goto("/setup?mode=local");
   const picker = page.getByRole("group", { name: "Player 1", exact: true });
+  const lineup = picker.locator(".character-lineup");
+  const initialFrame = await lineup.boundingBox();
+  const initialCharacter = await picker
+    .locator(".lineup-critter.is-selected")
+    .boundingBox();
+  expect(initialFrame).not.toBeNull();
+  expect(initialCharacter).not.toBeNull();
+  expect(initialCharacter?.height ?? 0).toBeGreaterThan(
+    (initialFrame?.height ?? 0) * 0.8,
+  );
   await picker.getByRole("button", { name: "Previous character" }).click();
   await expect(picker.locator(".critter-name")).toHaveText("Railly Hugo");
   await picker.getByRole("button", { name: "Next character" }).click();
@@ -31,6 +41,11 @@ test("lineup selector wraps between characters, explains the default critter and
     ["Alpaca", "Second wind"],
   ]) {
     await pickCritter(picker, name);
+    const frame = await lineup.boundingBox();
+    expect(Math.round(frame?.y ?? -1)).toBe(Math.round(initialFrame?.y ?? -2));
+    expect(Math.round(frame?.height ?? -1)).toBe(
+      Math.round(initialFrame?.height ?? -2),
+    );
     await expect(picker.getByText(ability, { exact: true })).toBeVisible();
     await expect(
       picker.getByText(
