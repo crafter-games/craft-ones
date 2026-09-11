@@ -23,7 +23,7 @@ for (const [species, name, skill, projectile] of [
       species,
     );
     const ability = page.getByTestId("character-ability");
-    await expect(ability).toContainText(skill);
+    await expect(ability).toHaveAccessibleName(`${skill} · 1 turn`);
     await ability.click();
     await expect(ability).toHaveAttribute("aria-pressed", "true");
     await expect(battle).toHaveAttribute("data-turn", "1");

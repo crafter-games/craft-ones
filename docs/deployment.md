@@ -100,3 +100,13 @@ After deploying the exact verified images, open the public HTTPS page on two ind
 Retain the prior `RELEASE_TAG` images. Announce maintenance for game-process replacement and allow existing rooms to finish before restarting; this implementation does not migrate them. If a release fails its smoke, switch image tags to the previous verified release and run `docker compose up -d --no-build --wait`. Do not run `docker compose down -v`: that would delete the proxy certificate state. A rollback still ends any rooms on the replaced process.
 
 Review the current readiness evidence before treating a release as approved. Live DNS, certificate issuance, two-device behavior and host monitoring must be checked in the actual deployment environment.
+
+## Automatic releases
+
+A successful `CI` push run on `main` starts `Deploy production`. Pull requests never receive deployment secrets. GitHub stores `VPS_API_KEY` and `GAME_METRICS_TOKEN`; the deploy job alone receives write access to repository refs.
+
+The job skips superseded commits, creates an immutable `release-<commit>` tag, waits up to thirty minutes for rooms and sockets to become empty, then deploys that exact tag through Dokploy. Direct Dokploy Git webhook deployment stays disabled because GitHub CI is the release gate. Deployments are serialized and running main releases are not cancelled by newer pushes.
+
+After the backend succeeds and public health passes, the job advances the `production` branch without force. Vercel is connected to that branch; other branches do not automatically deploy. The job waits for the public `/api/version` endpoint to report the same commit. A backend failure stops frontend promotion. Timeouts fail the workflow visibly; inspect the failed step before rerunning. This is a sequential rollout, not an atomic two-service switch. A new room created between the empty-room check and process replacement can still be disconnected.
+
+For rollback, retain the previous release tag and Vercel deployment. Restore the prior tag through Dokploy and promote the matching prior Vercel deployment manually. Do not force-push the `production` branch or remove certificate volumes. Future successful main releases advance it normally.
