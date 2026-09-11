@@ -1,0 +1,26 @@
+services:
+  game:
+    build:
+      context: .
+      target: game
+    environment:
+      NODE_ENV: production
+      WEB_ORIGIN: https://craft-ones.crafter.run
+      METRICS_TOKEN: ${METRICS_TOKEN:?Set a private metrics token}
+      TRUST_PROXY_HOPS: "1"
+      MAX_ROOMS: "10"
+      MAX_CONNECTIONS: "20"
+      MAX_CONNECTIONS_PER_IP: "16"
+      CREATE_PER_MINUTE: "10"
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    cpus: 1
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "5"
