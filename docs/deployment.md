@@ -39,6 +39,14 @@ Build the server using `bun run build:server`; deploy `dist/game-server.mjs` and
 
 Do not set a localhost endpoint in a public web build, and do not route game WebSockets to Vercel request functions. Add every allowed browser origin explicitly; wildcards are not supported. Development localhost origins are not implicitly allowed in production.
 
+## Dokploy production profile
+
+`compose.dokploy.yaml` runs the game and an operational monitor behind Dokploy's Traefik proxy. Configure the private `METRICS_TOKEN` in Dokploy, connect this repository and select that compose path. Attach `craft-ones-game.crafter.run` to service `game`, port 2567, with HTTPS enabled. The frontend is `https://craft-ones.crafter.run` on Vercel. No game port is published on the host.
+
+The measured production profile is **2 CPU, 512 MiB, 10 rooms and 20 players**. A separate container on the production VPS, using the same game image, passed a 60-second test with movement and explosions in all ten rooms, zero transport rejections, 86.6 MB peak RSS and 57.9 ms whole-run event-loop p99. The one-CPU trial reached 114.2 ms and failed the 100 ms gate. These measurements establish an initial capacity limit, not long-duration or arbitrary-host guarantees.
+
+Disable automatic deployment while rooms are in memory. Before a manual release, confirm zero active rooms via private metrics, preserve the previous verified image and configuration, and inspect the new containers' health and resource limits after rollout.
+
 ## Limits
 
 | Setting | Default | Meaning |
@@ -61,7 +69,7 @@ HTTP throttling returns 429 and `Retry-After: 60`, including CORS headers for al
 
 ## Capacity verification
 
-The default cap is ten rooms and twenty sockets on the included one-CPU/512-MiB game container. This is a conservative initial release profile. Run `bun run test:container` on the intended host before increasing it. The load gate requires real replicated movement and explosions in every room, no transport throttling, peak RSS below 400 MiB, and whole-run event-loop p99 below 100 ms. Early cumulative p99 peaks are also printed separately; those samples cover shorter startup windows, not the complete load duration. It prints gameplay rejections separately because unavailable movement can be a valid game outcome.
+The default cap is ten rooms and twenty sockets on the included one-CPU/512-MiB game container. The Dokploy production profile uses two CPUs based on the measured host result above. Run `bun run test:container` on the intended host before increasing it. The load gate requires real replicated movement and explosions in every room, no transport throttling, peak RSS below 400 MiB, and whole-run event-loop p99 below 100 ms. Early cumulative p99 peaks are also printed separately; those samples cover shorter startup windows, not the complete load duration. It prints gameplay rejections separately because unavailable movement can be a valid game outcome.
 
 Run capacity checks without competing builds or browser tests. `bun run test:load` starts a fresh bundled Node process for a quick local check; `LOAD_ROOMS` and `LOAD_SECONDS` control size and duration. `LOAD_URL` plus `METRICS_TOKEN` can target a dedicated freshly started test server. The harness rejects a non-empty server or one older than five seconds before allocating any rooms. Limits on that server must accommodate the requested clients, including clients sharing a test address. Do not load-test a live public game with active users.
 
@@ -72,6 +80,10 @@ Run capacity checks without competing builds or browser tests. `bun run test:loa
 `GET /metrics` requires `Authorization: Bearer $METRICS_TOKEN`. Missing/wrong credentials return 404. Keep the token out of browser bundles and access logs. Metrics include room/connection counts, rejected requests/connections/messages, RSS, uptime and event-loop p99 latency. The proxy path is `/battle/metrics`.
 
 Collect metrics every 30 seconds and alert on repeated health failures, restarts, increasing rejection counts, RSS above 400 MiB, event-loop p99 above 100 ms, or sustained room occupancy above 80% of its cap. These are initial operational thresholds, not promises of capacity on every host. Caddy writes JSON access logs; Node writes startup/errors. Use the host's log retention and monitoring system.
+
+The Dokploy monitor checks both public HTTPS endpoints and private game metrics every 30 seconds. Three consecutive unhealthy samples trigger an alert; restarts and increased rejection counters trigger immediately. Recovery emits a resolution. Configure `ALERT_WEBHOOK_URL` with a private HTTP endpoint accepting a JSON `text` field. Failed deliveries retry in order; its in-memory backlog holds 100 transitions and logs when the oldest is dropped. Logs are capped at five 10 MB files. Without a webhook, health samples and alert transitions are logged, but **no external notification is delivered**.
+
+This monitor shares the VPS failure domain. An independent external uptime check is still needed to report complete host or network loss. Container health checks detect an unhealthy process; Docker's restart policy restarts an exited process, not a running unhealthy one.
 
 For investigation:
 

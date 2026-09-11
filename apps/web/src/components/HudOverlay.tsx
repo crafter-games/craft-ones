@@ -262,7 +262,8 @@ export function HudOverlay({
               <i>{charging ? "HOLD" : "SEC"}</i>
             </span>
             <small>
-              ROUND {round} · {mapName}
+              ROUND {round}
+              <span className="hud-map-name"> · {mapName}</span>
             </small>
           </div>
           <p
