@@ -1,9 +1,10 @@
 "use client";
 import {
   ABILITIES,
-  abilityProjectile,
+  abilityNeedsAim,
   type BattleView,
   CHARACTERS,
+  isMovementAbility,
   WEAPONS,
   type WeaponId,
 } from "@craft-ones/shared";
@@ -18,17 +19,20 @@ export function Hotbar({
   bridge,
   state,
   disabled,
+  local,
 }: {
   bridge: RefObject<GameBridge>;
   state: BattleView | null;
   disabled: boolean;
+  local: boolean;
 }) {
   const [weapon, setWeapon] = useState<WeaponId>("rocket");
   const me = state?.players.find(
     (p) => p.sessionId === bridge.current.sessionId,
   );
   const [aimingAbility, setAimingAbility] = useState(false);
-  const aimed = me ? abilityProjectile(me.species) : null;
+  const aimed = me ? abilityNeedsAim(me.species) : false;
+  const movementAbility = me ? isMovementAbility(me.species) : false;
   const ability = me ? ABILITIES[me.species] : null;
   const cooldown = me
     ? Math.max(
@@ -90,10 +94,14 @@ export function Hotbar({
         <strong>{aimingAbility ? ability?.name : WEAPONS[weapon].name}</strong>{" "}
         ·{" "}
         {aimingAbility
-          ? "Aim · hold to charge · release to use skill. Press 7 again to cancel."
+          ? movementAbility
+            ? "Aim left or right · release to move. Press 7 again to cancel."
+            : "Aim · hold to charge · release to use skill. Press 7 again to cancel."
           : WEAPONS[weapon].description}
         <span className="hud-hint">
-          drag to aim · hold to charge · 1–7 pick
+          {aimingAbility && movementAbility
+            ? "move pointer · release to move · 1–7 pick"
+            : "drag to aim · hold to charge · 1–7 pick"}
         </span>
       </p>
       <div className="hud-tiles hud-panel" role="toolbar" aria-label="Arsenal">

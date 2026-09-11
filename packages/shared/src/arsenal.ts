@@ -257,3 +257,11 @@ export function abilityProjectile(
         ? "shuriken"
         : null;
 }
+export function isMovementAbility(
+  species: Species,
+): species is "llama" | "zorro" | "puma" {
+  return species === "llama" || species === "zorro" || species === "puma";
+}
+export function abilityNeedsAim(species: Species) {
+  return abilityProjectile(species) !== null || isMovementAbility(species);
+}

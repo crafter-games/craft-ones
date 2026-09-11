@@ -64,9 +64,26 @@ test("lineup selector wraps between characters, explains the default critter and
   await expect(arsenal.getByRole("button", { name: /Iron hide/ })).toHaveCount(
     0,
   );
+  await overview(page);
   await arsenal
     .getByRole("button", { name: "Andean leap · 1 turn", exact: true })
     .click();
+  await expect(page.locator("canvas")).toHaveAttribute(
+    "data-ability-direction",
+    "left",
+  );
+  await aimWorld(page, 2600, 500);
+  await expect(page.locator("canvas")).toHaveAttribute(
+    "data-ability-direction",
+    "right",
+  );
+  await aimWorld(page, 500, 500);
+  await expect(page.locator("canvas")).toHaveAttribute(
+    "data-ability-direction",
+    "left",
+  );
+  await page.mouse.down();
+  await page.mouse.up();
   await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "3");
   await expect(page.getByTestId("character-ability")).toBeDisabled();
 });
@@ -418,6 +435,13 @@ test("character colors, every weapon, turn camera and crater feedback are playab
   await page
     .getByRole("button", { name: "Andean leap · 1 turn", exact: true })
     .click();
+  await expect(page.locator("canvas")).toHaveAttribute(
+    "data-ability-direction",
+    "left",
+  );
+  await aimWorld(page, 500, 500);
+  await page.mouse.down();
+  await page.mouse.up();
   await expect(page.getByTestId("battle")).toHaveAttribute(
     "data-phase",
     "resolving",
