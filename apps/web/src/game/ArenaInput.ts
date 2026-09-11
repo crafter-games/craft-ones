@@ -112,14 +112,18 @@ export class ArenaInput {
       if (document.hidden) cancel();
     };
     document.addEventListener("visibilitychange", visibility);
-    scene.events.once("shutdown", () => {
+    const dispose = () => {
+      scene.events.off("shutdown", dispose);
+      scene.events.off("destroy", dispose);
       window.removeEventListener("keydown", keydown);
       window.removeEventListener("keyup", keyup);
       canvas.removeEventListener("pointercancel", cancel);
       canvas.removeEventListener("blur", blur);
       window.removeEventListener("blur", cancel);
       document.removeEventListener("visibilitychange", visibility);
-    });
+    };
+    scene.events.once("shutdown", dispose);
+    scene.events.once("destroy", dispose);
   }
   private turnKey() {
     return `${this.bridge.generation}:${this.bridge.state?.turnNumber}`;

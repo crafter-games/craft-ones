@@ -81,7 +81,10 @@ export default function ArenaCanvas({
         game.scale.resize(width, height);
         return;
       }
+      const canvas = document.createElement("canvas");
+      canvas.dataset.ready = "false";
       game = new Phaser.Game({
+        canvas,
         type: rendererType(),
         parent,
         width,
@@ -105,12 +108,16 @@ export default function ArenaCanvas({
     document.addEventListener("visibilitychange", fit);
     return () => {
       active = false;
+      bridge.current.ready = false;
       cancelAnimationFrame(frame);
       observer.disconnect();
       window.removeEventListener("orientationchange", fit);
       document.removeEventListener("visibilitychange", fit);
       if (game) {
-        game.canvas?.remove();
+        if (game.canvas) {
+          game.canvas.dataset.ready = "false";
+          game.canvas.remove();
+        }
         game.destroy(true);
         game.loop.wake();
       }

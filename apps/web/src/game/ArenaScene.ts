@@ -76,7 +76,13 @@ export class ArenaScene extends Phaser.Scene {
     this.speakers = new SoundBoard(this.bridge.sound);
     // Browsers keep audio asleep until the player acts, and aiming is an act.
     this.input.on("pointerdown", () => this.speakers.resume());
-    this.events.once("shutdown", () => this.speakers.dispose());
+    const disposeSpeakers = () => {
+      this.events.off("shutdown", disposeSpeakers);
+      this.events.off("destroy", disposeSpeakers);
+      this.speakers.dispose();
+    };
+    this.events.once("shutdown", disposeSpeakers);
+    this.events.once("destroy", disposeSpeakers);
     this.labels = [0, 1].map(() =>
       this.add
         .text(0, 0, "", {
