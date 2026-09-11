@@ -27,14 +27,14 @@ export default function Home() {
       </div>
       <div className="home-actions">
         <CtaLink href="/setup?mode=local" className="cta gold">
-          Playground <small>LOCAL · 2 SEATS</small>
+          Local <small>2 SEATS · ONE SCREEN</small>
         </CtaLink>
         <CtaLink href="/setup?mode=create" className="cta dark">
           Create Game <small>ONLINE · INVITE A FRIEND</small>
         </CtaLink>
         <p className="home-note">
-          Playground opens a one-screen setup: pick a map, a critter and a coat.
-          No sign-up.
+          Local opens a one-screen setup: pick a map, a critter and a coat. No
+          sign-up.
         </p>
         <p className="home-stats">100 HP · 15-second turns · 10 maps</p>
       </div>

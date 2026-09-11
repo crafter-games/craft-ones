@@ -432,7 +432,7 @@ export function HudOverlay({
               <h2>{local ? "Paused" : "Menu"}</h2>
               <span>
                 {local
-                  ? "PLAYGROUND · LOCAL"
+                  ? "LOCAL · 2 SEATS"
                   : `ROOM ${invite?.roomId ?? ""} · MATCH CONTINUES`}
               </span>
             </div>

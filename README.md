@@ -13,7 +13,7 @@ bun install --frozen-lockfile
 bun dev
 ```
 
-Open [localhost:3000](http://localhost:3000). **Playground** opens setup for two local seats and runs without a game server. **Create Game** opens online setup. Start a room, copy the invite and open it in a second browser. Guests select their character before joining; a third player cannot join. The host can rematch after a completed duel while both players remain connected.
+Open [localhost:3000](http://localhost:3000). **Local** opens setup for two seats on one screen and runs without a game server (`/local`). The unlinked `/playground` route is the same match with lab tools (infinite HP, collisions, trajectory, destructible ground) in the menu. **Create Game** opens online setup. Start a room, copy the invite and open it in a second browser. Guests select their character before joining; a third player cannot join. The host can rematch after a completed duel while both players remain connected.
 
 The web and game processes can also run separately with `bun dev:web` and `bun dev:server`. To use another frontend port:
 

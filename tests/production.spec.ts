@@ -50,7 +50,7 @@ test("local menu freezes time and keyboard input until resumed", async ({
 test("navigation and restart retain one live arena", async ({ page }) => {
   await page.goto("/");
   for (let i = 0; i < 3; i++) {
-    await page.getByRole("link", { name: /Playground/ }).click();
+    await page.getByRole("link", { name: /Local/ }).click();
     await page
       .getByRole("button", { name: "Start match", exact: true })
       .click();

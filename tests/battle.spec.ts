@@ -264,5 +264,5 @@ test("missing rooms show a recoverable error", async ({ page }) => {
     "no longer exists",
   );
   await page.getByRole("link", { name: "Back to home" }).click();
-  await expect(page.getByRole("link", { name: /Playground/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Local/ })).toBeVisible();
 });
