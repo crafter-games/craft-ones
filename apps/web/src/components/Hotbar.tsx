@@ -9,7 +9,13 @@ import {
   type WeaponId,
 } from "@craft-ones/shared";
 import Image from "next/image";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import {
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import type { GameBridge } from "../game/GameBridge";
 
 const IDS = Object.keys(WEAPONS) as WeaponId[];
@@ -61,6 +67,14 @@ export function Hotbar({
     bridge.current.abilityAim = false;
     setAimingAbility(false);
   }, [bridge, selectionKey]);
+  const localTurnKey = `${bridge.current.generation}:${state?.currentPlayer}:${state?.turnNumber}`;
+  const previousLocalTurn = useRef(localTurnKey);
+  useLayoutEffect(() => {
+    if (!local || previousLocalTurn.current === localTurnKey) return;
+    previousLocalTurn.current = localTurnKey;
+    setWeapon("rocket");
+    bridge.current.weapon = "rocket";
+  }, [bridge, local, localTurnKey]);
   // Keys 1–6 pick a tool; 7 arms an aimed skill or uses an instant one.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

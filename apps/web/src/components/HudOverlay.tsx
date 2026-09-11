@@ -318,7 +318,7 @@ export function HudOverlay({
             }
           />
         </div>
-        <Hotbar bridge={bridge} state={state} disabled={locked} />
+        <Hotbar bridge={bridge} state={state} disabled={locked} local={local} />
         <div className="hud-power hud-panel">
           <div>
             <span>POWER{charging ? <i> · CHARGING</i> : null}</span>

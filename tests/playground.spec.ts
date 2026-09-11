@@ -427,6 +427,9 @@ test("character colors, every weapon, turn camera and crater feedback are playab
     "1",
   );
   await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "2");
+  await expect(
+    page.getByRole("button", { name: "Rocket", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   await overview(page);
   await page.screenshot({
     path: test.info().outputPath("layered-arena-crater.png"),
