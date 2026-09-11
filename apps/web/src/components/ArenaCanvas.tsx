@@ -1,7 +1,7 @@
 "use client";
 
 import * as Phaser from "phaser";
-import { type RefObject, useEffect, useRef } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import type { HudInsets } from "../game/ArenaCamera";
 import { ArenaScene, type GameBridge } from "../game/ArenaScene";
 
@@ -59,10 +59,13 @@ export default function ArenaCanvas({
   bridge: RefObject<GameBridge>;
 }) {
   const host = useRef<HTMLDivElement>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     const parent = host.current;
     if (!parent) return;
+    parent.dataset.loadAttempt = String(attempt);
     let active = true;
     bridge.current.ready = false;
     let game: Phaser.Game | null = null;
@@ -84,7 +87,9 @@ export default function ArenaCanvas({
         width,
         height,
         backgroundColor: "#1c261e",
-        scene: new ArenaScene(bridge.current),
+        scene: new ArenaScene(bridge.current, () => {
+          if (active) setLoadError(true);
+        }),
         // The arena fills the viewport and follows it; the HUD floats over it.
         scale: { mode: Phaser.Scale.NONE, autoCenter: Phaser.Scale.NO_CENTER },
         render: { antialias: true },
@@ -110,7 +115,37 @@ export default function ArenaCanvas({
         game.loop.wake();
       }
     };
-  }, [bridge]);
+  }, [bridge, attempt]);
 
-  return <div ref={host} className="game-canvas" />;
+  return (
+    <>
+      <div ref={host} className="game-canvas" />
+      {loadError && (
+        <dialog
+          ref={(dialog) => {
+            if (dialog && !dialog.open) dialog.showModal();
+          }}
+          onCancel={(event) => event.preventDefault()}
+          className="arena-load-error"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label="Arena load error"
+        >
+          <p>
+            Some game art could not load. Check your connection and try again.
+          </p>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.currentTarget.closest("dialog")?.close();
+              setLoadError(false);
+              setAttempt((value) => value + 1);
+            }}
+          >
+            Reload arena
+          </button>
+        </dialog>
+      )}
+    </>
+  );
 }

@@ -2146,3 +2146,31 @@ body {
 .game-canvas canvas:not([data-ready="true"]) {
   visibility: hidden;
 }
+
+.arena-load-error {
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  padding: 24px;
+  background: #1c261e;
+  color: #fff2d3;
+}
+
+.arena-load-error button {
+  margin-top: 20px;
+  padding: 12px 24px;
+  border: 2px solid #fff2d3;
+  border-radius: 12px;
+  background: #d2fb78;
+  color: #14251f;
+  font-weight: 700;
+}

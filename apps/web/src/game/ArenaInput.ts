@@ -120,7 +120,6 @@ export class ArenaInput {
       window.removeEventListener("blur", cancel);
       document.removeEventListener("visibilitychange", visibility);
     });
-    canvas.focus({ preventScroll: true });
   }
   private turnKey() {
     return `${this.bridge.generation}:${this.bridge.state?.turnNumber}`;

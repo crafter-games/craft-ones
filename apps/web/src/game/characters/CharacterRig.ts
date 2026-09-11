@@ -1,10 +1,4 @@
-import {
-  COATS,
-  type CoatId,
-  type PlayerView,
-  type ProjectileKind,
-  SPECIES,
-} from "@craft-ones/shared";
+import type { CoatId, PlayerView, ProjectileKind } from "@craft-ones/shared";
 import * as Phaser from "phaser";
 import { joints, PARTS, type Part, type Species } from "./design";
 import { BODY_LAYERS, HEAD_SCALE, handPose, weaponPose } from "./pose";
@@ -33,14 +27,27 @@ export class CharacterRig {
   private weaponKind = "";
   private deadEyes: Phaser.GameObjects.Graphics;
 
-  static preload(scene: Phaser.Scene) {
-    for (const species of SPECIES)
-      for (const coat of Object.keys(COATS))
-        for (const part of PARTS)
-          scene.load.svg(
-            `${species}-${coat}-${part}`,
-            `/art/${species}/${coat}/${part}.svg`,
-          );
+  static preload(
+    scene: Phaser.Scene,
+    players: Pick<PlayerView, "species" | "coat">[],
+  ) {
+    const queued = new Set<string>();
+    for (const { species, coat } of players)
+      for (const part of PARTS) {
+        const key = `${species}-${coat}-${part}`;
+        if (queued.has(key) || scene.textures.exists(key)) continue;
+        queued.add(key);
+        scene.load.svg(key, `/art/${species}/${coat}/${part}.svg`);
+      }
+  }
+
+  static loaded(
+    scene: Phaser.Scene,
+    { species, coat }: Pick<PlayerView, "species" | "coat">,
+  ) {
+    return PARTS.every((part) =>
+      scene.textures.exists(`${species}-${coat}-${part}`),
+    );
   }
 
   constructor(
