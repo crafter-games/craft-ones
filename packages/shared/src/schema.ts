@@ -37,7 +37,7 @@ export class Player extends Schema {
   declare connected: boolean;
   declare movementLeft: number;
   declare originX: number;
-  declare movementSpent: number;
+  declare jumps: number;
   declare vy: number;
 
   constructor() {
@@ -56,7 +56,7 @@ export class Player extends Schema {
       connected: true,
       movementLeft: ARENA.moveBudget,
       originX: 0,
-      movementSpent: 0,
+      jumps: 0,
       vy: 0,
     });
   }
@@ -75,7 +75,7 @@ defineTypes(Player, {
   connected: "boolean",
   movementLeft: "number",
   originX: "number",
-  movementSpent: "number",
+  jumps: "number",
   vy: "number",
 });
 
@@ -218,7 +218,7 @@ export type PlayerView = Pick<
   | "connected"
   | "movementLeft"
   | "originX"
-  | "movementSpent"
+  | "jumps"
   | "vy"
 >;
 export type BattleView = {

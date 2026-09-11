@@ -10,10 +10,11 @@ export const metadata: Metadata = {
   },
 };
 
+/** Unlinked developer route: the local match plus the lab tools. */
 export default function PlaygroundPage() {
   return (
     <Suspense fallback={<main className="p-8">Opening playground…</main>}>
-      <Playground />
+      <Playground lab />
     </Suspense>
   );
 }

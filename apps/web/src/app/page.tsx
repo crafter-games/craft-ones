@@ -20,26 +20,26 @@ export default function Home() {
           <span>Big trouble.</span>
         </h1>
         <p className="hero-lead">
-          Six critters. Three guests. Plenty of bad ideas.
+          Six critters. One guest. Plenty of bad ideas.
           <br />
           Aim, charge, and send your friendly rivalry flying.
         </p>
       </div>
       <div className="home-actions">
         <CtaLink href="/setup?mode=local" className="cta gold">
-          Playground <small>LOCAL · 2 SEATS</small>
+          Local <small>2 SEATS · ONE SCREEN</small>
         </CtaLink>
         <CtaLink href="/setup?mode=create" className="cta dark">
           Create Game <small>ONLINE · INVITE A FRIEND</small>
         </CtaLink>
         <p className="home-note">
-          Playground opens a one-screen setup: pick a map, a critter and a coat.
-          No sign-up.
+          Local opens a one-screen setup: pick a map, a critter and a coat. No
+          sign-up.
         </p>
-        <p className="home-stats">100 HP · 15-second turns · 4 maps</p>
+        <p className="home-stats">100 HP · 15-second turns · 10 maps</p>
       </div>
       <footer className="lobby-footer">
-        <span>Nine characters · 100 HP · 15-second turns</span>
+        <span>Seven characters · 100 HP · 15-second turns</span>
         <a
           className="made-by"
           href="https://crafter.run"

@@ -579,10 +579,14 @@ test("movement budget and sticky fuse replicate to both seats through normal int
       turnNumber: 1,
       movementLeft: 999,
     });
+    // A jump at the edge is free, but it cannot carry the player further out.
+    const ground = one.state.players[0].y;
     one.send("jump", { direction: 1, turnNumber: 1 });
-    await Bun.sleep(150);
+    await waitFor(() => one.state.players[0].y < ground);
     expect(one.state.players[0].x).toBe(start + ARENA.moveBudget);
     expect(two.state.players[0].movementLeft).toBe(0);
+    await waitFor(() => one.state.players[0].y === ground);
+    expect(one.state.players[0].x).toBe(start + ARENA.moveBudget);
     // Walking home hands the range back on both seats.
     for (let sequence = 100; sequence < 100 + steps; sequence++) {
       one.send("move", { direction: -1, sequence, turnNumber: 1 });

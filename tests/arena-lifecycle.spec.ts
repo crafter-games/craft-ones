@@ -51,7 +51,7 @@ test("leaving the arena releases its window keyboard listeners", async ({
     );
   const before = await count();
   for (let i = 0; i < 3; i++) {
-    await page.getByRole("link", { name: /Playground/ }).click();
+    await page.getByRole("link", { name: /Local/ }).click();
     await page
       .getByRole("button", { name: "Start match", exact: true })
       .click();

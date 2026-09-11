@@ -3,6 +3,7 @@ import {
   abilityProjectile,
   type BattleView,
   CHARACTERS,
+  isMovementAbility,
   PROJECTILES,
   shotTrajectory,
   soundCues,
@@ -136,6 +137,10 @@ export class ArenaScene extends Phaser.Scene {
     const g = this.ink.clear();
     const power = this.controls.power();
     const owner = state.players.find((p) => p.sessionId === sessionId);
+    const movementAbility =
+      this.bridge.abilityAim && owner && isMovementAbility(owner.species)
+        ? owner.species
+        : null;
     const selectedShot =
       this.bridge.abilityAim && owner
         ? (abilityProjectile(owner.species) ?? this.bridge.weapon)
@@ -236,7 +241,7 @@ export class ArenaScene extends Phaser.Scene {
       if (player.sessionId === sessionId && this.controls.canFire()) {
         // The walking range is anchored where the turn began, so show the
         // anchor and both edges: stepping back toward it hands the range back.
-        const range = Math.max(0, ARENA.moveBudget - player.movementSpent);
+        const range = ARENA.moveBudget;
         const feet = player.y + ARENA.playerRadius + 7;
         g.lineStyle(4, 0xf7e4ab, 0.34).lineBetween(
           player.originX - range,
@@ -261,7 +266,50 @@ export class ArenaScene extends Phaser.Scene {
           player.originX,
           feet - 4,
         );
-        if (this.bridge.showTrajectory) {
+        if (movementAbility) {
+          const direction = Math.cos(this.controls.angle) >= 0 ? 1 : -1;
+          const lift =
+            movementAbility === "zorro"
+              ? 0
+              : movementAbility === "puma"
+                ? 72
+                : 118;
+          const distance =
+            movementAbility === "zorro"
+              ? 185
+              : movementAbility === "puma"
+                ? 155
+                : 125;
+          const startX = player.x + direction * 38;
+          const startY = player.y - 28;
+          const endX = player.x + direction * distance;
+          const endY = player.y - 28 - lift;
+          const arrowAngle = Math.atan2(endY - startY, endX - startX);
+          const wing = 18;
+          g.lineStyle(9, 0x292733, 0.92).lineBetween(
+            startX,
+            startY,
+            endX,
+            endY,
+          );
+          g.lineStyle(5, 0xffdf82, 1).lineBetween(startX, startY, endX, endY);
+          g.fillStyle(0x292733, 1).fillTriangle(
+            endX + Math.cos(arrowAngle) * 4,
+            endY + Math.sin(arrowAngle) * 4,
+            endX - Math.cos(arrowAngle - 0.62) * (wing + 5),
+            endY - Math.sin(arrowAngle - 0.62) * (wing + 5),
+            endX - Math.cos(arrowAngle + 0.62) * (wing + 5),
+            endY - Math.sin(arrowAngle + 0.62) * (wing + 5),
+          );
+          g.fillStyle(0xffdf82, 1).fillTriangle(
+            endX,
+            endY,
+            endX - Math.cos(arrowAngle - 0.62) * wing,
+            endY - Math.sin(arrowAngle - 0.62) * wing,
+            endX - Math.cos(arrowAngle + 0.62) * wing,
+            endY - Math.sin(arrowAngle + 0.62) * wing,
+          );
+        } else if (this.bridge.showTrajectory) {
           const points = state.terrainRows.length
             ? shotTrajectory(
                 state,
@@ -327,6 +375,10 @@ export class ArenaScene extends Phaser.Scene {
     canvas.dataset.cameraCenterY = String(
       this.cameras.main.scrollY + this.cameras.main.height / 2,
     );
+    if (movementAbility)
+      canvas.dataset.abilityDirection =
+        Math.cos(this.controls.angle) >= 0 ? "right" : "left";
+    else delete canvas.dataset.abilityDirection;
     // Where the previewed arc currently lands, the same circle the player sees.
     if (aimImpact) {
       canvas.dataset.aimImpactX = String(Math.round(aimImpact.x));

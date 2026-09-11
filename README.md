@@ -13,7 +13,7 @@ bun install --frozen-lockfile
 bun dev
 ```
 
-Open [localhost:3000](http://localhost:3000). **Playground** opens setup for two local seats and runs without a game server. **Create Game** opens online setup. Start a room, copy the invite and open it in a second browser. Guests select their character before joining; a third player cannot join. The host can rematch after a completed duel while both players remain connected.
+Open [localhost:3000](http://localhost:3000). **Local** opens setup for two seats on one screen and runs without a game server (`/local`). The unlinked `/playground` route is the same match with lab tools (infinite HP, collisions, trajectory, destructible ground) in the menu. **Create Game** opens online setup. Start a room, copy the invite and open it in a second browser. Guests select their character before joining; a third player cannot join. The host can rematch after a completed duel while both players remain connected.
 
 The web and game processes can also run separately with `bun dev:web` and `bun dev:server`. To use another frontend port:
 
@@ -28,7 +28,7 @@ The frontend derives a WebSocket endpoint from its hostname on port 2567. Set `N
 
 - Aim with mouse or touch, hold to charge and release to fire. Full charge takes 2.8 seconds. Arrow keys aim; hold/release Space to fire.
 - A/D moves; W jumps. Hold A/D and press W to jump directionally. Touch movement and Jump controls are available in both orientations.
-- Walking and jumping keep your shot. Walking away from the turn's starting point spends the shared 240-point range; returning restores it. Each jump permanently spends 48 points for that turn.
+- Walking and jumping keep your shot. Walking away from the turn's starting point spends the shared 240-point range; returning restores it. Jumps are free and unlimited, but jump travel stays inside that same range.
 - Keys 1–6 choose rocket, grenade, sticky bomb, mortar, dynamite or grapple. All spend a turn. Grenades and sticky bombs have a 3-second fuse, dynamite 2 seconds. Grapples pull toward terrain and stop at obstacles.
 - Llama leaps, Fox dashes, Capybara shields, Puma pounces and Alpaca heals 25 HP. Guinea Pig has no ability. Freddy, Michi and Railly Hugo have aimed projectile powers with signature looks. Key 7 selects an ability; aimed abilities use the same charge/release controls. Abilities cost a turn and have a four-global-turn cooldown.
 - Explosions carve terrain. Characters fall onto remaining surfaces or lose in the void. The authoritative state determines damage, turns, projectiles and winner.

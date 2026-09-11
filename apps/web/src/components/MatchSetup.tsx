@@ -8,7 +8,8 @@ import {
   PLAYABLE_MAP_IDS,
   type PlayableMapId,
   type PlayerOptions,
-  SPECIES,
+  SELECTABLE_SPECIES,
+  type Species,
   WORLD_MAPS,
 } from "@craft-ones/shared";
 import Image from "next/image";
@@ -25,13 +26,19 @@ export function SeatPicker({
   label: string;
   seat?: "one" | "two";
 }) {
-  const index = SPECIES.indexOf(value.species);
+  const index = (SELECTABLE_SPECIES as readonly Species[]).indexOf(
+    value.species,
+  );
   const character = CHARACTERS[value.species];
   const ability = ABILITIES[value.species];
   const cycle = (direction: number) =>
     onChange({
       ...value,
-      species: SPECIES[(index + direction + SPECIES.length) % SPECIES.length],
+      species:
+        SELECTABLE_SPECIES[
+          (index + direction + SELECTABLE_SPECIES.length) %
+            SELECTABLE_SPECIES.length
+        ],
     });
   return (
     <fieldset className={`panel seat is-${seat}`}>
@@ -44,15 +51,16 @@ export function SeatPicker({
       ) : null}
       <div className="character-lineup" aria-hidden="true">
         <div className="lineup-stage" />
-        {SPECIES.map((species, i) => {
+        {SELECTABLE_SPECIES.map((species, i) => {
           // Only the pick and its two neighbours are on stage; the rest wait.
-          const slot = (i - index + SPECIES.length) % SPECIES.length;
+          const slot =
+            (i - index + SELECTABLE_SPECIES.length) % SELECTABLE_SPECIES.length;
           const place =
             slot === 0
               ? 0
               : slot === 1
                 ? 1
-                : slot === SPECIES.length - 1
+                : slot === SELECTABLE_SPECIES.length - 1
                   ? -1
                   : 2;
           return (
@@ -87,7 +95,7 @@ export function SeatPicker({
         </button>
         <span>
           {String(index + 1).padStart(2, "0")} /{" "}
-          {String(SPECIES.length).padStart(2, "0")}
+          {String(SELECTABLE_SPECIES.length).padStart(2, "0")}
         </span>
         <button
           type="button"

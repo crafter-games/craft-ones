@@ -467,13 +467,12 @@ export class Battle {
     if (
       !player ||
       (direction !== -1 && direction !== 0 && direction !== 1) ||
-      player.movementLeft < ARENA.jumpCost ||
       player.vy < -1 ||
       !grounded(this.state, player.x, player.y)
     )
       return "Jump unavailable";
-    player.movementSpent += ARENA.jumpCost;
-    syncMovement(player);
+    // Jumps are free: the flight is steered inside the same walking range.
+    player.jumps += 1;
     this.controlledMotion.add(player);
     player.vy = -330;
     player.vx = direction * 180;

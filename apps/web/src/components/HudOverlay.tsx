@@ -319,7 +319,7 @@ export function HudOverlay({
             }
           />
         </div>
-        <Hotbar bridge={bridge} state={state} disabled={locked} />
+        <Hotbar bridge={bridge} state={state} disabled={locked} local={local} />
         <div className="hud-power hud-panel">
           <div>
             <span>POWER{charging ? <i> · CHARGING</i> : null}</span>
@@ -433,7 +433,7 @@ export function HudOverlay({
               <h2>{local ? "Paused" : "Menu"}</h2>
               <span>
                 {local
-                  ? "PLAYGROUND · LOCAL"
+                  ? "LOCAL · 2 SEATS"
                   : `ROOM ${invite?.roomId ?? ""} · MATCH CONTINUES`}
               </span>
             </div>

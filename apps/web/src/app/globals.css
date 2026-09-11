@@ -552,6 +552,7 @@ body {
   align-items: flex-end;
   justify-content: center;
   overflow: hidden;
+  contain: layout paint;
   min-height: 0;
   border-radius: 18px;
   background: radial-gradient(ellipse at 50% 100%, #54716088, transparent 70%);
@@ -566,23 +567,26 @@ body {
 .lineup-critter {
   position: absolute;
   bottom: 8px;
-  width: 40%;
+  width: auto;
+  height: min(88%, 340px);
+  aspect-ratio: 300 / 312;
   transform: translateX(-50%);
   transition:
     left 0.28s ease,
-    width 0.28s ease,
+    height 0.28s ease,
     opacity 0.28s ease;
 }
 .lineup-critter img {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: contain;
 }
 .lineup-critter.is-selected img {
   animation: critter-breathe 4.5s ease-in-out infinite;
 }
 .lineup-critter:not(.is-selected) {
-  width: 24%;
+  height: min(55%, 180px);
   opacity: 0.45;
 }
 .lineup-critter.is-distant {
@@ -621,6 +625,10 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+.setup .seat-identity,
+.join .seat-identity {
+  min-height: 84px;
 }
 .critter-tagline {
   display: block;
@@ -677,6 +685,10 @@ body {
   border: 3px solid var(--ink);
   border-radius: 14px;
   background: var(--inset);
+}
+.setup .ability-note,
+.join .ability-note {
+  min-height: 150px;
 }
 .ability-note > span {
   font-size: 9px;
@@ -837,7 +849,7 @@ body {
   }
   .setup .character-lineup,
   .join .character-lineup {
-    height: 120px;
+    height: clamp(140px, 22svh, 170px);
   }
   .join .seat {
     gap: 10px;
@@ -924,7 +936,9 @@ body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
-    overflow: visible;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 4px;
   }
   .setup .map-list .map-card {
     width: auto;
@@ -934,6 +948,29 @@ body {
   }
   .setup .map-list .map-card:nth-child(n + 3) small {
     display: none;
+  }
+  .setup .map-list .map-card:nth-child(n + 3) {
+    position: relative;
+  }
+  .setup .map-list .map-card:nth-child(n + 3) img {
+    height: 100%;
+    min-height: 72px;
+    object-fit: cover;
+  }
+  .setup .map-list .map-card:nth-child(n + 3) > span {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: 20px 8px 6px;
+    background: linear-gradient(transparent, #101b18e8 58%);
+    color: #fff7df;
+  }
+  .setup .map-list .map-card:nth-child(n + 3) strong {
+    overflow: hidden;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .map-hint {
     display: none;
@@ -2123,6 +2160,14 @@ body {
   }
 }
 @media (max-width: 560px) {
+  .setup .seat-identity,
+  .join .seat-identity {
+    min-height: 96px;
+  }
+  .setup .ability-note,
+  .join .ability-note {
+    min-height: 150px;
+  }
   .coat-options {
     gap: 10px;
     flex-wrap: wrap;

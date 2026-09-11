@@ -13,7 +13,8 @@ import { HudOverlay } from "../../components/HudOverlay";
 import { MapPicker, SeatPicker } from "../../components/MatchSetup";
 import { createBridge } from "../../game/GameBridge";
 
-export default function Playground() {
+/** The local hot-seat match; `lab` adds the debugging toggles to the menu. */
+export default function Playground({ lab = false }: { lab?: boolean }) {
   const search = useSearchParams();
   const initialProfile = {
     species: search.get("species"),
@@ -107,7 +108,11 @@ export default function Playground() {
       setError(
         engine.ability(engine.state.currentPlayer, {
           turnNumber: engine.state.turnNumber,
-          direction: bridge.current.direction,
+          direction: aim
+            ? Math.cos(aim.angle) >= 0
+              ? 1
+              : -1
+            : bridge.current.direction,
           ...aim,
         }) ?? "",
       );
@@ -149,7 +154,7 @@ export default function Playground() {
     };
   }, [mapId, revision]);
   const reset = () => setRevision((value) => value + 1);
-  const lab = (
+  const labTools = (
     <fieldset className="hud-lab">
       <legend>LAB TOOLS</legend>
       <div>
@@ -227,7 +232,7 @@ export default function Playground() {
       power={power}
       local
       restart={reset}
-      labTools={lab}
+      labTools={lab ? labTools : undefined}
       setupDrawer={setup}
       error={error}
     />

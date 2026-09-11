@@ -7,7 +7,7 @@ on:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   converge:
@@ -46,3 +46,28 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
           retention-days: 7
+
+  deploy:
+    name: Deploy production
+    needs: converge
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    concurrency:
+      group: craft-ones-production
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+      - name: Deploy verified backend and publish frontend
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          VPS_API_KEY: ${{ secrets.VPS_API_KEY }}
+          GAME_METRICS_TOKEN: ${{ secrets.GAME_METRICS_TOKEN }}
+        run: bun scripts/deploy-production.mjs

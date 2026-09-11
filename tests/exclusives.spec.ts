@@ -1,18 +1,12 @@
 import { expect, test } from "@playwright/test";
-import {
-  aimWorld,
-  overview,
-  pickCritter,
-  power,
-  restartMatch,
-} from "./gameplay";
+import { aimWorld, overview, power, restartMatch } from "./gameplay";
 
 for (const [species, name, skill, projectile] of [
   ["freddy", "Freddy", "Dimensional rift", "rift"],
   ["michi", "Michi", "Cosmic meow", "meow"],
   ["railly", "Railly Hugo", "Triangle barrage", "shuriken"],
 ]) {
-  test(`${name} is an exclusive guest with a charged, cancellable aimed power`, async ({
+  test(`${name}'s retained implementation has a charged, cancellable aimed power`, async ({
     page,
   }) => {
     const errors: string[] = [];
@@ -21,17 +15,7 @@ for (const [species, name, skill, projectile] of [
       if (response.url().includes("/art/") && response.status() >= 400)
         errors.push(response.url());
     });
-    await page.goto("/setup?mode=local");
-    const seat = page.getByRole("group", { name: "Player 1", exact: true });
-    await pickCritter(seat, name);
-    await expect(
-      seat.getByText("Exclusive guest", { exact: true }),
-    ).toBeVisible();
-    await expect(seat.getByText(skill, { exact: true })).toBeVisible();
-    await expect(
-      seat.getByText("Signature look", { exact: true }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Start match" }).click();
+    await page.goto(`/playground?species=${species}&coat=cream`);
     await expect(page.locator("canvas")).toBeFocused();
     const battle = page.getByTestId("battle");
     await expect(page.getByTestId("player-1")).toHaveAttribute(
@@ -39,6 +23,7 @@ for (const [species, name, skill, projectile] of [
       species,
     );
     const ability = page.getByTestId("character-ability");
+    await expect(ability).toHaveAccessibleName(`${skill} · 1 turn`);
     await ability.click();
     await expect(ability).toHaveAttribute("aria-pressed", "true");
     await expect(battle).toHaveAttribute("data-turn", "1");
@@ -72,6 +57,16 @@ for (const [species, name, skill, projectile] of [
     expect(errors).toEqual([]);
   });
 }
+
+test("Freddy and Michi are absent from the public character selector", async ({
+  page,
+}) => {
+  await page.goto("/setup?mode=local");
+  const seat = page.getByRole("group", { name: "Player 1", exact: true });
+  await expect(seat.locator('img[src*="/art/freddy/"]')).toHaveCount(0);
+  await expect(seat.locator('img[src*="/art/michi/"]')).toHaveCount(0);
+  await expect(seat).toContainText("01 / 07");
+});
 
 test("Railly can aim and release his exclusive skill on a touch screen", async ({
   browser,

@@ -93,6 +93,11 @@ export const SPECIES = [
   "michi",
   "railly",
 ] as const;
+// Freddy and Michi remain implemented for licensed/private builds, but are not
+// offered by the public setup flow until their usage rights are confirmed.
+export const SELECTABLE_SPECIES = SPECIES.filter(
+  (species) => species !== "freddy" && species !== "michi",
+);
 export const EXCLUSIVE_SPECIES = ["freddy", "michi", "railly"] as const;
 export function isExclusive(species: Species) {
   return (EXCLUSIVE_SPECIES as readonly string[]).includes(species);
@@ -256,4 +261,12 @@ export function abilityProjectile(
       : species === "railly"
         ? "shuriken"
         : null;
+}
+export function isMovementAbility(
+  species: Species,
+): species is "llama" | "zorro" | "puma" {
+  return species === "llama" || species === "zorro" || species === "puma";
+}
+export function abilityNeedsAim(species: Species) {
+  return abilityProjectile(species) !== null || isMovementAbility(species);
 }

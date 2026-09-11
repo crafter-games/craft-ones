@@ -86,7 +86,11 @@ export default function GameSession({
         bridge.current.ability = (aim) =>
           room.send("ability", {
             turnNumber: bridge.current.state?.turnNumber,
-            direction: bridge.current.direction,
+            direction: aim
+              ? Math.cos(aim.angle) >= 0
+                ? 1
+                : -1
+              : bridge.current.direction,
             ...aim,
           });
         restart.current = () =>

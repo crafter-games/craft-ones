@@ -31,6 +31,48 @@ export const MAPS = {
     earth: 0x66535f,
     grass: 0xc16e54,
   },
+  totora: {
+    name: "Totora Drift",
+    subtitle: "Highland lake",
+    sky: 0x9bcfd0,
+    earth: 0xb98b4d,
+    grass: 0xd5ad55,
+  },
+  saltglass: {
+    name: "Saltglass Basin",
+    subtitle: "Crystal salt flat",
+    sky: 0xc9bde3,
+    earth: 0xddd3c5,
+    grass: 0xdf9db6,
+  },
+  huaca: {
+    name: "Moonlit Huaca",
+    subtitle: "Adobe strongholds",
+    sky: 0x3f4f75,
+    earth: 0xa86f4f,
+    grass: 0xdfad68,
+  },
+  frost: {
+    name: "Frostbite Shelf",
+    subtitle: "Glacier halls",
+    sky: 0xb9dce8,
+    earth: 0x8bb6c8,
+    grass: 0xe9f4e7,
+  },
+  loom: {
+    name: "Storm Loom",
+    subtitle: "Woven sky islands",
+    sky: 0x596784,
+    earth: 0x755b78,
+    grass: 0xd59b55,
+  },
+  harbor: {
+    name: "Clockwork Harbor",
+    subtitle: "Timber docks",
+    sky: 0x9ec7c0,
+    earth: 0x8b6045,
+    grass: 0xc69558,
+  },
 } as const;
 
 const profiles: Record<"flat" | "andes" | "coast", [number, number][]> = {
@@ -68,8 +110,8 @@ const profiles: Record<"flat" | "andes" | "coast", [number, number][]> = {
 };
 
 export function makeTerrain(mapId: MapId): number[] {
-  const points =
-    profiles[mapId === "canopy" || mapId === "caldera" ? "flat" : mapId];
+  const profile = mapId === "andes" || mapId === "coast" ? mapId : "flat";
+  const points = profiles[profile];
   return Array.from({ length: ARENA.width / ARENA.terrainStep + 1 }, (_, i) => {
     const x = i * ARENA.terrainStep;
     const end = points.findIndex((p) => p[0] >= x);

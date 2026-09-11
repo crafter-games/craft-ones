@@ -18,6 +18,16 @@ test("lineup selector wraps between characters, explains the default critter and
 }) => {
   await page.goto("/setup?mode=local");
   const picker = page.getByRole("group", { name: "Player 1", exact: true });
+  const lineup = picker.locator(".character-lineup");
+  const initialFrame = await lineup.boundingBox();
+  const initialCharacter = await picker
+    .locator(".lineup-critter.is-selected")
+    .boundingBox();
+  expect(initialFrame).not.toBeNull();
+  expect(initialCharacter).not.toBeNull();
+  expect(initialCharacter?.height ?? 0).toBeGreaterThan(
+    (initialFrame?.height ?? 0) * 0.8,
+  );
   await picker.getByRole("button", { name: "Previous character" }).click();
   await expect(picker.locator(".critter-name")).toHaveText("Railly Hugo");
   await picker.getByRole("button", { name: "Next character" }).click();
@@ -31,6 +41,11 @@ test("lineup selector wraps between characters, explains the default critter and
     ["Alpaca", "Second wind"],
   ]) {
     await pickCritter(picker, name);
+    const frame = await lineup.boundingBox();
+    expect(Math.round(frame?.y ?? -1)).toBe(Math.round(initialFrame?.y ?? -2));
+    expect(Math.round(frame?.height ?? -1)).toBe(
+      Math.round(initialFrame?.height ?? -2),
+    );
     await expect(picker.getByText(ability, { exact: true })).toBeVisible();
     await expect(
       picker.getByText(
@@ -64,14 +79,40 @@ test("lineup selector wraps between characters, explains the default critter and
   await expect(arsenal.getByRole("button", { name: /Iron hide/ })).toHaveCount(
     0,
   );
+  await overview(page);
   await arsenal
     .getByRole("button", { name: "Andean leap · 1 turn", exact: true })
     .click();
+  await expect(page.locator("canvas")).toHaveAttribute(
+    "data-ability-direction",
+    "left",
+  );
+  await aimWorld(page, 2600, 500);
+  await expect(page.locator("canvas")).toHaveAttribute(
+    "data-ability-direction",
+    "right",
+  );
+  await aimWorld(page, 500, 500);
+  await expect(page.locator("canvas")).toHaveAttribute(
+    "data-ability-direction",
+    "left",
+  );
+  await page.mouse.down();
+  await page.mouse.up();
   await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "3");
   await expect(page.getByTestId("character-ability")).toBeDisabled();
 });
 
-for (const mapId of ["canopy", "caldera"]) {
+for (const mapId of [
+  "canopy",
+  "caldera",
+  "totora",
+  "saltglass",
+  "huaca",
+  "frost",
+  "loom",
+  "harbor",
+]) {
   test(`${mapId} can be selected in setup, excavated offline and restarted`, async ({
     page,
   }) => {
@@ -100,8 +141,11 @@ for (const mapId of ["canopy", "caldera"]) {
     const x = Number(await player.getAttribute("data-x"));
     const y = Number(await player.getAttribute("data-y"));
     await overview(page);
-    await aimWorld(page, x, y + 90);
+    // Aim above the spawn so the pointer stays clear of the bottom HUD on
+    // tall, camera-framed arenas.
+    await aimWorld(page, x + 180, y - 180);
     await page.mouse.down();
+    await expect.poll(() => power(page)).toBeGreaterThan(5);
     await page.mouse.up();
     await expect(page.getByTestId("battle")).toHaveAttribute(
       "data-terrain-revision",
@@ -398,6 +442,9 @@ test("character colors, every weapon, turn camera and crater feedback are playab
     "1",
   );
   await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "2");
+  await expect(
+    page.getByRole("button", { name: "Rocket", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   await overview(page);
   await page.screenshot({
     path: test.info().outputPath("layered-arena-crater.png"),
@@ -406,6 +453,13 @@ test("character colors, every weapon, turn camera and crater feedback are playab
   await page
     .getByRole("button", { name: "Andean leap · 1 turn", exact: true })
     .click();
+  await expect(page.locator("canvas")).toHaveAttribute(
+    "data-ability-direction",
+    "left",
+  );
+  await aimWorld(page, 500, 500);
+  await page.mouse.down();
+  await page.mouse.up();
   await expect(page.getByTestId("battle")).toHaveAttribute(
     "data-phase",
     "resolving",
@@ -460,7 +514,7 @@ test("setup selections carry into local play and basic jump preserves the shot",
   );
 });
 
-test("movement bar empties, blocks walk and jump, and keeps sticky bombs available for both seats", async ({
+test("movement bar empties, blocks the walk out but not the jump, and keeps sticky bombs available for both seats", async ({
   page,
 }) => {
   await page.goto("/playground");
@@ -481,9 +535,21 @@ test("movement bar empties, blocks walk and jump, and keeps sticky bombs availab
   await expect(
     page.getByRole("button", { name: "Move left", exact: true }),
   ).toBeEnabled();
-  await expect(
-    page.getByRole("button", { name: "Jump", exact: true }),
-  ).toBeDisabled();
+  // Jumps are free: at the edge the jump still fires, but it lands in place.
+  const jump = page.getByRole("button", { name: "Jump", exact: true });
+  await expect(jump).toBeEnabled();
+  await jump.click();
+  await expect
+    .poll(async () => Number(await player.getAttribute("data-y")))
+    .toBeLessThan(y);
+  await expect
+    .poll(
+      async () => Math.abs(Number(await player.getAttribute("data-y")) - y),
+      { timeout: 4_000 },
+    )
+    .toBeLessThan(0.01);
+  expect(Number(await player.getAttribute("data-x"))).toBeCloseTo(x, 2);
+  await expect(meter).toHaveAttribute("aria-valuenow", "0");
   const sticky = page.getByRole("button", { name: "Sticky bomb", exact: true });
   await sticky.click();
   await expect(sticky).toHaveAttribute("aria-pressed", "true");
@@ -502,8 +568,8 @@ test("movement bar empties, blocks walk and jump, and keeps sticky bombs availab
   await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "2");
   await expect(meter).toHaveAttribute("aria-valuenow", "240");
   await expect(sticky).toBeEnabled();
-  await page.getByRole("button", { name: "Jump", exact: true }).click();
-  await expect(meter).toHaveAttribute("aria-valuenow", "192");
+  await jump.click();
+  await expect(meter).toHaveAttribute("aria-valuenow", "240");
   await page.screenshot({
     path: test.info().outputPath("movement-sticky.png"),
     fullPage: true,

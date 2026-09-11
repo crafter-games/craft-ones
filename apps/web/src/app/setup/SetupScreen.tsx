@@ -17,7 +17,7 @@ import { createBattle } from "../../lib/connection";
 export default function SetupScreen() {
   const router = useRouter();
   const search = useSearchParams();
-  // Playground fills both seats locally; Create Game only picks the host's.
+  // Local fills both seats on one screen; Create Game only picks the host's.
   const local = search.get("mode") !== "create";
   const creating = useRef(false);
   const [busy, setBusy] = useState(false);
@@ -43,7 +43,7 @@ export default function SetupScreen() {
         species2: two.species,
         coat2: two.coat,
       });
-      router.push(`/playground?${query}`);
+      router.push(`/local?${query}`);
       return;
     }
     if (creating.current) return;
@@ -75,7 +75,7 @@ export default function SetupScreen() {
           <span className="step">2 · PLAY</span>
         </div>
         <span className="pill">
-          {local ? "Playground · Local" : "Create Game · Invite"}
+          {local ? "Local · 2 seats" : "Create Game · Invite"}
         </span>
       </header>
       <div className={`setup-body ${local ? "" : "is-single"}`}>
