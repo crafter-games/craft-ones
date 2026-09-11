@@ -20,7 +20,7 @@ export default function Home() {
           <span>Big trouble.</span>
         </h1>
         <p className="hero-lead">
-          Six critters. Three guests. Plenty of bad ideas.
+          Six critters. One guest. Plenty of bad ideas.
           <br />
           Aim, charge, and send your friendly rivalry flying.
         </p>
@@ -39,7 +39,7 @@ export default function Home() {
         <p className="home-stats">100 HP · 15-second turns · 10 maps</p>
       </div>
       <footer className="lobby-footer">
-        <span>Nine characters · 100 HP · 15-second turns</span>
+        <span>Seven characters · 100 HP · 15-second turns</span>
         <a
           className="made-by"
           href="https://crafter.run"
