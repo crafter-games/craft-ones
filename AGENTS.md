@@ -3,7 +3,7 @@
 ## Principles
 - Original, tiny 1v1 turn-based artillery prototype for Crafter Station. No copied code or assets.
 - Scope: two players, 100 HP, four 2688 × 1536 maps with platforms/caves, six default weapons/tools, turn-cost character abilities, gravity, splash damage, knockback, basic movement bounded by a shared turn budget and timer, 15-second turns, invite links, winner and rematch.
-- No auth, database, economy, bots, matchmaking, inventories or future-feature frameworks. Terrain destruction is enabled in both local and multiplayer matches; local lab controls can disable it.
+- Browser invite play is anonymous. Discord Activities use server-verified OAuth identity and instance membership. No database, economy, AI opponents, public matchmaking, inventories or future-feature frameworks. Terrain destruction is enabled in both local and multiplayer matches; local lab controls can disable it.
 - Server alone decides physics, damage, positions, turns and winner. Multiplayer browsers send move/jump/fire/ability/restart intentions and render synchronized state. `/playground` runs the identical shared engine locally with alternating seats and no network dependency.
 - Load character art only for profiles present in the match. Load a late rival or changed coat incrementally without replacing the arena or stealing focus from an open dialog. Initial readiness and focus belong to the first frame with the selected character textures available. Movement and firing wait for all current character parts. Failed art loads show a keyboard-accessible retry dialog that reloads the arena while preserving the session. Arena mounts own a fresh canvas with readiness cleared before Phaser boots. Scene shutdown and destruction both release external keyboard listeners and synthesized audio.
 - Keep Phaser client-only and lazy-loaded. React owns the lobby and HUD; Phaser owns the canvas and pointer input. Use WebGL with hardware acceleration and Canvas 2D when WebGL is unavailable or reports a software renderer.
@@ -75,3 +75,10 @@
 - Production browser tests use the built app, with a separate development lifecycle check. Occupied ports fail unless reuse is explicitly requested.
 - Room, connection, message and creation limits reject abuse, release capacity on disconnect and expire abandoned rooms. Metrics require a private token.
 - The container stack uses HTTPS, runs non-root application processes and publishes only its proxy. Follow docs/deployment.md for release verification and rollback.
+
+## Discord Activity acceptance
+- `/` and `/discord` preserve Discord launch parameters and boot the Embedded App SDK. Ordinary browser play remains anonymous.
+- Server-only OAuth exchange and Activity membership verification reserve a private authoritative room shared by one Discord instance. Never trust client-provided user identity or accept anonymous joins into Discord rooms.
+- Two participants share one room even when joining concurrently; duplicate identities and third seats are rejected. Disconnect still forfeits; both connected players retain rematch.
+- Use `/game` for proxied HTTP and `/.proxy/game` for Colyseus WebSockets. Keep Discord secrets exclusively on the game server and follow `docs/discord.md` for application configuration.
+- Fixture-based SDK/browser tests supplement, but cannot replace, a live two-user Discord Activity check. Public verification and Discovery are separate release gates.

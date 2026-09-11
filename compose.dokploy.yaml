@@ -6,6 +6,7 @@ services:
     environment:
       NODE_ENV: production
       WEB_ORIGIN: https://craft-ones.crafter.run
+      DISCORD_APPLICATIONS: ${DISCORD_APPLICATIONS:-}
       METRICS_TOKEN: ${METRICS_TOKEN:?Set a private metrics token}
       TRUST_PROXY_HOPS: "1"
       MAX_ROOMS: "10"

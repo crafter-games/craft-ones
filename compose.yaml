@@ -6,6 +6,7 @@ services:
       target: game
     environment:
       NODE_ENV: production
+      DISCORD_APPLICATIONS: ${DISCORD_APPLICATIONS:-}
       WEB_ORIGIN: ${PUBLIC_ORIGIN:?Set the public HTTPS origin}
       METRICS_TOKEN: ${METRICS_TOKEN:?Set a private metrics token}
       TRUST_PROXY_HOPS: "1"

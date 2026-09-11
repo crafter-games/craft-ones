@@ -379,7 +379,7 @@ body {
   flex-direction: column;
   gap: 10px;
   margin-top: auto;
-  padding: 24px 20px max(24px, env(safe-area-inset-bottom));
+  padding: 24px 20px max(24px, var(--craft-safe-bottom));
 }
 .home-note {
   display: none;
@@ -865,7 +865,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px max(24px, env(safe-area-inset-bottom));
+  padding: 12px 16px max(24px, var(--craft-safe-bottom));
   background: linear-gradient(#14251f00, var(--panel) 30%);
 }
 .setup-summary {
@@ -1021,7 +1021,7 @@ body {
 }
 .join-actions {
   flex: none;
-  padding: 12px 16px max(24px, env(safe-area-inset-bottom));
+  padding: 12px 16px max(24px, var(--craft-safe-bottom));
 }
 .join-actions .cta {
   width: 100%;
@@ -1841,7 +1841,7 @@ body {
 /* Portrait phones */
 @media (max-width: 639px) {
   .hud-card {
-    top: calc(env(safe-area-inset-top) + 12px);
+    top: calc(var(--craft-safe-top) + 12px);
     width: 140px;
     gap: 8px;
     padding: 8px;
@@ -1880,7 +1880,7 @@ body {
     border-radius: 5px;
   }
   .hud-centre {
-    top: calc(env(safe-area-inset-top) + 12px);
+    top: calc(var(--craft-safe-top) + 12px);
     align-items: stretch;
     width: 100%;
     padding: 0 12px;
@@ -1914,7 +1914,7 @@ body {
     white-space: normal;
   }
   .hud-utilities {
-    top: calc(env(safe-area-inset-top) + 128px);
+    top: calc(var(--craft-safe-top) + 128px);
     right: 12px;
   }
   .hud-chip {
@@ -1930,7 +1930,7 @@ body {
   .hud-movement {
     left: 12px;
     right: 12px;
-    bottom: calc(env(safe-area-inset-bottom) + 150px);
+    bottom: calc(var(--craft-safe-bottom) + 150px);
     width: auto;
     justify-content: space-between;
   }
@@ -1950,7 +1950,7 @@ body {
     font-size: 22px;
   }
   .hud-hotbar {
-    bottom: calc(env(safe-area-inset-bottom) + 46px);
+    bottom: calc(var(--craft-safe-bottom) + 46px);
     gap: 6px;
   }
   .hud-weapon-label {
@@ -1979,7 +1979,7 @@ body {
   /* The power gauge stands up beside the jump thumb. */
   .hud-power {
     right: 12px;
-    bottom: calc(env(safe-area-inset-bottom) + 214px);
+    bottom: calc(var(--craft-safe-bottom) + 214px);
     display: flex;
     width: 76px;
     flex-direction: column;
@@ -2028,10 +2028,10 @@ body {
     border-radius: 12px;
   }
   .hud-card.is-left {
-    left: calc(env(safe-area-inset-left) + 52px);
+    left: calc(var(--craft-safe-left) + 52px);
   }
   .hud-card.is-right {
-    right: calc(env(safe-area-inset-right) + 52px);
+    right: calc(var(--craft-safe-right) + 52px);
     padding: 6px 8px;
   }
   .hud-portrait {
@@ -2080,7 +2080,7 @@ body {
   }
   .hud-utilities {
     top: 64px;
-    right: calc(env(safe-area-inset-right) + 52px);
+    right: calc(var(--craft-safe-right) + 52px);
   }
   .hud-chip {
     width: 44px;
@@ -2093,13 +2093,13 @@ body {
     display: inline-flex;
   }
   .hud-movement {
-    left: calc(env(safe-area-inset-left) + 52px);
+    left: calc(var(--craft-safe-left) + 52px);
     bottom: 14px;
     width: 180px;
   }
   .hud-jump {
     position: fixed;
-    right: calc(env(safe-area-inset-right) + 52px);
+    right: calc(var(--craft-safe-right) + 52px);
     bottom: 14px;
     width: 76px;
     padding: 0;
@@ -2124,7 +2124,7 @@ body {
     display: none;
   }
   .hud-power {
-    right: calc(env(safe-area-inset-right) + 136px);
+    right: calc(var(--craft-safe-right) + 136px);
     bottom: 14px;
     width: 110px;
     padding: 6px 10px 8px;
@@ -2224,4 +2224,23 @@ body {
   .hud-clock .hud-map-name {
     display: none;
   }
+}
+
+:root {
+  --craft-safe-top: var(
+    --discord-safe-area-inset-top,
+    env(safe-area-inset-top, 0px)
+  );
+  --craft-safe-bottom: var(
+    --discord-safe-area-inset-bottom,
+    env(safe-area-inset-bottom, 0px)
+  );
+  --craft-safe-left: var(
+    --discord-safe-area-inset-left,
+    env(safe-area-inset-left, 0px)
+  );
+  --craft-safe-right: var(
+    --discord-safe-area-inset-right,
+    env(safe-area-inset-right, 0px)
+  );
 }

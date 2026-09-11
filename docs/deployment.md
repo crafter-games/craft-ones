@@ -2,7 +2,7 @@
 
 ## Release contract
 
-Deploy one game-server instance and one frontend. Rooms live in the game process and cannot migrate between replicas. A disconnect is a forfeit; a restart discards rooms. Anonymous invite play is the supported scope.
+Deploy one game-server instance and one frontend. Rooms live in the game process and cannot migrate between replicas. A disconnect is a forfeit; a restart discards rooms. Anonymous invite play and optional authenticated Discord Activities are supported. See [Discord setup](discord.md) for its private applications, credentials and live verification gates.
 
 Before a release, require unit/network tests, types, lint, production build, clean dependency audit, bundled-server tests, production browser acceptance, development lifecycle tests and the Docker/HTTPS capacity rehearsal (`bun run test:container`). Record the exact commit, image tag and test output. Do not use a green development run as proof of a production artifact.
 

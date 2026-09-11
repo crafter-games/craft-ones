@@ -37,6 +37,7 @@ export type InviteControls = {
   copied: boolean;
   manualLink: string;
   copy: () => void;
+  label?: string;
 };
 
 function PlayerCard({
@@ -121,6 +122,7 @@ export function HudOverlay({
   invite,
   labTools,
   setupDrawer,
+  leave,
   error,
 }: {
   state: BattleView | null;
@@ -134,6 +136,7 @@ export function HudOverlay({
   labTools?: ReactNode;
   setupDrawer?: ReactNode;
   error?: string;
+  leave?: () => void;
 }) {
   const inviteId = useId();
   const [sound, setSound] = useState(true);
@@ -376,24 +379,27 @@ export function HudOverlay({
             {waiting && invite && !blocked ? (
               <>
                 <div className="hud-invite">
-                  <input
-                    id={inviteId}
-                    aria-label="Invite link"
-                    readOnly
-                    value={
-                      invite.manualLink ||
-                      (typeof window === "undefined"
-                        ? ""
-                        : window.location.href)
-                    }
-                    onFocus={(event) => event.target.select()}
-                  />
+                  {!invite.label ? (
+                    <input
+                      id={inviteId}
+                      aria-label="Invite link"
+                      readOnly
+                      value={
+                        invite.manualLink ||
+                        (typeof window === "undefined"
+                          ? ""
+                          : window.location.href)
+                      }
+                      onFocus={(event) => event.target.select()}
+                    />
+                  ) : null}
                   <button
                     type="button"
                     className="cta gold"
                     onClick={invite.copy}
                   >
-                    {invite.copied ? "Link copied" : "Copy Invite Link"}
+                    {invite.label ??
+                      (invite.copied ? "Link copied" : "Copy Invite Link")}
                   </button>
                 </div>
                 <p className="hud-room">
@@ -409,14 +415,22 @@ export function HudOverlay({
             ) : finished ? (
               <p className="hud-foot">
                 {forfeit
-                  ? "Create a new game from home."
+                  ? leave
+                    ? "Close the Activity together and start a new one."
+                    : "Create a new game from home."
                   : "Waiting for Player 1 to restart."}
               </p>
             ) : null}
             {blocked || forfeit ? (
-              <Link href="/" className="hud-home">
-                Back to home
-              </Link>
+              leave ? (
+                <button type="button" onClick={leave}>
+                  Leave Discord Activity
+                </button>
+              ) : (
+                <Link href="/" className="hud-home">
+                  Back to home
+                </Link>
+              )
             ) : null}
           </div>
         </div>
@@ -480,7 +494,8 @@ export function HudOverlay({
               {invite ? (
                 <button type="button" className="hud-row" onClick={invite.copy}>
                   <span>
-                    {invite.copied ? "Link copied" : "Copy invite link"}
+                    {invite.label ??
+                      (invite.copied ? "Link copied" : "Copy invite link")}
                   </span>
                   <i>room {invite.roomId}</i>
                 </button>
@@ -507,7 +522,13 @@ export function HudOverlay({
               >
                 Resume
               </button>
-              <Link href="/">Leave</Link>
+              {leave ? (
+                <button type="button" onClick={leave}>
+                  Leave Discord Activity
+                </button>
+              ) : (
+                <Link href="/">Leave</Link>
+              )}
             </div>
           </div>
         </div>
