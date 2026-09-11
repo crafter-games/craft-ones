@@ -10,7 +10,8 @@
       "!!**/test-results",
       "!!bun.lock",
       "!!**/next-env.d.ts",
-      "!!dist"
+      "!!dist",
+      "!!**/.vercel"
     ]
   },
   "formatter": {
