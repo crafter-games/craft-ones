@@ -9,6 +9,12 @@ import { env } from "node:process";
 import { matchMaker, Server, type ServerOptions } from "@colyseus/core";
 import { WebSocketTransport } from "@colyseus/ws-transport";
 import { BattleRoom } from "./BattleRoom";
+import {
+  type DiscordApp,
+  type DiscordIdentity,
+  discordApps,
+  discordService,
+} from "./discord";
 import { Admission } from "./limits";
 
 const MAX_PAYLOAD = 4_096;
@@ -127,10 +133,18 @@ class BattleServer extends Server {
 }
 
 export function createGameServer(
-  options: { webOrigin?: string; gracefullyShutdown?: boolean } = {},
+  options: {
+    webOrigin?: string;
+    gracefullyShutdown?: boolean;
+    discord?: { apps: DiscordApp[]; identity: DiscordIdentity };
+  } = {},
 ) {
   const origins = parseWebOrigins(options.webOrigin ?? process.env.WEB_ORIGIN);
   const admission = new Admission();
+  const apps = options.discord?.apps ?? discordApps();
+  for (const app of apps)
+    origins.add(`https://${app.clientId}.discordsays.com`);
+  const discord = discordService(admission, apps, options.discord?.identity);
   const lag = monitorEventLoopDelay({ resolution: 20 });
   lag.enable();
   class ConfiguredBattleRoom extends BattleRoom {
@@ -149,6 +163,12 @@ export function createGameServer(
       return;
     }
     const path = request.url?.split("?", 1)[0];
+    if (path?.startsWith("/discord/")) {
+      for (const [key, value] of Object.entries(corsHeaders(request, origins)))
+        response.setHeader(key, value);
+      void discord.handle(request, response);
+      return;
+    }
     if (path === "/metrics" && request.method === "GET") {
       const token = process.env.METRICS_TOKEN;
       const digest = (value: string) =>
@@ -217,6 +237,7 @@ export function createGameServer(
     gracefullyShutdown: options.gracefullyShutdown ?? true,
   });
   server.define("battle", ConfiguredBattleRoom);
+  server.define("discord_battle", discord.Room);
   server.onBeforeShutdown(() => {
     admission.draining = true;
   });

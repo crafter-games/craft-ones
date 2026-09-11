@@ -16,7 +16,7 @@
     "build": "bun run build:server && bun run --filter '@craft-ones/web' build",
     "build:server": "NODE_ENV=production bun build apps/game-server/src/index.ts --target=node --external msgpackr-extract --external bufferutil --external utf-8-validate --outfile=dist/game-server.mjs",
     "start:server": "node dist/game-server.mjs",
-    "test:e2e:dev": "E2E_DEV=1 playwright test production.spec.ts exclusives.spec.ts",
+    "test:e2e:dev": "E2E_DEV=1 playwright test production.spec.ts exclusives.spec.ts discord.spec.ts",
     "test:server:bundle": "TEST_SERVER_BUNDLE=1 bun test apps/game-server/src/server.test.ts apps/game-server/src/security.test.ts",
     "typecheck": "bun run --filter '*' typecheck && tsc --noEmit -p tests/tsconfig.json",
     "lint": "biome check .",

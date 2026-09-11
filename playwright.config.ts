@@ -42,7 +42,13 @@ export default defineConfig({
       command: development
         ? `bun run --cwd apps/web dev --port ${port}`
         : "bun run --cwd apps/web start",
-      env: { PORT: String(port), HOSTNAME: "0.0.0.0" },
+      env: {
+        PORT: String(port),
+        HOSTNAME: "0.0.0.0",
+        ...(development
+          ? { NEXT_PUBLIC_DISCORD_CLIENT_ID: "111111111111111111" }
+          : {}),
+      },
       url: baseURL,
       reuseExistingServer,
       timeout: 60_000,

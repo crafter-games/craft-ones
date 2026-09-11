@@ -20,9 +20,11 @@ import { SeatPicker } from "./MatchSetup";
 export default function GameSession({
   roomId,
   invitePath,
+  platform,
 }: {
   roomId: string;
   invitePath?: string;
+  platform?: { invite: () => Promise<void>; leave: () => void };
 }) {
   const [state, setState] = useState<BattleView | null>(null);
   const [sessionId, setSessionId] = useState("");
@@ -143,6 +145,16 @@ export default function GameSession({
   }, [roomId, joined]);
 
   async function copyInvite() {
+    if (platform) {
+      try {
+        await platform.invite();
+      } catch {
+        setError(
+          "Could not open Discord invites. Use the Activity invite button in Discord.",
+        );
+      }
+      return;
+    }
     const url = new URL(
       invitePath ?? window.location.pathname,
       window.location.origin,
@@ -241,7 +253,14 @@ export default function GameSession({
       bridge={bridge}
       power={power}
       restart={canRestart ? () => restart.current() : undefined}
-      invite={{ roomId, copied, manualLink, copy: copyInvite }}
+      invite={{
+        roomId,
+        copied,
+        manualLink,
+        copy: copyInvite,
+        label: platform ? "Invite in Discord" : undefined,
+      }}
+      leave={platform?.leave}
       error={error}
     />
   );

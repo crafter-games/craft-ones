@@ -13,9 +13,10 @@ type Connection = {
 };
 const connections = new Map<string, Connection>();
 
-function client() {
+function client(override?: string) {
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
   const endpoint =
+    override ||
     process.env.NEXT_PUBLIC_GAME_SERVER_URL ||
     `${protocol}://${window.location.hostname}:2567`;
   const url = new URL(endpoint, window.location.origin);
@@ -71,4 +72,16 @@ export function acquireBattle(id: string, player?: PlayerOptions) {
 
 export function hasBattle(id: string) {
   return connections.has(id);
+}
+
+export async function consumeDiscordReservation(
+  reservation: Parameters<Client["consumeSeatReservation"]>[0],
+) {
+  const room = await client(
+    new URL("/.proxy/game", window.location.origin).href,
+  ).consumeSeatReservation<BattleState>(reservation);
+  const entry = { promise: Promise.resolve(room), users: 0 };
+  connections.set(room.roomId, entry);
+  scheduleRelease(room.roomId, entry, 30_000);
+  return room.roomId;
 }
