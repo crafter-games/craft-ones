@@ -10,6 +10,7 @@ import {
   grounded,
   makeTerrain,
   makeWorld,
+  type PlayableMapId,
   shotTrajectory,
   solidAt,
   WORLD_HEIGHT,
@@ -18,10 +19,19 @@ import {
 } from "@craft-ones/shared";
 import * as worlds from "../../../packages/shared/src/worlds";
 
-type NewMapId = "canopy" | "caldera";
-const NEW_MAP_IDS: NewMapId[] = ["canopy", "caldera"];
+type NewMapId = Exclude<PlayableMapId, "andes" | "coast">;
+const NEW_MAP_IDS: NewMapId[] = [
+  "canopy",
+  "caldera",
+  "totora",
+  "saltglass",
+  "huaca",
+  "frost",
+  "loom",
+  "harbor",
+];
 
-function fixture(mapId: NewMapId) {
+function fixture(mapId: PlayableMapId) {
   let now = 0;
   const battle = new Battle(() => now, mapId);
   battle.addPlayer("one");
@@ -42,7 +52,7 @@ function fixture(mapId: NewMapId) {
   };
 }
 
-function spawnsOf(id: NewMapId) {
+function spawnsOf(id: PlayableMapId) {
   return WORLD_MAPS[id].spawns.map((spawn) => [...spawn]);
 }
 
@@ -82,12 +92,18 @@ function components(rows: string[]) {
   return count;
 }
 
-test("the public map catalog includes four authored worlds and excludes flat", () => {
+test("the public map catalog includes ten authored worlds and excludes flat", () => {
   expect(worlds.PLAYABLE_MAP_IDS).toEqual([
     "andes",
     "coast",
     "canopy",
     "caldera",
+    "totora",
+    "saltglass",
+    "huaca",
+    "frost",
+    "loom",
+    "harbor",
   ]);
   expect(Object.keys(WORLD_MAPS)).toEqual([...worlds.PLAYABLE_MAP_IDS]);
   for (const id of NEW_MAP_IDS) {
@@ -122,7 +138,7 @@ test.each(NEW_MAP_IDS)(
   },
 );
 
-test.each(NEW_MAP_IDS)(
+test.each([...worlds.PLAYABLE_MAP_IDS])(
   "%s spawns both seats standing in clear space on broad stable floors",
   (id) => {
     const { battle, tick } = fixture(id);
@@ -211,7 +227,7 @@ test("caldera has a hollow horseshoe, an inner floor, cave pockets and destructi
   expect(s.terrainRows.at(-1)).toBe("0".repeat(WORLD_WIDTH / CELL));
 });
 
-test.each(NEW_MAP_IDS)(
+test.each(["canopy", "caldera"] as const)(
   "%s gives both seats usable cross-arena rocket arcs through the actual Battle",
   (id) => {
     for (const seat of [0, 1]) {
@@ -279,13 +295,15 @@ test.each(NEW_MAP_IDS)(
     for (let row = 0; row < before.length; row++)
       for (let col = 0; col < before[row].length; col++)
         if (before[row][col] === "0") expect(s.terrainRows[row][col]).toBe("0");
-    s.players[0].x = WORLD_MAPS[id].spawns[0][0];
-    s.players[0].vx = 0;
-    s.players[0].vy = 0;
-    expect(grounded(s, s.players[0].x, s.players[0].y)).toBe(false);
-    until(() => s.players[0].y > startY + 24);
+    if (id === "canopy" || id === "caldera") {
+      s.players[0].x = WORLD_MAPS[id].spawns[0][0];
+      s.players[0].vx = 0;
+      s.players[0].vy = 0;
+      expect(grounded(s, s.players[0].x, s.players[0].y)).toBe(false);
+      until(() => s.players[0].y > startY + 24);
+    }
     s.players[0].x = 24;
-    s.players[0].y = 900;
+    s.players[0].y = WORLD_HEIGHT + 40;
     s.players[0].vx = 0;
     s.players[0].vy = 0;
     until(() => s.phase === "finished");

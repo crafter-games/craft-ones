@@ -71,7 +71,16 @@ test("lineup selector wraps between characters, explains the default critter and
   await expect(page.getByTestId("character-ability")).toBeDisabled();
 });
 
-for (const mapId of ["canopy", "caldera"]) {
+for (const mapId of [
+  "canopy",
+  "caldera",
+  "totora",
+  "saltglass",
+  "huaca",
+  "frost",
+  "loom",
+  "harbor",
+]) {
   test(`${mapId} can be selected in setup, excavated offline and restarted`, async ({
     page,
   }) => {
@@ -100,8 +109,11 @@ for (const mapId of ["canopy", "caldera"]) {
     const x = Number(await player.getAttribute("data-x"));
     const y = Number(await player.getAttribute("data-y"));
     await overview(page);
-    await aimWorld(page, x, y + 90);
+    // Aim above the spawn so the pointer stays clear of the bottom HUD on
+    // tall, camera-framed arenas.
+    await aimWorld(page, x + 180, y - 180);
     await page.mouse.down();
+    await expect.poll(() => power(page)).toBeGreaterThan(5);
     await page.mouse.up();
     await expect(page.getByTestId("battle")).toHaveAttribute(
       "data-terrain-revision",

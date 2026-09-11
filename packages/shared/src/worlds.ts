@@ -8,6 +8,12 @@ export const PLAYABLE_MAP_IDS = [
   "coast",
   "canopy",
   "caldera",
+  "totora",
+  "saltglass",
+  "huaca",
+  "frost",
+  "loom",
+  "harbor",
 ] as const;
 export type PlayableMapId = (typeof PLAYABLE_MAP_IDS)[number];
 export const WORLD_MAPS = {
@@ -131,6 +137,186 @@ export const WORLD_MAPS = {
       previewRim: "#e89c67",
     },
   },
+  totora: {
+    name: "Totora Drift",
+    subtitle: "Reed villages · broad decks · deep channels",
+    spawns: [
+      [672, 894],
+      [2016, 894],
+    ],
+    background: "maps/totora.svg",
+    preview: "maps/totora-preview.svg",
+    palette: {
+      sky: "#9bcfd0",
+      far: "#72aeb0",
+      mid: "#4f8f96",
+      near: "#356f7a",
+      cloud: "#f7e8bd",
+      cloudShade: "#d9d9ae",
+      earth: "#b98b4d",
+      shade: "#785e3d",
+      light: "#dfbd72",
+      outline: "#344944",
+      underside: "#514735",
+      rim: "#d5ad55",
+      rimLight: "#f2db8a",
+      tuft: "#839552",
+      foliage: true,
+      previewEarth: "#a97945",
+      previewStrata: "#c99b56",
+      previewRim: "#e8c86f",
+    },
+  },
+  saltglass: {
+    name: "Saltglass Basin",
+    subtitle: "White terraces · crystal arches · long sightlines",
+    spawns: [
+      [408, 870],
+      [2280, 870],
+    ],
+    background: "maps/saltglass.svg",
+    preview: "maps/saltglass-preview.svg",
+    palette: {
+      sky: "#c9bde3",
+      far: "#aaa2cf",
+      mid: "#8585ba",
+      near: "#666d9d",
+      cloud: "#fff5df",
+      cloudShade: "#e6d9dc",
+      earth: "#ddd3c5",
+      shade: "#9e91a0",
+      light: "#f5ecdb",
+      outline: "#4c4965",
+      underside: "#71677b",
+      rim: "#df9db6",
+      rimLight: "#ffe0d1",
+      tuft: "#ae7fa6",
+      foliage: false,
+      previewEarth: "#d9cfca",
+      previewStrata: "#b9adc0",
+      previewRim: "#f0b4c7",
+    },
+  },
+  huaca: {
+    name: "Moonlit Huaca",
+    subtitle: "Adobe strongholds · temple chambers · moonlit roofs",
+    spawns: [
+      [680, 918],
+      [2008, 918],
+    ],
+    background: "maps/huaca.svg",
+    preview: "maps/huaca-preview.svg",
+    palette: {
+      sky: "#3f4f75",
+      far: "#596487",
+      mid: "#665d7f",
+      near: "#403d61",
+      cloud: "#9fa7bd",
+      cloudShade: "#737e9d",
+      earth: "#a86f4f",
+      shade: "#75483d",
+      light: "#ce9361",
+      outline: "#302d42",
+      underside: "#49333a",
+      rim: "#dfad68",
+      rimLight: "#ffd58a",
+      tuft: "#92724c",
+      foliage: false,
+      previewEarth: "#9f684d",
+      previewStrata: "#bd8058",
+      previewRim: "#e6b46c",
+    },
+  },
+  frost: {
+    name: "Frostbite Shelf",
+    subtitle: "Glacier halls · snow bridges · vertical shelves",
+    spawns: [
+      [408, 894],
+      [2280, 894],
+    ],
+    background: "maps/frost.svg",
+    preview: "maps/frost-preview.svg",
+    palette: {
+      sky: "#b9dce8",
+      far: "#93c2d5",
+      mid: "#6fa5be",
+      near: "#557f9e",
+      cloud: "#f4f7e8",
+      cloudShade: "#d9e7e7",
+      earth: "#8bb6c8",
+      shade: "#587b99",
+      light: "#c7e4e5",
+      outline: "#354e66",
+      underside: "#405b76",
+      rim: "#e9f4e7",
+      rimLight: "#ffffff",
+      tuft: "#d7ece8",
+      foliage: false,
+      previewEarth: "#82adbf",
+      previewStrata: "#a9cfda",
+      previewRim: "#f0f8ee",
+    },
+  },
+  loom: {
+    name: "Storm Loom",
+    subtitle: "Woven islands · hooked routes · thunder gap",
+    spawns: [
+      [408, 894],
+      [2280, 894],
+    ],
+    background: "maps/loom.svg",
+    preview: "maps/loom-preview.svg",
+    palette: {
+      sky: "#596784",
+      far: "#6e7892",
+      mid: "#4d5775",
+      near: "#333d5d",
+      cloud: "#a8aec0",
+      cloudShade: "#7c859e",
+      earth: "#755b78",
+      shade: "#4f405e",
+      light: "#a87483",
+      outline: "#292a43",
+      underside: "#393149",
+      rim: "#d59b55",
+      rimLight: "#ffd47c",
+      tuft: "#ab735c",
+      foliage: false,
+      previewEarth: "#6c5574",
+      previewStrata: "#90687f",
+      previewRim: "#e6a75d",
+    },
+  },
+  harbor: {
+    name: "Clockwork Harbor",
+    subtitle: "Timber docks · ship chambers · towering cranes",
+    spawns: [
+      [600, 894],
+      [2088, 894],
+    ],
+    background: "maps/harbor.svg",
+    preview: "maps/harbor-preview.svg",
+    palette: {
+      sky: "#9ec7c0",
+      far: "#72a19e",
+      mid: "#527f80",
+      near: "#365f67",
+      cloud: "#f1e5be",
+      cloudShade: "#d1d0ab",
+      earth: "#8b6045",
+      shade: "#5c4438",
+      light: "#b78255",
+      outline: "#313a36",
+      underside: "#41352f",
+      rim: "#c69558",
+      rimLight: "#ebc477",
+      tuft: "#71835a",
+      foliage: false,
+      previewEarth: "#805a43",
+      previewStrata: "#a9744d",
+      previewRim: "#d4a660",
+    },
+  },
 } as const;
 
 // Layout coordinates use the original artboard; rasterize at arena scale, keeping
@@ -248,6 +434,188 @@ export function makeWorld(mapId: MapId): string[] {
     const rows = cells.map((row) => row.join(""));
     carve(rows, 480, 736, 48);
     carve(rows, 1312, 736, 48);
+    return rows;
+  }
+  if (mapId === "totora") {
+    // Three generous reed decks read as a village instead of scattered rocks.
+    island(24, 608, 520, 272);
+    island(1248, 608, 520, 272);
+    island(592, 552, 608, 296);
+    rect(104, 528, 280, 80);
+    rect(1408, 528, 280, 80);
+    polygon([
+      [676, 552],
+      [736, 432],
+      [848, 432],
+      [896, 552],
+    ]);
+    polygon([
+      [896, 552],
+      [944, 432],
+      [1056, 432],
+      [1116, 552],
+    ]);
+    rect(456, 512, 176, 40);
+    rect(1160, 512, 176, 40);
+    const rows = cells.map((row) => row.join(""));
+    carve(rows, 268, 736, 88);
+    carve(rows, 1524, 736, 88);
+    carve(rows, 896, 704, 112);
+    return rows;
+  }
+  if (mapId === "saltglass") {
+    // Wide salt banks frame a crystal colonnade with clean artillery lanes.
+    polygon([
+      [0, 592],
+      [504, 592],
+      [552, 656],
+      [520, 1024],
+      [0, 1024],
+    ]);
+    polygon([
+      [1288, 656],
+      [1336, 592],
+      [1792, 592],
+      [1792, 1024],
+      [1272, 1024],
+    ]);
+    island(512, 720, 768, 240);
+    polygon([
+      [584, 720],
+      [648, 472],
+      [712, 720],
+    ]);
+    polygon([
+      [760, 720],
+      [840, 360],
+      [928, 720],
+    ]);
+    polygon([
+      [1000, 720],
+      [1080, 440],
+      [1152, 720],
+    ]);
+    rect(448, 536, 216, 56);
+    rect(1128, 536, 216, 56);
+    const rows = cells.map((row) => row.join(""));
+    carve(rows, 896, 792, 152);
+    carve(rows, 216, 760, 104);
+    carve(rows, 1576, 760, 104);
+    return rows;
+  }
+  if (mapId === "huaca") {
+    // Two adobe compounds and a stepped central temple create large combat rooms.
+    polygon([
+      [0, 624],
+      [520, 624],
+      [552, 672],
+      [536, 1024],
+      [0, 1024],
+    ]);
+    polygon([
+      [1272, 672],
+      [1304, 624],
+      [1792, 624],
+      [1792, 1024],
+      [1256, 1024],
+    ]);
+    rect(40, 520, 320, 104);
+    rect(1432, 520, 320, 104);
+    rect(600, 664, 592, 264);
+    rect(664, 568, 464, 96);
+    rect(744, 480, 304, 88);
+    rect(816, 392, 160, 88);
+    rect(864, 744, 64, 280, "0");
+    const rows = cells.map((row) => row.join(""));
+    carve(rows, 272, 720, 104);
+    carve(rows, 1520, 720, 104);
+    carve(rows, 896, 744, 128);
+    return rows;
+  }
+  if (mapId === "frost") {
+    // Glacial shelves are broad enough to fight on; the arch supplies a lower route.
+    island(16, 608, 544, 288);
+    island(1232, 608, 544, 288);
+    island(512, 680, 768, 272);
+    rect(496, 568, 280, 112);
+    rect(1016, 568, 280, 112);
+    ellipse(896, 568, 248, 176);
+    island(160, 448, 280, 80);
+    island(1352, 448, 280, 80);
+    island(736, 336, 320, 80);
+    const rows = cells.map((row) => row.join(""));
+    carve(rows, 896, 616, 136);
+    carve(rows, 288, 744, 96);
+    carve(rows, 1504, 744, 96);
+    return rows;
+  }
+  if (mapId === "loom") {
+    // Interlocking woven bands provide two routes around a large thunder gap.
+    island(16, 608, 544, 280);
+    island(1232, 608, 544, 280);
+    polygon([
+      [480, 608],
+      [688, 472],
+      [832, 472],
+      [832, 552],
+      [624, 688],
+      [480, 688],
+    ]);
+    polygon([
+      [960, 552],
+      [960, 472],
+      [1104, 472],
+      [1312, 608],
+      [1312, 688],
+      [1168, 688],
+    ]);
+    polygon([
+      [544, 824],
+      [760, 680],
+      [832, 680],
+      [832, 760],
+      [672, 872],
+      [544, 872],
+    ]);
+    polygon([
+      [960, 680],
+      [1032, 680],
+      [1248, 824],
+      [1248, 872],
+      [1120, 872],
+      [960, 760],
+    ]);
+    island(704, 328, 384, 96);
+    const rows = cells.map((row) => row.join(""));
+    carve(rows, 288, 744, 96);
+    carve(rows, 1504, 744, 96);
+    return rows;
+  }
+  if (mapId === "harbor") {
+    // Solid docks surround a large ship whose deck, hold and masts are playable.
+    island(0, 608, 560, 288);
+    island(1232, 608, 560, 288);
+    polygon([
+      [488, 624],
+      [1304, 624],
+      [1224, 896],
+      [1112, 984],
+      [680, 984],
+      [568, 896],
+    ]);
+    rect(504, 568, 784, 56);
+    rect(720, 376, 48, 192);
+    rect(1024, 344, 48, 224);
+    rect(600, 440, 296, 40);
+    rect(896, 408, 280, 40);
+    rect(280, 448, 48, 160);
+    rect(1464, 448, 48, 160);
+    rect(280, 448, 208, 40);
+    rect(1304, 448, 208, 40);
+    const rows = cells.map((row) => row.join(""));
+    carve(rows, 896, 792, 152);
+    carve(rows, 280, 744, 96);
+    carve(rows, 1512, 744, 96);
     return rows;
   }
   if (mapId === "andes") {

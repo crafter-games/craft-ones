@@ -36,7 +36,7 @@ export default function Home() {
           Playground opens a one-screen setup: pick a map, a critter and a coat.
           No sign-up.
         </p>
-        <p className="home-stats">100 HP · 15-second turns · 4 maps</p>
+        <p className="home-stats">100 HP · 15-second turns · 10 maps</p>
       </div>
       <footer className="lobby-footer">
         <span>Nine characters · 100 HP · 15-second turns</span>
