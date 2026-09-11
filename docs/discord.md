@@ -27,7 +27,7 @@ Set `DISCORD_APPLICATIONS` only on the game server, as a JSON array:
 [{"clientId":"DISCORD_APPLICATION_ID","clientSecret":"OAUTH_CLIENT_SECRET","botToken":"BOT_TOKEN"}]
 ```
 
-The IDs must be real Discord snowflakes. Up to four distinct applications are supported. Empty/unset configuration disables Discord authentication while preserving ordinary browser play. Both Compose profiles pass this environment variable to the game process. Keep credentials out of source control, client bundles, URL mappings and frontend environment variables. The client ID is derived from Discord's proxy hostname; `NEXT_PUBLIC_DISCORD_CLIENT_ID` is only a local override.
+The IDs must be real Discord snowflakes. Up to four distinct applications are supported. Empty/unset configuration disables Discord authentication while preserving ordinary browser play. Both Compose profiles pass this environment variable to the game process. Keep credentials out of source control, client bundles, URL mappings and frontend environment variables. The client ID is derived from Discord's proxy hostname; `NEXT_PUBLIC_DISCORD_CLIENT_ID` is a local override and permits that exact Discord proxy hostname to load Next.js development assets. Set it to your development app ID when using a tunnel to `next dev`.
 
 The bot credential is used to verify Activity instance membership through Discord's API. No Gateway connection, message-reading intent, admin permission or database is needed. OAuth requests only `identify`; tokens remain in browser memory and are not placed in URLs or persistent storage. The exchange returns no refresh token.
 

@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 
 const config: NextConfig = {
   agentRules: false,
+  allowedDevOrigins: process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID
+    ? [`${process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID}.discordsays.com`]
+    : [],
   output: process.env.VERCEL ? undefined : "standalone",
   outputFileTracingRoot: join(__dirname, "../.."),
   transpilePackages: ["@craft-ones/shared"],

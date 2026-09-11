@@ -39,11 +39,14 @@ async function activity(
     await route.fulfill({ response });
   });
   await page.routeWebSocket(
-    `${origin.replace("https:", "wss:")}/.proxy/game/**`,
+    `${origin.replace("https:", "wss:")}/**`,
     (route) => {
       const incoming = new URL(route.url());
+      const game = incoming.pathname.startsWith("/.proxy/game/");
+      const target = game ? backend : baseURL;
+      const path = game ? incoming.pathname.slice(12) : incoming.pathname;
       const socket = new WebSocket(
-        `${backend.replace("http:", "ws:")}${incoming.pathname.slice(12)}${incoming.search}`,
+        `${target.replace("http:", "ws:")}${path}${incoming.search}`,
       );
       socket.binaryType = "arraybuffer";
       const pending: (string | Buffer)[] = [];
