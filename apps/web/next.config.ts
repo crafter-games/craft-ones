@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 
 const config: NextConfig = {
   agentRules: false,
-  output: "standalone",
+  output: process.env.VERCEL ? undefined : "standalone",
   outputFileTracingRoot: join(__dirname, "../.."),
   transpilePackages: ["@craft-ones/shared"],
   devIndicators: false,
