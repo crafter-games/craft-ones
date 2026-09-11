@@ -1220,7 +1220,7 @@ body {
   align-items: center;
   padding: 6px 16px 8px;
 }
-.hud-clock span {
+.hud-clock > span {
   display: flex;
   align-items: baseline;
   gap: 4px;
@@ -2218,4 +2218,10 @@ body {
   background: #d2fb78;
   color: #14251f;
   font-weight: 700;
+}
+
+@media (max-width: 639px), (orientation: landscape) and (max-height: 599px) {
+  .hud-clock .hud-map-name {
+    display: none;
+  }
 }
