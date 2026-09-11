@@ -54,7 +54,21 @@ test("navigation and restart retain one live arena", async ({ page }) => {
     await page
       .getByRole("button", { name: "Start match", exact: true })
       .click();
-    await expect(page.locator("canvas")).toBeFocused();
+    await expect(page.locator("canvas")).toHaveAttribute("data-ready", "true");
+    await page.keyboard.down("KeyD");
+    try {
+      await expect
+        .poll(async () =>
+          Number(
+            await page
+              .getByRole("meter", { name: "Range remaining" })
+              .getAttribute("aria-valuenow"),
+          ),
+        )
+        .toBeLessThan(240);
+    } finally {
+      await page.keyboard.up("KeyD");
+    }
     await expect(page.locator("canvas")).toHaveCount(1);
     await page.getByRole("button", { name: "Menu", exact: true }).click();
     await page.getByRole("button", { name: "Restart match" }).click();

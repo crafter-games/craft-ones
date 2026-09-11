@@ -26,7 +26,10 @@ export class ArenaScene extends Phaser.Scene {
   private effects!: BattleEffects;
   private director!: ArenaCamera;
   private rigKeys: string[] = [];
-  private rigs: CharacterRig[] = [];
+  private rigs: (CharacterRig | undefined)[] = [];
+  private queuedRigs = new Set<string>();
+  private initialized = false;
+  private loadFailed = false;
   private labels: Phaser.GameObjects.Text[] = [];
   private lastPhase = "";
   private speakers!: SoundBoard;
@@ -35,11 +38,23 @@ export class ArenaScene extends Phaser.Scene {
   private firedAngle = -Math.PI / 4;
   private lastFrame = 0;
 
-  constructor(private bridge: GameBridge) {
+  constructor(
+    private bridge: GameBridge,
+    private onLoadError: () => void,
+  ) {
     super("arena");
   }
   preload() {
-    CharacterRig.preload(this);
+    this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, () => {
+      this.loadFailed = true;
+      this.bridge.ready = false;
+      this.game.canvas.dataset.ready = "false";
+      this.onLoadError();
+    });
+    const players = this.bridge.state?.players ?? [];
+    CharacterRig.preload(this, players);
+    for (const player of players)
+      this.queuedRigs.add(`${player.species}-${player.coat}`);
     ArenaMap.preload(this);
     for (const kind of Object.keys(PROJECTILES)) {
       this.load.svg(`weapon-${kind}`, `/art/weapons/${kind}.svg`);
@@ -51,8 +66,8 @@ export class ArenaScene extends Phaser.Scene {
   }
   create() {
     this.lastFrame = performance.now();
-    this.bridge.ready = true;
-    this.game.canvas.dataset.ready = "true";
+    this.bridge.ready = false;
+    this.game.canvas.dataset.ready = "false";
     this.map = new ArenaMap(this);
     this.ink = this.add.graphics().setDepth(5);
     this.controls = new ArenaInput(this, this.bridge);
@@ -61,7 +76,13 @@ export class ArenaScene extends Phaser.Scene {
     this.speakers = new SoundBoard(this.bridge.sound);
     // Browsers keep audio asleep until the player acts, and aiming is an act.
     this.input.on("pointerdown", () => this.speakers.resume());
-    this.events.once("shutdown", () => this.speakers.dispose());
+    const disposeSpeakers = () => {
+      this.events.off("shutdown", disposeSpeakers);
+      this.events.off("destroy", disposeSpeakers);
+      this.speakers.dispose();
+    };
+    this.events.once("shutdown", disposeSpeakers);
+    this.events.once("destroy", disposeSpeakers);
     this.labels = [0, 1].map(() =>
       this.add
         .text(0, 0, "", {
@@ -81,7 +102,7 @@ export class ArenaScene extends Phaser.Scene {
     const cameraDt = now - this.lastFrame;
     this.lastFrame = now;
     const { state, sessionId } = this.bridge;
-    if (!state || !this.ink) return;
+    if (!state || !this.ink || this.loadFailed) return;
     if (this.generation !== this.bridge.generation) {
       this.generation = this.bridge.generation;
       this.effects.reset(state);
@@ -89,6 +110,11 @@ export class ArenaScene extends Phaser.Scene {
       this.director.reset();
       this.lastPhase = "";
     }
+    const charactersReady =
+      state.players.length > 0 &&
+      state.players.every((player) => CharacterRig.loaded(this, player));
+    this.bridge.ready = this.initialized && charactersReady;
+    this.game.canvas.dataset.ready = String(this.bridge.ready);
     this.controls.update(dt);
     this.speakers.setEnabled(this.bridge.sound);
     if (this.generation !== -1) {
@@ -127,6 +153,18 @@ export class ArenaScene extends Phaser.Scene {
       const key = `${player.species}-${player.coat}`;
       if (this.rigKeys[i] !== key) {
         this.rigs[i]?.root.destroy();
+        this.rigs[i] = undefined;
+        this.rigKeys[i] = "";
+        if (!CharacterRig.loaded(this, player)) {
+          this.labels[i]?.setVisible(false);
+          if (!this.queuedRigs.has(key)) {
+            this.queuedRigs.add(key);
+            CharacterRig.preload(this, [player]);
+            if (!this.load.isLoading()) this.load.start();
+          }
+          return;
+        }
+        this.labels[i]?.setVisible(true);
         this.rigs[i] = new CharacterRig(this, player.species, player.coat);
         this.rigKeys[i] = key;
       }
@@ -265,10 +303,13 @@ export class ArenaScene extends Phaser.Scene {
       this.labels[i]?.setVisible(false);
     }
     for (let i = 0; i < state.players.length; i++)
-      this.labels[i]?.setVisible(true);
+      this.labels[i]?.setVisible(!!this.rigs[i]);
     this.effects.update(state);
     // Read-only camera diagnostics used by browser acceptance tests and the local lab.
     const canvas = this.game.canvas;
+    canvas.dataset.characterKeys = this.rigKeys
+      .slice(0, state.players.length)
+      .join(",");
     canvas.dataset.projectileElapsed = String(state.projectile.elapsedMs);
     canvas.dataset.projectileX = String(state.projectile.x);
     canvas.dataset.projectileY = String(state.projectile.y);
@@ -293,6 +334,12 @@ export class ArenaScene extends Phaser.Scene {
     } else {
       delete canvas.dataset.aimImpactX;
       delete canvas.dataset.aimImpactY;
+    }
+    if (!this.initialized && charactersReady) {
+      this.initialized = true;
+      this.bridge.ready = true;
+      canvas.dataset.ready = "true";
+      if (!this.bridge.suspended) canvas.focus({ preventScroll: true });
     }
   }
 }
