@@ -1,5 +1,4 @@
 import type { ProjectileKind } from "./arsenal";
-import { ARENA } from "./config";
 import type { BattleView } from "./schema";
 
 /**
@@ -70,8 +69,7 @@ export function soundCues(
       });
     if (player.hp > was.hp)
       cues.push({ kind: "heal", amount: player.hp - was.hp });
-    if (player.movementSpent - was.movementSpent >= ARENA.jumpCost)
-      cues.push({ kind: "jump" });
+    if (player.jumps > was.jumps) cues.push({ kind: "jump" });
     if (
       after.phase === "aiming" &&
       player.sessionId === after.currentPlayer &&

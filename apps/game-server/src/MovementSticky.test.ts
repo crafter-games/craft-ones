@@ -5,6 +5,7 @@ import {
   type PlayableMapId,
   syncMovement,
   WEAPONS,
+  WORLD_MAPS,
 } from "@craft-ones/shared";
 
 function fixture(map: PlayableMapId = "andes") {
@@ -35,20 +36,34 @@ test.each(["andes", "coast", "canopy", "caldera"] as const)(
       ARENA.moveBudget - Math.abs(p.x - start),
     );
     expect(p.movementLeft).toBeLessThan(ARENA.moveBudget);
-    // Leave a three pixel range around the origin, as if jumps ate the rest.
-    p.movementSpent = ARENA.moveBudget - 3;
+    // Anchor the origin so only three pixels of range remain ahead.
+    p.originX = p.x + 3 - ARENA.moveBudget;
     syncMovement(p);
     tick(100);
     expect(
       battle.move("one", { direction: 1, sequence: 2, turnNumber: 1 }),
-    ).toBeString();
-    expect(battle.jump("one", { direction: 0, turnNumber: 1 })).toBeString();
-    // Walking home is still allowed, and buys the range back on arrival.
-    expect(
-      battle.move("one", { direction: -1, sequence: 3, turnNumber: 1 }),
     ).toBeNull();
-    expect(p.x).toBeCloseTo(start);
-    expect(p.movementLeft).toBeCloseTo(3);
+    expect(p.movementLeft).toBe(0);
+    tick(100);
+    expect(
+      battle.move("one", { direction: 1, sequence: 3, turnNumber: 1 }),
+    ).toBeString();
+    // Jumping is still free at the edge; it just cannot carry you further out.
+    expect(battle.jump("one", { direction: 1, turnNumber: 1 })).toBeNull();
+    expect(p.jumps).toBe(1);
+    const edge = p.x;
+    for (let frame = 0; frame < 30; frame++) tick();
+    expect(p.y).toBeLessThan(WORLD_MAPS[map].spawns[0][1]);
+    expect(p.x).toBeLessThanOrEqual(edge + 0.001);
+    expect(p.movementLeft).toBe(0);
+    for (let frame = 0; frame < 200 && p.vy !== 0; frame++) tick();
+    expect(p.x).toBeLessThanOrEqual(edge + 0.001);
+    // Walking home is still allowed, and buys the range back step by step.
+    tick(100);
+    expect(
+      battle.move("one", { direction: -1, sequence: 4, turnNumber: 1 }),
+    ).toBeNull();
+    expect(p.movementLeft).toBeCloseTo(ARENA.moveStep);
     expect(
       battle.fire("one", {
         weapon: "sticky",
@@ -63,7 +78,7 @@ test.each(["andes", "coast", "canopy", "caldera"] as const)(
     const next = battle.state.players[1];
     expect(next.movementLeft).toBe(ARENA.moveBudget);
     expect(next.originX).toBe(next.x);
-    expect(next.movementSpent).toBe(0);
+    expect(next.jumps).toBe(0);
   },
 );
 
@@ -98,11 +113,12 @@ test("walking back toward the origin hands the range back", () => {
 test("jump travel spends the budget during flight without cancelling gravity or the shot", () => {
   const { battle, tick } = fixture();
   const p = battle.state.players[0];
-  p.movementSpent = ARENA.moveBudget - (ARENA.jumpCost + 9);
+  // Anchor the origin so only nine pixels of range remain ahead.
+  p.originX = p.x + 9 - ARENA.moveBudget;
   syncMovement(p);
   const x = p.x;
   expect(battle.jump("one", { direction: 1, turnNumber: 1 })).toBeNull();
-  // The jump fee never comes back, so nine pixels of range are left.
+  // Jumping is free, so those nine pixels are still there for the flight.
   expect(p.movementLeft).toBe(9);
   battle.fire("one", {
     weapon: "grenade",
@@ -173,7 +189,7 @@ test("air steering respects the range, and knockback stays independent of it", (
   const p = battle.state.players[0];
   battle.jump("one", { direction: 0, turnNumber: 1 });
   tick(100);
-  p.movementSpent = ARENA.moveBudget - 6;
+  p.originX = p.x + 6 - ARENA.moveBudget;
   syncMovement(p);
   expect(
     battle.move("one", {
@@ -195,7 +211,7 @@ test("air steering respects the range, and knockback stays independent of it", (
   expect(p.x).toBeLessThan(x + 6);
   expect(p.movementLeft).toBeGreaterThan(0);
   const other = battle.state.players[1];
-  other.movementSpent = ARENA.moveBudget;
+  other.originX = other.x - ARENA.moveBudget;
   syncMovement(other);
   other.vx = -100;
   const otherX = other.x;

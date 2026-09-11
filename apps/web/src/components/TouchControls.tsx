@@ -105,8 +105,8 @@ export function TouchControls({
         type="button"
         className="hud-hold hud-jump"
         aria-label="Jump"
-        title={`W jumps; A/D sets direction. Jump spends ${ARENA.jumpCost} of your range for good. Keeps your shot.`}
-        disabled={disabled || budget < ARENA.jumpCost}
+        title="W jumps; A/D sets direction. Jumps are free and stay inside your range. Keeps your shot."
+        disabled={disabled}
         onPointerDown={(event) => {
           event.preventDefault();
           bridge.current.jump(

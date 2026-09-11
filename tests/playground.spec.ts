@@ -514,7 +514,7 @@ test("setup selections carry into local play and basic jump preserves the shot",
   );
 });
 
-test("movement bar empties, blocks walk and jump, and keeps sticky bombs available for both seats", async ({
+test("movement bar empties, blocks the walk out but not the jump, and keeps sticky bombs available for both seats", async ({
   page,
 }) => {
   await page.goto("/playground");
@@ -535,9 +535,21 @@ test("movement bar empties, blocks walk and jump, and keeps sticky bombs availab
   await expect(
     page.getByRole("button", { name: "Move left", exact: true }),
   ).toBeEnabled();
-  await expect(
-    page.getByRole("button", { name: "Jump", exact: true }),
-  ).toBeDisabled();
+  // Jumps are free: at the edge the jump still fires, but it lands in place.
+  const jump = page.getByRole("button", { name: "Jump", exact: true });
+  await expect(jump).toBeEnabled();
+  await jump.click();
+  await expect
+    .poll(async () => Number(await player.getAttribute("data-y")))
+    .toBeLessThan(y);
+  await expect
+    .poll(
+      async () => Math.abs(Number(await player.getAttribute("data-y")) - y),
+      { timeout: 4_000 },
+    )
+    .toBeLessThan(0.01);
+  expect(Number(await player.getAttribute("data-x"))).toBeCloseTo(x, 2);
+  await expect(meter).toHaveAttribute("aria-valuenow", "0");
   const sticky = page.getByRole("button", { name: "Sticky bomb", exact: true });
   await sticky.click();
   await expect(sticky).toHaveAttribute("aria-pressed", "true");
@@ -556,8 +568,8 @@ test("movement bar empties, blocks walk and jump, and keeps sticky bombs availab
   await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "2");
   await expect(meter).toHaveAttribute("aria-valuenow", "240");
   await expect(sticky).toBeEnabled();
-  await page.getByRole("button", { name: "Jump", exact: true }).click();
-  await expect(meter).toHaveAttribute("aria-valuenow", "192");
+  await jump.click();
+  await expect(meter).toHaveAttribute("aria-valuenow", "240");
   await page.screenshot({
     path: test.info().outputPath("movement-sticky.png"),
     fullPage: true,

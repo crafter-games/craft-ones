@@ -162,7 +162,8 @@ test("llama leap spends its turn; basic jumping preserves the attack", () => {
   const one = s.players[0],
     start = one.x;
   expect(battle.jump("one", { direction: 1, turnNumber: 1 })).toBeNull();
-  expect(one.movementLeft).toBe(ARENA.moveBudget - ARENA.jumpCost);
+  expect(one.jumps).toBe(1);
+  expect(one.movementLeft).toBe(ARENA.moveBudget);
   expect(battle.jump("one", { direction: 1, turnNumber: 1 })).toBeString();
   for (let i = 0; i < 20; i++) tick();
   expect(one.x).toBeGreaterThan(start);
@@ -244,7 +245,7 @@ test("walking spends distance while preserving enough budget to jump and fire", 
   ).toBeNull();
   expect(s.phase).toBe("flying");
 });
-test("vertical jumps cost movement, can repeat after landing and obey the turn deadline", () => {
+test("vertical jumps are free, can repeat after landing and obey the turn deadline", () => {
   const { battle, tick, until } = fixture(),
     s = battle.state,
     p = s.players[0],
@@ -259,7 +260,8 @@ test("vertical jumps cost movement, can repeat after landing and obey the turn d
     expect(s.turnNumber).toBe(1);
   }
   expect(s.remainingMs).toBeLessThan(ARENA.turnMs - 2000);
-  expect(p.movementLeft).toBe(ARENA.moveBudget - ARENA.jumpCost * 2);
+  expect(p.jumps).toBe(2);
+  expect(p.movementLeft).toBe(ARENA.moveBudget);
   tick(ARENA.turnMs);
   const y = p.y;
   expect(battle.jump("one", { direction: 0, turnNumber: 1 })).toBeString();

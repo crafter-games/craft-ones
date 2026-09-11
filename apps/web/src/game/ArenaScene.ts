@@ -241,7 +241,7 @@ export class ArenaScene extends Phaser.Scene {
       if (player.sessionId === sessionId && this.controls.canFire()) {
         // The walking range is anchored where the turn began, so show the
         // anchor and both edges: stepping back toward it hands the range back.
-        const range = Math.max(0, ARENA.moveBudget - player.movementSpent);
+        const range = ARENA.moveBudget;
         const feet = player.y + ARENA.playerRadius + 7;
         g.lineStyle(4, 0xf7e4ab, 0.34).lineBetween(
           player.originX - range,

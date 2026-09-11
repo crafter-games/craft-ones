@@ -11,7 +11,6 @@ export const ARENA = {
   knockback: 48,
   chargeMs: 2800,
   moveBudget: 240,
-  jumpCost: 48,
   moveStep: 8,
   moveIntervalMs: 80,
   terrainStep: 8,

@@ -4,17 +4,14 @@ import { bodyBlocked, type Geometry, grounded } from "./terrainGrid";
 
 /**
  * The movement budget is a range around the spot where the turn started, not a
- * path length: walking back toward that spot gives the range back. Jumps also
- * spend part of the range outright, and that part never returns.
+ * path length: walking back toward that spot gives the range back. Jumps are
+ * free and unlimited; only the turn clock and this range bound them.
  */
-export function movementRange(player: Player) {
-  return Math.max(0, ARENA.moveBudget - player.movementSpent);
-}
 
 /** How far the player may still travel in `direction` before leaving the range. */
 export function movementRoom(player: Player, direction: number) {
   if (!direction) return 0;
-  const edge = player.originX + Math.sign(direction) * movementRange(player);
+  const edge = player.originX + Math.sign(direction) * ARENA.moveBudget;
   return Math.max(0, (edge - player.x) * Math.sign(direction));
 }
 
@@ -22,14 +19,14 @@ export function movementRoom(player: Player, direction: number) {
 export function syncMovement(player: Player) {
   player.movementLeft = Math.max(
     0,
-    movementRange(player) - Math.abs(player.x - player.originX),
+    ARENA.moveBudget - Math.abs(player.x - player.originX),
   );
 }
 
 /** Anchor the range on where the player stands now. */
 export function resetMovement(player: Player) {
   player.originX = player.x;
-  player.movementSpent = 0;
+  player.jumps = 0;
   player.movementLeft = ARENA.moveBudget;
 }
 
