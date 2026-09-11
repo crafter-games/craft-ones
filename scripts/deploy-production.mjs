@@ -93,10 +93,14 @@ export async function deploy(
   await waitFor(
     async () => {
       const current = await vps(`compose.one?composeId=${composeId}`);
-      const deployment = current.deployments.find(
-        (entry) =>
-          !known.has(entry.deploymentId) && entry.title === `GitHub CI ${sha}`,
+      if (current.branch !== release)
+        throw new Error("Deployment source changed");
+      const candidates = current.deployments.filter(
+        (entry) => !known.has(entry.deploymentId),
       );
+      if (candidates.length > 1)
+        throw new Error("Concurrent deployment detected");
+      const deployment = candidates[0];
       if (!deployment) return false;
       if (deployment.status === "error")
         throw new Error("Dokploy deployment failed");

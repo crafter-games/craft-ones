@@ -36,6 +36,7 @@ function fixture({
     } else if (path.endsWith("/compose.one")) {
       deploymentReads++;
       value = {
+        branch: `release-${sha}`,
         deployments:
           deploymentReads === 1
             ? []
