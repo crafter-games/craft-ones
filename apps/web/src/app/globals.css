@@ -1245,6 +1245,19 @@ body {
   opacity: 0.8;
   white-space: nowrap;
 }
+.hud-clock .hud-wind {
+  margin: 4px 0 0;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: var(--mint);
+}
+.hud-clock .hud-wind i {
+  margin: 0 2px;
+  font-size: 13px;
+  line-height: 0;
+  color: var(--cream);
+}
 .hud-clock.is-urgent {
   background: #ffae9d;
   color: #111512;

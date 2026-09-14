@@ -20,6 +20,7 @@ export class BattleRoom extends Room<BattleState> {
     this.battle = new Battle(
       undefined,
       PLAYABLE_MAP_IDS.find((id) => id === options.mapId) ?? "andes",
+      Math.floor(Math.random() * 0x1_0000_0000),
     );
     this.setState(this.battle.state);
     this.setPatchRate(ARENA.stepMs * 3);

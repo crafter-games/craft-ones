@@ -1,5 +1,5 @@
 import { abilityProjectile, isWeapon, PROJECTILES, WEAPONS } from "./arsenal";
-import { clamp, launch } from "./ballistics";
+import { clamp, launch, windForTurn } from "./ballistics";
 import {
   defaultAppearance,
   pullTowardAnchor,
@@ -77,6 +77,7 @@ export class Battle {
   constructor(
     private readonly now: () => number = () => performance.now(),
     mapId: MapId = "flat",
+    private readonly windSeed = 0,
   ) {
     this.state.mapId = mapId;
     this.state.terrain.push(...makeTerrain(mapId));
@@ -413,6 +414,11 @@ export class Battle {
     this.state.phase = "aiming";
     this.state.currentPlayer = this.state.players[index].sessionId;
     this.state.turnNumber++;
+    this.state.wind = windForTurn(
+      this.state.mapId,
+      this.state.turnNumber,
+      this.windSeed,
+    );
     resetMovement(this.state.players[index]);
     this.moveSequence = 0;
     this.moveAt = -Infinity;

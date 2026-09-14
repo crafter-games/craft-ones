@@ -150,6 +150,7 @@ export class BattleState extends Schema {
   declare terrainRows: ArraySchema<string>;
   declare terrainRevision: number;
   declare lastAction: string;
+  declare wind: number;
   declare mapId: string;
   declare terrain: ArraySchema<number>;
   declare players: ArraySchema<Player>;
@@ -170,6 +171,7 @@ export class BattleState extends Schema {
       terrainRows: new ArraySchema<string>(),
       terrainRevision: 0,
       lastAction: "",
+      wind: 0,
       mapId: "flat",
       terrain: new ArraySchema<number>(),
       players: new ArraySchema<Player>(),
@@ -190,6 +192,7 @@ defineTypes(BattleState, {
   terrainRows: ["string"],
   terrainRevision: "number",
   lastAction: "string",
+  wind: "number",
   mapId: "string",
   terrain: ["number"],
   players: [Player],
@@ -227,6 +230,7 @@ export type BattleView = {
   terrainRows: string[];
   terrainRevision: number;
   lastAction: string;
+  wind: number;
   mapId: string;
   terrain: number[];
   players: PlayerView[];

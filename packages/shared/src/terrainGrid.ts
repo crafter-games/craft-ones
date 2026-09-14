@@ -7,6 +7,8 @@ export type Geometry = {
   worldHeight: number;
   terrain: ArrayLike<number>;
   terrainRows: ArrayLike<string>;
+  /** Horizontal projectile acceleration in world units per second squared. */
+  wind?: number;
 };
 type MutableRows = { length: number; [index: number]: string };
 

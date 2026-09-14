@@ -13,6 +13,31 @@ import {
   settled,
 } from "./gameplay";
 
+test("public play hides the impact solution while the lab retains it", async ({
+  page,
+}) => {
+  await page.goto("/local");
+  await expect(page.getByTestId("battle")).toHaveAttribute(
+    "data-phase",
+    "aiming",
+  );
+  await expect(page.locator("canvas")).toHaveAttribute(
+    "data-trajectory-mode",
+    "launch",
+  );
+  await expect(page.getByTestId("wind-indicator")).toBeVisible();
+  await expect(page.getByTestId("wind-indicator")).toHaveAttribute(
+    "data-wind",
+    /-?\d+/,
+  );
+
+  await page.goto("/playground");
+  await expect(page.locator("canvas")).toHaveAttribute(
+    "data-trajectory-mode",
+    "full",
+  );
+});
+
 test("lineup selector wraps between characters, explains the default critter and carries coats into play", async ({
   page,
 }) => {

@@ -47,6 +47,7 @@
 - Both maps support complete matches through normal pointer input, victory and restart. Restart clears projectiles, restores HP and positions, and does not leak canvases or timers.
 - Move is constrained by turn, sequence, rate, time, map walls and player separation. Rematch is host-only after a finished game, with both players connected; old fire intents stay stale.
 - Trajectory preview and authoritative rockets share the same launch and swept-collision code. Player gravity continues during flight.
+- Public matches show only a short launch guide without an impact marker. Seeded authoritative wind follows a new sequence per match, changes per round, stays identical for both seats in that round and affects previews and ballistic projectiles equally. The grapple remains a collision-checked straight line. Only `/playground` lab controls may expose the complete trajectory.
 - Touch aim/charge/release and movement work at portrait and landscape sizes. Pointer cancellation and blur cancel charging.
 - Lab tools: restart, infinite HP, trajectory, collision circles and ground destruction toggle. Local options are never registered as multiplayer messages.
 - Regenerate original character assets with `bun apps/web/scripts/character-art.ts`. Joint coordinates and source shapes live in `apps/web/src/game/characters/design.ts`.

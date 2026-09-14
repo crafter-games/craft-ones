@@ -309,7 +309,7 @@ export class ArenaScene extends Phaser.Scene {
             endX - Math.cos(arrowAngle + 0.62) * wing,
             endY - Math.sin(arrowAngle + 0.62) * wing,
           );
-        } else if (this.bridge.showTrajectory) {
+        } else {
           const points = state.terrainRows.length
             ? shotTrajectory(
                 state,
@@ -320,8 +320,14 @@ export class ArenaScene extends Phaser.Scene {
                 selectedShot,
               )
             : trajectory(state, player, this.controls.angle, power || 0.5);
-          points.forEach((p, n) => {
-            g.fillStyle(0x292733, 0.96 - (n / points.length) * 0.16).fillCircle(
+          const visiblePoints = this.bridge.showTrajectory
+            ? points
+            : points.slice(0, 5);
+          visiblePoints.forEach((p, n) => {
+            const fade = this.bridge.showTrajectory
+              ? 0.96 - (n / points.length) * 0.16
+              : 0.9 - (n / Math.max(1, visiblePoints.length - 1)) * 0.62;
+            g.fillStyle(0x292733, fade).fillCircle(
               p.x,
               p.y,
               n % 2 === 0 ? 3 : 2.25,
@@ -329,7 +335,9 @@ export class ArenaScene extends Phaser.Scene {
           });
           const end = points.at(-1);
           if (end) {
-            g.lineStyle(3, 0x292733, 0.9).strokeCircle(end.x, end.y, 8);
+            if (this.bridge.showTrajectory)
+              g.lineStyle(3, 0x292733, 0.9).strokeCircle(end.x, end.y, 8);
+            // Non-visual diagnostic for repeatable browser acceptance shots.
             aimImpact = end;
           }
         }
@@ -369,6 +377,9 @@ export class ArenaScene extends Phaser.Scene {
     canvas.dataset.cameraHeight = String(this.cameras.main.height);
     canvas.dataset.cameraFrameWidth = String(this.director.frame.width);
     canvas.dataset.cameraFrameHeight = String(this.director.frame.height);
+    canvas.dataset.trajectoryMode = this.bridge.showTrajectory
+      ? "full"
+      : "launch";
     canvas.dataset.cameraCenterX = String(
       this.cameras.main.scrollX + this.cameras.main.width / 2,
     );

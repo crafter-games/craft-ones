@@ -91,10 +91,15 @@ test.each(["andes", "coast"] as const)(
         const angle = target.x > shooter.x ? -Math.PI / 3 : (-2 * Math.PI) / 3;
         const dx = target.x - shooter.x - Math.cos(angle) * 22;
         const dy = target.y - shooter.y - Math.sin(angle) * 22;
-        const speed = Math.sqrt(
-          (420 * dx ** 2) /
-            (2 * Math.cos(angle) ** 2 * (dy - dx * Math.tan(angle))),
-        );
+        // Solve the launch against both gravity and the round's horizontal
+        // wind. This models the correction a practiced player learns to make.
+        const timeSquared =
+          (2 * (dy - dx * Math.tan(angle))) /
+          (ARENA.gravity - battle.state.wind * Math.tan(angle));
+        const time = Math.sqrt(timeSquared);
+        const speed =
+          (dx - 0.5 * battle.state.wind * timeSquared) /
+          (Math.cos(angle) * time);
         expect(
           battle.fire(shooter.sessionId, {
             angle,

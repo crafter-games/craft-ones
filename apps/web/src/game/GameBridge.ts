@@ -29,7 +29,7 @@ export function createBridge(charge: GameBridge["charge"]): GameBridge {
     sessionId: "",
     connected: false,
     generation: 0,
-    showTrajectory: true,
+    showTrajectory: false,
     debug: false,
     weapon: "rocket",
     abilityAim: false,

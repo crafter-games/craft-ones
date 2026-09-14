@@ -31,7 +31,7 @@ export default function Playground({ lab = false }: { lab?: boolean }) {
   const [state, setState] = useState<BattleView | null>(null);
   const [power, setPower] = useState(0);
   const [infiniteHp, setInfiniteHp] = useState(false);
-  const [showTrajectory, setShowTrajectory] = useState(true);
+  const [showTrajectory, setShowTrajectory] = useState(lab);
   const [debug, setDebug] = useState(false);
   const [destructible, setDestructible] = useState(true);
   const [one, setOne] = useState<PlayerOptions>(
@@ -68,7 +68,11 @@ export default function Playground({ lab = false }: { lab?: boolean }) {
   // One simulation, two local seats. No socket or server needed by this route.
   useEffect(() => {
     let elapsed = 0;
-    const engine = new Battle(() => elapsed, mapId);
+    const engine = new Battle(
+      () => elapsed,
+      mapId,
+      Math.floor(Math.random() * 0x1_0000_0000),
+    );
     engine.infiniteHp = options.current.infiniteHp;
     engine.destructible = options.current.destructible;
     engine.addPlayer("local-cuy", profiles.current.one);

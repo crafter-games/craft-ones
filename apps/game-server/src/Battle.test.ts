@@ -244,6 +244,15 @@ describe("monotonic turn deadlines", () => {
     expect(battle.state.remainingMs).toBe(ARENA.turnMs);
   });
 
+  test("both seats share one wind before the next round changes it", () => {
+    const { battle, advance } = setup();
+    const firstRound = battle.state.wind;
+    advance(ARENA.turnMs);
+    expect(battle.state.wind).toBe(firstRound);
+    advance(ARENA.turnMs);
+    expect(battle.state.wind).not.toBe(firstRound);
+  });
+
   test("an old intent is stale even when the same player's next turn arrives", () => {
     const { battle, advance } = setup();
     const old = action(battle);
@@ -262,7 +271,14 @@ describe("fixed 60 Hz physics and swept collisions", () => {
     expect(battle.state.projectile.x).toBe(x);
     advance(ARENA.stepMs / 2);
     const seconds = ARENA.stepMs / 1000;
-    expect(battle.state.projectile.x).toBeCloseTo(x + vx * seconds, 8);
+    expect(battle.state.projectile.x).toBeCloseTo(
+      x + vx * seconds + 0.5 * battle.state.wind * seconds ** 2,
+      8,
+    );
+    expect(battle.state.projectile.vx).toBeCloseTo(
+      vx + battle.state.wind * seconds,
+      8,
+    );
     expect(battle.state.projectile.y).toBeCloseTo(
       y + vy * seconds + 0.5 * ARENA.gravity * seconds ** 2,
       8,
