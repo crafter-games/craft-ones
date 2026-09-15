@@ -222,6 +222,24 @@ test("lineup and expanded arsenal fit mobile and reduced-motion preferences", as
   ).toBe(true);
 });
 
+test("the map carousel scrolls inside the setup page without widening it", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 720, height: 700 });
+  await page.goto("/setup?mode=local");
+  const body = page.locator(".setup-body");
+  const maps = page.locator(".map-list");
+  await expect(maps).toBeVisible();
+  expect(
+    await body.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth,
+    ),
+  ).toBe(true);
+  expect(
+    await maps.evaluate((element) => element.scrollWidth > element.clientWidth),
+  ).toBe(true);
+});
+
 for (const mapId of ["andes", "coast"]) {
   test(`offline playground: ${mapId} completes a real pointer-controlled match and restarts`, async ({
     page,
