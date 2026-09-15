@@ -35,7 +35,7 @@ const characterNotes = {
   llama: "Slanted brows / stubborn pout / split hooves",
   zorro: "Sharp glare / tense muzzle / dark angular paws",
   ronsoco: "Heavy scowl / compressed mouth / broad fists",
-  puma: "Rounded ears / low glare / heavy curling tail",
+  puma: "Rounded ears / broad cheeks / compact feline muzzle / heavy tail",
   alpaca: "Stubby ears / soft pout / pom-pom tail",
 };
 const rows: string[] = [];
