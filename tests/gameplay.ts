@@ -60,15 +60,22 @@ function readArena(page: Page, number: number): Promise<Arena> {
     };
     const canvas = document.querySelector("canvas") as HTMLCanvasElement;
     const rect = canvas.getBoundingClientRect();
+    const zoom = Number(canvas.dataset.cameraZoom);
+    const vw = Number(canvas.dataset.cameraWidth);
+    const vh = Number(canvas.dataset.cameraHeight);
+    const rawCenterX = Number(canvas.dataset.cameraCenterX);
+    const rawCenterY = Number(canvas.dataset.cameraCenterY);
     return {
       from: player(seat),
       to: player(seat === 1 ? 2 : 1),
       box: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
-      zoom: Number(canvas.dataset.cameraZoom),
-      cx: Number(canvas.dataset.cameraCenterX),
-      cy: Number(canvas.dataset.cameraCenterY),
-      vw: Number(canvas.dataset.cameraWidth),
-      vh: Number(canvas.dataset.cameraHeight),
+      zoom,
+      // ArenaScene exposes scroll + half the unzoomed viewport. Normalize it
+      // to the actual world-space camera midpoint before projecting a shot.
+      cx: rawCenterX - vw / 2 + vw / (2 * zoom),
+      cy: rawCenterY - vh / 2 + vh / (2 * zoom),
+      vw,
+      vh,
     };
   }, number);
 }
@@ -81,28 +88,27 @@ function toScreen(arena: Arena, x: number, y: number) {
   };
 }
 
-/**
- * The elevation that drops a full-power rocket on the target over open air,
- * taking the high arc. Terrain can still block it, so this only seeds the
- * search against the arc the client previews.
- */
-function highArc(from: { x: number; y: number }, to: { x: number; y: number }) {
-  let angle = to.x > from.x ? -Math.PI / 3 : (-2 * Math.PI) / 3;
-  // The rocket leaves 22px along the aim, so solve again from where it starts.
-  for (let pass = 0; pass < 2; pass++) {
-    const dx = to.x - from.x - Math.cos(angle) * 22;
-    const rise = from.y + Math.sin(angle) * 22 - to.y;
-    const speed2 = ROCKET_MAX_SPEED ** 2;
-    const root = Math.sqrt(
-      Math.max(
-        0,
-        speed2 ** 2 - GRAVITY * (GRAVITY * dx ** 2 + 2 * rise * speed2),
-      ),
-    );
-    const elevation = Math.atan((speed2 + root) / (GRAVITY * Math.abs(dx)));
-    angle = dx > 0 ? -elevation : elevation - Math.PI;
-  }
-  return angle;
+/** A practiced shot corrected for the authoritative round wind. */
+function practicedShot(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  wind: number,
+  elevation: number,
+) {
+  const angle = to.x > from.x ? -elevation : elevation - Math.PI;
+  const dx = to.x - from.x - Math.cos(angle) * 22;
+  const dy = to.y - from.y - Math.sin(angle) * 22;
+  const timeSquared =
+    (2 * (dy - dx * Math.tan(angle))) / (GRAVITY - wind * Math.tan(angle));
+  const time = Math.sqrt(timeSquared);
+  const speed = (dx - 0.5 * wind * timeSquared) / (Math.cos(angle) * time);
+  if (!Number.isFinite(speed)) return;
+  const power = (speed - 240) / (ROCKET_MAX_SPEED - 240);
+  if (power < 0 || power > 1) return;
+  return {
+    angle,
+    power,
+  };
 }
 
 /**
@@ -134,115 +140,66 @@ function ray(
 }
 
 /**
- * Aim the way a player does: hold the button down, watch the previewed arc,
- * nudge until it sits on the opponent, then let go. Charging saturates the
- * power and freezes the camera, so neither the release round trip nor the turn
- * introduction can skew the shot.
+ * Aim the way a practiced player does: try high and low arcs, compensate for
+ * visible wind and release at the required charge. The non-visual impact data
+ * lets acceptance tests prefer a clear lane without exposing it in public play.
  */
 export async function aimAtOpponent(
   page: Page,
   number: number,
-  walked = false,
+  focused = false,
 ) {
   const canvas = page.locator("canvas");
-  if (!walked) await canvas.click({ trial: true });
+  if (!focused) await canvas.click({ trial: true });
   await expect(page.getByTestId("battle")).toHaveAttribute(
     "data-phase",
     "aiming",
   );
-  const box = await canvas.boundingBox();
-  if (!box) throw new Error("Missing arena");
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  // Charging freezes the camera, so the critters settle inside the wind-up
-  // instead of before it, which keeps a whole shot inside one turn.
   await settled(page);
-  // Full power: the client clamps the charge, so the release can take its time.
-  await expect.poll(() => power(page)).toBe(100);
-  const arena = await readArena(page, number);
-  const { from, to } = arena;
-  const show = async (angle: number) => {
-    const at = toScreen(arena, ...ray(arena, from, angle));
+  const initial = await readArena(page, number);
+  const { from, to } = initial;
+  const wind = Number(
+    await page.getByTestId("wind-indicator").getAttribute("data-wind"),
+  );
+  const candidates = [40, 50, 30]
+    .map((degrees) => practicedShot(from, to, wind, (degrees * Math.PI) / 180))
+    .filter((shot) => shot !== undefined);
+  if (!candidates.length) throw new Error("No reachable ballistic shot");
+
+  const tryShot = async (shot: (typeof candidates)[number]) => {
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error("Missing arena");
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    const arena = await readArena(page, number);
+    const at = toScreen(arena, ...ray(arena, arena.from, shot.angle));
     await page.mouse.move(at.x, at.y);
-    const impact = await page.evaluate(async () => {
-      // Let the scene redraw the arc for the angle the pointer just set.
-      await new Promise((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(resolve)),
-      );
-      const element = document.querySelector("canvas") as HTMLCanvasElement;
-      const x = Number(element.dataset.aimImpactX);
-      const y = Number(element.dataset.aimImpactY);
-      return Number.isFinite(x) && Number.isFinite(y) ? { x, y } : null;
-    });
-    return {
-      angle,
-      blocked: impact
-        ? Math.hypot(impact.x - from.x, impact.y - from.y) < 110
-        : false,
-      miss: impact ? Math.hypot(impact.x - to.x, impact.y - to.y) : Infinity,
-    };
-  };
-  const lift = to.x > from.x ? 1 : -1;
-  const elevate = (degrees: number) =>
-    lift > 0 ? (-degrees * Math.PI) / 180 : (degrees * Math.PI) / 180 - Math.PI;
-  // Stop searching with enough of the turn left to release and, if the terrain
-  // is in the way, to step clear and line the shot up again.
-  const remaining = async () =>
-    Number(await page.getByTestId("battle").getAttribute("data-remaining"));
-  let left = await remaining();
-  const seed = highArc(from, to);
-  if (left <= 6) {
-    // Not enough turn left to study the arc; take the open-air solution.
-    const at = toScreen(arena, ...ray(arena, from, seed));
-    await page.mouse.move(at.x, at.y);
-    await page.mouse.up();
-    return;
-  }
-  let best = await show(seed);
-  if (best.blocked && !walked && left >= 8) {
-    // Climb out of a crater through normal input before charging again. The
-    // expanded arena requires a shallower firing arc that can hit the rim.
-    await page.evaluate(() => dispatchEvent(new Event("blur")));
-    await page.mouse.up();
-    const key = to.x > from.x ? "KeyA" : "KeyD";
-    await page.keyboard.down(key);
-    await page.keyboard.press("KeyW");
-    await page.waitForTimeout(250);
-    await page.keyboard.up(key);
-    await settled(page);
-    return aimAtOpponent(page, number, true);
-  }
-  // Craters and cliffs can block the open-air arc, so try the whole fan before
-  // closing in on whichever one the terrain actually lets through.
-  for (const degrees of [30, 45, 60, 72, 80, 20, 52, 66]) {
-    if (best.miss < 30) break;
-    left = await remaining();
-    if (left <= 8) break;
-    const shot = await show(elevate(degrees));
-    if (shot.miss < best.miss) best = shot;
-  }
-  for (let step = 2; best.miss > 25 && step >= 0.5; step /= 2)
-    for (const side of [-1, 1]) {
-      left = await remaining();
-      if (left <= 6) break;
-      const shot = await show(
-        best.angle + ((side * step * Math.PI) / 180) * lift,
-      );
-      if (shot.miss < best.miss) best = shot;
+    await expect.poll(() => power(page)).toBeGreaterThan(1);
+    let miss = Number.POSITIVE_INFINITY;
+    const deadline = performance.now() + 3000;
+    while (performance.now() < deadline && (await power(page)) < 99) {
+      const impact = await page.evaluate(() => {
+        const element = document.querySelector("canvas") as HTMLCanvasElement;
+        return {
+          x: Number(element.dataset.aimImpactX),
+          y: Number(element.dataset.aimImpactY),
+        };
+      });
+      miss = Math.min(miss, Math.hypot(impact.x - to.x, impact.y - to.y));
+      if (miss < 55) return true;
+      await page.waitForTimeout(16);
     }
-  if (best.miss > 60 && !walked && (await remaining()) >= 8) {
-    // Boxed in by our own crater. Drop the charge without spending the shot,
-    // step clear and line it up again: moving keeps the shot.
-    await page.evaluate(() => dispatchEvent(new Event("blur")));
+    return false;
+  };
+
+  for (const [index, shot] of candidates.entries()) {
+    if ((await tryShot(shot)) || index === candidates.length - 1) {
+      await page.mouse.up();
+      return;
+    }
+    await canvas.dispatchEvent("pointercancel");
     await page.mouse.up();
-    const key = to.x > from.x ? "KeyA" : "KeyD";
-    await page.keyboard.down(key);
-    await page.waitForTimeout(400);
-    await page.keyboard.up(key);
-    return aimAtOpponent(page, number, true);
   }
-  await show(best.angle);
-  await page.mouse.up();
 }
 
 /**

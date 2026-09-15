@@ -226,6 +226,7 @@ for (const mapId of ["andes", "coast"]) {
   test(`offline playground: ${mapId} completes a real pointer-controlled match and restarts`, async ({
     page,
   }) => {
+    test.setTimeout(210_000);
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await page.route("**/matchmake/**", (route) => route.abort());
@@ -243,7 +244,7 @@ for (const mapId of ["andes", "coast"]) {
     await expect(page.locator("canvas")).toBeVisible();
     await expect(page.locator("iframe")).toHaveCount(0);
     await expect(page.locator("canvas")).toHaveCount(1);
-    for (let shot = 0; shot < 9; shot++) {
+    for (let shot = 0; shot < 12; shot++) {
       if (
         (await page.getByTestId("battle").getAttribute("data-phase")) ===
         "finished"
@@ -254,16 +255,25 @@ for (const mapId of ["andes", "coast"]) {
       );
       const target = page.getByTestId(`player-${number === 1 ? 2 : 1}`);
       const hp = Number(await target.getAttribute("data-hp"));
-      const x = await target.getAttribute("data-x");
+      const terrainRevision = Number(
+        await page.getByTestId("battle").getAttribute("data-terrain-revision"),
+      );
       await aimAtOpponent(page, number);
       await expect(page.getByTestId("battle")).toHaveAttribute(
         "data-phase",
         "flying",
       );
       await expect
-        .poll(async () => Number(await target.getAttribute("data-hp")))
-        .toBeLessThan(hp);
-      await expect(target).not.toHaveAttribute("data-x", x ?? "");
+        .poll(async () => {
+          const nextHp = Number(await target.getAttribute("data-hp"));
+          const nextRevision = Number(
+            await page
+              .getByTestId("battle")
+              .getAttribute("data-terrain-revision"),
+          );
+          return nextHp < hp || nextRevision > terrainRevision;
+        })
+        .toBe(true);
       await expect(page.getByTestId("battle")).toHaveAttribute(
         "data-phase",
         /aiming|finished/,

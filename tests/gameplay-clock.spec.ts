@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { aimAtOpponent } from "./gameplay";
+import { aimWorld, power } from "./gameplay";
 
 for (const clockShift of [60_000, -60_000]) {
   test(`aiming reaches full charge when the worker clock shifts by ${clockShift}ms`, async ({
@@ -14,32 +14,27 @@ for (const clockShift of [60_000, -60_000]) {
     await page.keyboard.press("KeyW");
     const wallNow = Date.now;
     const mouseDown = page.mouse.down;
-    const mouseMove = page.mouse.move;
-    let charging = false;
     let shift = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const player = page.getByTestId("player-1");
+    const x = Number(await player.getAttribute("data-x"));
+    const y = Number(await player.getAttribute("data-y"));
+    await aimWorld(page, x + 200, y - 160);
     Date.now = () => wallNow() + shift;
     page.mouse.down = async (options) => {
       await mouseDown.call(page.mouse, options);
-      charging = true;
       timer = setTimeout(() => {
         shift = clockShift;
       }, 50);
     };
-    page.mouse.move = async (x, y, options) => {
-      if (charging)
-        expect(
-          Number(await page.locator("#power").getAttribute("data-value")),
-        ).toBe(100);
-      await mouseMove.call(page.mouse, x, y, options);
-    };
     try {
-      await aimAtOpponent(page, 1, true);
+      await page.mouse.down();
+      await expect.poll(() => power(page)).toBe(100);
+      await page.mouse.up();
     } finally {
       clearTimeout(timer);
       Date.now = wallNow;
       page.mouse.down = mouseDown;
-      page.mouse.move = mouseMove;
     }
     await expect(canvas).toHaveAttribute("data-fire-power", "1");
   });

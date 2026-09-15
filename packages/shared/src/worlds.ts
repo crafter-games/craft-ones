@@ -419,48 +419,48 @@ export function makeWorld(mapId: MapId): string[] {
     return rows;
   }
   if (mapId === "caldera") {
-    ellipse(896, 712, 504, 272);
-    ellipse(896, 680, 344, 200, "0");
-    rect(736, 400, 320, 304, "0");
-    rect(864, 944, 64, 80, "0");
+    ellipse(856, 712, 520, 272);
+    ellipse(928, 672, 336, 184, "0");
+    rect(760, 400, 272, 304, "0");
+    rect(824, 944, 80, 80, "0");
     island(64, 608, 288, 184);
-    island(1440, 608, 288, 184);
+    island(1400, 608, 328, 208);
     rect(336, 632, 224, 40);
-    rect(1232, 632, 224, 40);
+    rect(1200, 648, 256, 32);
     island(352, 536, 96, 40);
-    island(1344, 536, 96, 40);
+    island(1288, 488, 144, 64);
     rect(456, 568, 112, 24);
-    rect(1224, 568, 112, 24);
+    rect(1208, 560, 176, 24);
     const rows = cells.map((row) => row.join(""));
     carve(rows, 480, 736, 48);
-    carve(rows, 1312, 736, 48);
+    carve(rows, 1480, 680, 40);
     return rows;
   }
   if (mapId === "totora") {
-    // Three generous reed decks read as a village instead of scattered rocks.
+    // Uneven reed decks and staggered roofs read as a shoreline village.
     island(24, 608, 520, 272);
-    island(1248, 608, 520, 272);
-    island(592, 552, 608, 296);
+    island(1216, 608, 552, 232);
+    island(568, 552, 632, 296);
     rect(104, 528, 280, 80);
-    rect(1408, 528, 280, 80);
+    rect(1448, 496, 240, 112);
     polygon([
-      [676, 552],
-      [736, 432],
-      [848, 432],
-      [896, 552],
+      [648, 552],
+      [720, 424],
+      [824, 424],
+      [872, 552],
     ]);
     polygon([
-      [896, 552],
-      [944, 432],
-      [1056, 432],
-      [1116, 552],
+      [920, 552],
+      [984, 456],
+      [1104, 456],
+      [1144, 552],
     ]);
     rect(456, 512, 176, 40);
-    rect(1160, 512, 176, 40);
+    rect(1128, 488, 216, 48);
     const rows = cells.map((row) => row.join(""));
     carve(rows, 268, 736, 88);
-    carve(rows, 1524, 736, 88);
-    carve(rows, 896, 704, 112);
+    carve(rows, 1496, 720, 104);
+    carve(rows, 960, 680, 96);
     return rows;
   }
   if (mapId === "saltglass") {
@@ -504,7 +504,7 @@ export function makeWorld(mapId: MapId): string[] {
     return rows;
   }
   if (mapId === "huaca") {
-    // Two adobe compounds and a stepped central temple create large combat rooms.
+    // A low compound faces a taller citadel around an off-center stepped temple.
     polygon([
       [0, 624],
       [520, 624],
@@ -513,46 +513,46 @@ export function makeWorld(mapId: MapId): string[] {
       [0, 1024],
     ]);
     polygon([
-      [1272, 672],
-      [1304, 624],
+      [1216, 688],
+      [1280, 624],
       [1792, 624],
       [1792, 1024],
-      [1256, 1024],
+      [1232, 1024],
     ]);
     rect(40, 520, 320, 104);
-    rect(1432, 520, 320, 104);
-    rect(600, 664, 592, 264);
-    rect(664, 568, 464, 96);
-    rect(744, 480, 304, 88);
-    rect(816, 392, 160, 88);
-    rect(864, 744, 64, 280, "0");
+    rect(1400, 472, 352, 152);
+    rect(560, 664, 640, 264);
+    rect(624, 568, 496, 96);
+    rect(704, 480, 336, 88);
+    rect(752, 376, 192, 104);
+    rect(936, 744, 64, 280, "0");
     const rows = cells.map((row) => row.join(""));
     carve(rows, 272, 720, 104);
-    carve(rows, 1520, 720, 104);
-    carve(rows, 896, 744, 128);
+    carve(rows, 1456, 760, 128);
+    carve(rows, 840, 720, 112);
     return rows;
   }
   if (mapId === "frost") {
-    // Glacial shelves are broad enough to fight on; the arch supplies a lower route.
+    // A low glacier shelf faces a tall fractured wall across an offset arch.
     island(16, 608, 544, 288);
-    island(1232, 608, 544, 288);
-    island(512, 680, 768, 272);
+    island(1200, 608, 576, 240);
+    island(480, 696, 816, 256);
     rect(496, 568, 280, 112);
-    rect(1016, 568, 280, 112);
-    ellipse(896, 568, 248, 176);
+    rect(1048, 536, 248, 160);
+    ellipse(840, 584, 248, 176);
     island(160, 448, 280, 80);
-    island(1352, 448, 280, 80);
-    island(736, 336, 320, 80);
+    island(1288, 400, 344, 128);
+    island(792, 320, 304, 96);
     const rows = cells.map((row) => row.join(""));
-    carve(rows, 896, 616, 136);
+    carve(rows, 840, 632, 136);
     carve(rows, 288, 744, 96);
-    carve(rows, 1504, 744, 96);
+    carve(rows, 1328, 752, 96);
     return rows;
   }
   if (mapId === "loom") {
-    // Interlocking woven bands provide two routes around a large thunder gap.
+    // Uneven woven bands create a high left route and a hooked right descent.
     island(16, 608, 544, 280);
-    island(1232, 608, 544, 280);
+    island(1200, 608, 576, 240);
     polygon([
       [480, 608],
       [688, 472],
@@ -562,12 +562,12 @@ export function makeWorld(mapId: MapId): string[] {
       [480, 688],
     ]);
     polygon([
-      [960, 552],
-      [960, 472],
-      [1104, 472],
-      [1312, 608],
-      [1312, 688],
-      [1168, 688],
+      [928, 568],
+      [984, 448],
+      [1128, 472],
+      [1328, 624],
+      [1296, 704],
+      [1152, 672],
     ]);
     polygon([
       [544, 824],
@@ -578,48 +578,48 @@ export function makeWorld(mapId: MapId): string[] {
       [544, 872],
     ]);
     polygon([
-      [960, 680],
-      [1032, 680],
-      [1248, 824],
-      [1248, 872],
-      [1120, 872],
-      [960, 760],
+      [1000, 704],
+      [1088, 680],
+      [1320, 792],
+      [1296, 856],
+      [1160, 888],
+      [976, 776],
     ]);
-    island(704, 328, 384, 96);
+    island(640, 312, 416, 112);
     const rows = cells.map((row) => row.join(""));
     carve(rows, 288, 744, 96);
-    carve(rows, 1504, 744, 96);
+    carve(rows, 1328, 752, 96);
     return rows;
   }
   if (mapId === "harbor") {
-    // Solid docks surround a large ship whose deck, hold and masts are playable.
+    // A low quay and tall crane dock flank an off-center playable ship.
     island(0, 608, 560, 288);
-    island(1232, 608, 560, 288);
+    island(1192, 608, 600, 240);
     polygon([
       [488, 624],
-      [1304, 624],
-      [1224, 896],
-      [1112, 984],
+      [1264, 600],
+      [1200, 880],
+      [1088, 984],
       [680, 984],
       [568, 896],
     ]);
-    rect(504, 568, 784, 56);
+    rect(504, 552, 720, 72);
     rect(720, 376, 48, 192);
-    rect(1024, 344, 48, 224);
+    rect(1000, 320, 56, 232);
     rect(600, 440, 296, 40);
-    rect(896, 408, 280, 40);
+    rect(880, 392, 248, 48);
     rect(280, 448, 48, 160);
-    rect(1464, 448, 48, 160);
+    rect(1512, 400, 56, 208);
     rect(280, 448, 208, 40);
-    rect(1304, 448, 208, 40);
+    rect(1344, 400, 224, 48);
     const rows = cells.map((row) => row.join(""));
-    carve(rows, 896, 792, 152);
+    carve(rows, 840, 792, 144);
     carve(rows, 280, 744, 96);
-    carve(rows, 1512, 744, 96);
+    carve(rows, 1584, 736, 96);
     return rows;
   }
   if (mapId === "andes") {
-    // Broad starting shelves, stepped routes and a central arch with a hollow belly.
+    // A terraced garden faces a broken ridge across an off-center stone arch.
     polygon([
       [0, 624],
       [448, 624],
@@ -634,27 +634,24 @@ export function makeWorld(mapId: MapId): string[] {
       [1344, 624],
       [1792, 624],
       [1792, 1024],
-      [1296, 1024],
-      [1360, 904],
-      [1328, 840],
-      [1296, 680],
+      [1264, 1024],
+      [1320, 912],
+      [1296, 824],
+      [1328, 752],
+      [1304, 680],
       [1336, 656],
     ]);
-    rect(64, 544, 112, 80);
-    rect(1616, 536, 112, 88);
     rect(472, 728, 216, 112);
-    rect(1104, 728, 216, 112);
-    ellipse(896, 648, 280, 208);
+    rect(1128, 696, 168, 144);
+    ellipse(840, 664, 304, 192);
     rect(672, 632, 64, 320);
-    rect(1056, 632, 64, 320);
-    island(576, 440, 224, 72);
-    island(992, 440, 224, 72);
-    ellipse(896, 300, 152, 48);
-    island(368, 552, 96, 32);
-    island(1328, 552, 96, 32);
-    island(416, 504, 128, 24);
-    island(1248, 504, 128, 24);
+    rect(1032, 640, 80, 312);
+    island(24, 408, 184, 64);
+    island(1584, 328, 176, 80);
+    island(488, 312, 112, 32);
+    island(1304, 240, 144, 40);
   } else if (mapId === "coast") {
+    // A weathered mesa faces a tall sea stack around a slumped sandstone bowl.
     polygon([
       [0, 592],
       [424, 592],
@@ -667,53 +664,45 @@ export function makeWorld(mapId: MapId): string[] {
       [0, 1024],
     ]);
     polygon([
-      [1368, 592],
+      [1320, 672],
+      [1360, 616],
       [1792, 592],
       [1792, 1024],
-      [1304, 1024],
-      [1344, 928],
-      [1288, 848],
-      [1336, 760],
-      [1304, 696],
-      [1328, 624],
+      [1272, 1024],
+      [1336, 936],
+      [1304, 864],
+      [1368, 784],
+      [1328, 728],
     ]);
+    rect(1408, 592, 192, 64);
     rect(32, 456, 136, 136);
-    rect(1624, 464, 136, 128);
-    ellipse(896, 792, 360, 216);
+    rect(1576, 416, 184, 176);
+    ellipse(840, 792, 400, 216);
     rect(672, 696, 64, 280);
-    rect(1056, 696, 64, 280);
+    rect(1064, 680, 80, 296);
     rect(480, 720, 160, 72);
-    rect(1152, 720, 160, 72);
-    island(504, 656, 144, 32);
-    island(1144, 656, 144, 32);
-    island(768, 520, 256, 32);
-    island(576, 472, 200, 64);
-    island(1016, 472, 200, 64);
-    polygon([
-      [728, 320],
-      [872, 304],
-      [1056, 344],
-      [1080, 368],
-      [1032, 400],
-      [816, 384],
-      [736, 352],
-    ]);
-    island(368, 528, 96, 32);
-    island(1328, 528, 96, 32);
-    island(416, 472, 128, 24);
-    island(1248, 472, 128, 24);
+    rect(1160, 688, 192, 88);
+    island(16, 360, 192, 72);
+    island(1576, 280, 184, 96);
+    island(336, 280, 136, 40);
+    island(1336, 208, 160, 48);
   }
   const rows = cells.map((row) => row.join(""));
   // True interior cavities and open passages, not just dents in a height field.
   carve(
     rows,
-    896,
-    mapId === "andes" ? 680 : 792,
+    mapId === "andes" ? 840 : 920,
+    mapId === "andes" ? 696 : 784,
     mapId === "andes" ? 112 : 144,
   );
   carve(rows, 144, 824, 96);
-  carve(rows, 1648, 824, 96);
+  carve(
+    rows,
+    mapId === "andes" ? 1584 : 1552,
+    mapId === "andes" ? 776 : 800,
+    mapId === "andes" ? 72 : 120,
+  );
   carve(rows, 88, 944, 80);
-  carve(rows, 1712, 944, 80);
+  carve(rows, mapId === "andes" ? 1680 : 1648, 928, 96);
   return rows;
 }

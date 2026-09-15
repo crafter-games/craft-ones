@@ -92,6 +92,20 @@ function components(rows: string[]) {
   return count;
 }
 
+function mirrorDifferenceRatio(rows: string[]) {
+  const width = WORLD_WIDTH / CELL;
+  let occupiedPairs = 0;
+  let differentPairs = 0;
+  for (const row of rows)
+    for (let x = 0; x < width / 2; x++) {
+      const left = row[x];
+      const right = row[width - 1 - x];
+      if (left === "1" || right === "1") occupiedPairs++;
+      if (left !== right) differentPairs++;
+    }
+  return differentPairs / occupiedPairs;
+}
+
 test("the public map catalog includes ten authored worlds and excludes flat", () => {
   expect(worlds.PLAYABLE_MAP_IDS).toEqual([
     "andes",
@@ -112,6 +126,13 @@ test("the public map catalog includes ten authored worlds and excludes flat", ()
     expect(WORLD_MAPS[id].name.length).toBeGreaterThan(5);
   }
 });
+
+test.each([...worlds.PLAYABLE_MAP_IDS])(
+  "%s has a deliberately asymmetric playable silhouette",
+  (id) => {
+    expect(mirrorDifferenceRatio(makeWorld(id))).toBeGreaterThanOrEqual(0.18);
+  },
+);
 
 test.each(NEW_MAP_IDS)(
   "%s constructs a unique deterministic full-sized grid, never a fallback world",
@@ -201,33 +222,45 @@ test("canopy has separated steps, enclosed island caves and an open central drop
   expect(s.terrainRows.at(-1)).toBe("0".repeat(WORLD_WIDTH / CELL));
 });
 
-test("caldera has a hollow horseshoe, an inner floor, cave pockets and destructible approaches", () => {
+test("caldera has an offset hollow, uneven cave pockets and destructible approaches", () => {
   const s = fixture("caldera").battle.state;
-  for (let y = 0; y < 1312; y += CELL) expect(solidAt(s, 1344, y)).toBe(false);
-  expect(grounded(s, 1344, 1320 - ARENA.playerRadius)).toBe(true);
-  expect(bodyBlocked(s, 1344, 1320 - ARENA.playerRadius)).toBe(false);
+  for (let y = 0; y < 1280; y += CELL) expect(solidAt(s, 1392, y)).toBe(false);
+  expect(grounded(s, 1392, 1262)).toBe(true);
+  expect(bodyBlocked(s, 1392, 1262)).toBe(false);
   expect(solidAt(s, 672, 1020)).toBe(true);
-  expect(solidAt(s, 2016, 1020)).toBe(true);
-  expect(solidAt(s, 1344, 1380)).toBe(true);
-  expect(solidAt(s, 1344, 1440)).toBe(false);
-  for (const x of [720, 1968]) {
-    expect(bodyBlocked(s, x, 1104)).toBe(false);
-    expect(solidAt(s, x, 1020)).toBe(true);
-    expect(solidAt(s, x, 1188)).toBe(true);
+  expect(solidAt(s, 1968, 1020)).toBe(true);
+  expect(solidAt(s, 1392, 1344)).toBe(true);
+  expect(solidAt(s, 1392, 1500)).toBe(false);
+  for (const [x, y, shell] of [
+    [720, 1104, 80],
+    [2220, 1020, 64],
+  ]) {
+    expect(bodyBlocked(s, x, y)).toBe(false);
+    for (const [dx, dy] of [
+      [0, -shell],
+      [0, shell],
+      [-shell, 0],
+      [shell, 0],
+    ])
+      expect(solidAt(s, x + dx, y + dy)).toBe(true);
   }
-  for (const x of [564, 2124]) {
-    expect(grounded(s, x, 952 - ARENA.playerRadius)).toBe(true);
-    expect(solidAt(s, x, 992)).toBe(true);
-    expect(solidAt(s, x, 1020)).toBe(false);
+  for (const [x, y] of [
+    [544, 790],
+    [1968, 718],
+  ]) {
+    expect(grounded(s, x, y)).toBe(true);
+    expect(bodyBlocked(s, x, y)).toBe(false);
     const rows = [...s.terrainRows];
-    eraseCircle(rows, x, 976, 48);
-    expect(gridHit({ ...s, terrainRows: rows }, x, 912, 0, 150)).toBe(Infinity);
+    eraseCircle(rows, x, y + 34, 48);
+    expect(gridHit({ ...s, terrainRows: rows }, x, y - 64, 0, 150)).toBe(
+      Infinity,
+    );
   }
   expect(gridHit(s, 936, 1116, 816, 0)).toBe(Infinity);
   expect(s.terrainRows.at(-1)).toBe("0".repeat(WORLD_WIDTH / CELL));
 });
 
-test.each(["canopy", "caldera"] as const)(
+test.each(["andes", "coast", "canopy", "caldera"] as const)(
   "%s gives both seats usable cross-arena rocket arcs through the actual Battle",
   (id) => {
     for (const seat of [0, 1]) {

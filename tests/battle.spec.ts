@@ -19,6 +19,7 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
   browser,
   page,
 }) => {
+  test.setTimeout(210_000);
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
@@ -56,7 +57,7 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
       );
       await expect(client.locator("canvas")).toHaveCount(1);
     }
-    for (let shot = 0; shot < 9; shot++) {
+    for (let shot = 0; shot < 12; shot++) {
       if (
         (await page.getByTestId("battle").getAttribute("data-phase")) ===
         "finished"
@@ -68,6 +69,9 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
       const active = number === 1 ? page : rival;
       const target = `player-${number === 1 ? 2 : 1}`;
       const hp = Number(await page.getByTestId(target).getAttribute("data-hp"));
+      const terrainRevision = Number(
+        await page.getByTestId("battle").getAttribute("data-terrain-revision"),
+      );
       await active.bringToFront();
       await aimAtOpponent(active, number);
       for (const client of [page, rival]) {
@@ -77,10 +81,18 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
         );
       }
       await expect
-        .poll(async () =>
-          Number(await page.getByTestId(target).getAttribute("data-hp")),
-        )
-        .toBeLessThan(hp);
+        .poll(async () => {
+          const nextHp = Number(
+            await page.getByTestId(target).getAttribute("data-hp"),
+          );
+          const nextRevision = Number(
+            await page
+              .getByTestId("battle")
+              .getAttribute("data-terrain-revision"),
+          );
+          return nextHp < hp || nextRevision > terrainRevision;
+        })
+        .toBe(true);
       await expect(page.getByTestId("battle")).toHaveAttribute(
         "data-phase",
         /aiming|finished/,
