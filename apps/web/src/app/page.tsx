@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Brand } from "../components/Brand";
 import { CtaLink } from "../components/CtaLink";
 import { DiscordEntry } from "../components/DiscordEntry";
@@ -40,6 +41,11 @@ export default function Home() {
           </p>
           <p className="home-stats">100 HP · 15-second turns · 10 maps</p>
         </div>
+        <nav className="home-legal" aria-label="Legal and support">
+          <Link href="/terms">Terms</Link>
+          <Link href="/privacy">Privacy</Link>
+          <a href="mailto:hi@railly.dev">Support</a>
+        </nav>
         <footer className="lobby-footer">
           <span>Seven characters · 100 HP · 15-second turns</span>
           <a
