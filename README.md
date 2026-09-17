@@ -26,12 +26,13 @@ The frontend derives a WebSocket endpoint from its hostname on port 2567. Set `N
 
 ## Play
 
-- Aim with mouse or touch, hold to charge and release to fire. Full charge takes 2.8 seconds. Arrow keys aim; hold/release Space to fire.
+- Aim with mouse or touch, hold to charge and release to fire. The short launch guide shows direction, not the impact point; read the round's wind and learn the shot through play. Full charge takes 2.8 seconds. Arrow keys aim; hold/release Space to fire.
 - A/D moves; W jumps. Hold A/D and press W to jump directionally. Touch movement and Jump controls are available in both orientations.
 - Walking and jumping keep your shot. Walking away from the turn's starting point spends the shared 240-point range; returning restores it. Jumps are free and unlimited, but jump travel stays inside that same range.
 - Keys 1–6 choose rocket, grenade, sticky bomb, mortar, dynamite or grapple. All spend a turn. Grenades and sticky bombs have a 3-second fuse, dynamite 2 seconds. Grapples pull toward terrain and stop at obstacles.
 - Llama leaps, Fox dashes, Capybara shields, Puma pounces and Alpaca heals 25 HP. Guinea Pig has no ability. Freddy, Michi and Railly Hugo have aimed projectile powers with signature looks. Key 7 selects an ability; aimed abilities use the same charge/release controls. Abilities cost a turn and have a four-global-turn cooldown.
 - Explosions carve terrain. Characters fall onto remaining surfaces or lose in the void. The authoritative state determines damage, turns, projectiles and winner.
+- Wind follows a new sequence in every match, changes between rounds, stays fair for both seats in each round and bends every ballistic projectile horizontally. The power meter uses broad bands instead of revealing an exact percentage.
 - The camera briefly follows the active character, then frames the map. Camera focus is also available from the HUD/menu. Charging freezes the camera.
 - Sound is synthesized locally and starts after interaction. Mute persists across reloads.
 - The local menu pauses time and input. Online matches keep running while menus are open. Local lab tools include restart, infinite HP, trajectories, collision circles and terrain destruction.

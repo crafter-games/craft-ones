@@ -728,6 +728,9 @@ body {
 /* ---------- Map picker ---------- */
 .map-picker {
   display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 0;
   flex-direction: column;
   gap: 10px;
@@ -736,6 +739,9 @@ body {
 }
 .map-list {
   display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -822,6 +828,7 @@ body {
   flex-direction: column;
   gap: 12px;
   padding: 0 16px 4px;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 .setup .map-picker {
@@ -1244,6 +1251,19 @@ body {
   letter-spacing: 0.14em;
   opacity: 0.8;
   white-space: nowrap;
+}
+.hud-clock .hud-wind {
+  margin: 4px 0 0;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: var(--mint);
+}
+.hud-clock .hud-wind i {
+  margin: 0 2px;
+  font-size: 13px;
+  line-height: 0;
+  color: var(--cream);
 }
 .hud-clock.is-urgent {
   background: #ffae9d;

@@ -150,6 +150,7 @@ export class BattleState extends Schema {
   declare terrainRows: ArraySchema<string>;
   declare terrainRevision: number;
   declare lastAction: string;
+  declare wind: number;
   declare mapId: string;
   declare terrain: ArraySchema<number>;
   declare players: ArraySchema<Player>;
@@ -158,6 +159,7 @@ export class BattleState extends Schema {
   declare phase: Phase;
   declare currentPlayer: string;
   declare turnNumber: number;
+  declare roundNumber: number;
   declare remainingMs: number;
   declare winner: string;
   declare finishReason: string;
@@ -170,6 +172,7 @@ export class BattleState extends Schema {
       terrainRows: new ArraySchema<string>(),
       terrainRevision: 0,
       lastAction: "",
+      wind: 0,
       mapId: "flat",
       terrain: new ArraySchema<number>(),
       players: new ArraySchema<Player>(),
@@ -178,6 +181,7 @@ export class BattleState extends Schema {
       phase: "waiting",
       currentPlayer: "",
       turnNumber: 0,
+      roundNumber: 0,
       remainingMs: 0,
       winner: "",
       finishReason: "",
@@ -190,6 +194,7 @@ defineTypes(BattleState, {
   terrainRows: ["string"],
   terrainRevision: "number",
   lastAction: "string",
+  wind: "number",
   mapId: "string",
   terrain: ["number"],
   players: [Player],
@@ -201,6 +206,7 @@ defineTypes(BattleState, {
   remainingMs: "number",
   winner: "string",
   finishReason: "string",
+  roundNumber: "number",
 });
 
 export type PlayerView = Pick<
@@ -227,6 +233,7 @@ export type BattleView = {
   terrainRows: string[];
   terrainRevision: number;
   lastAction: string;
+  wind: number;
   mapId: string;
   terrain: number[];
   players: PlayerView[];
@@ -249,6 +256,7 @@ export type BattleView = {
   phase: Phase;
   currentPlayer: string;
   turnNumber: number;
+  roundNumber: number;
   remainingMs: number;
   winner: string;
   finishReason: string;

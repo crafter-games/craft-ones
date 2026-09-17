@@ -233,24 +233,46 @@ export function partMarkup(
     if (part === "tail") return "";
   }
 
-  // A puma is built on the fox rig: same lean frame, rounded ears, heavy tail.
+  // Broad feline planes and a compact muzzle keep the puma distinct from the fox.
   if (species === "puma") {
     if (part.startsWith("ear"))
       return shape(
-        `<path fill="${limb}" d="${back ? "M-8 6Q-13-3-10-13Q-8-20-1-19Q6-18 7-10L6 5Z" : "M-8 6L-9-9Q-9-19-2-20Q6-20 8-11Q9-2 6 6Z"}"/>`,
-        `<path fill="${innerEar}" stroke="none" d="M-4 2Q-7-8-3-13Q1-16 4-11L4 1Z"/>`,
-        `<path fill="${cream}" stroke="none" d="M-6-13Q-3-17 1-16L-2-12L-5-9Z"/>`,
+        `<path fill="${limb}" d="${back ? "M-8 6Q-13-1-10-9Q-7-15-1-14Q5-14 7-8L6 5Z" : "M-8 6L-9-7Q-9-15-2-16Q6-16 8-8Q9-1 6 6Z"}"/>`,
+        `<path fill="${innerEar}" stroke="none" d="M-4 2Q-7-6-3-10Q1-13 4-8L4 1Z"/>`,
+        `<path fill="${cream}" stroke="none" d="M-6-10Q-3-14 1-13L-2-9L-5-6Z"/>`,
         `<path fill="none" stroke-width="1.3" d="M-3 3L1-2"/>`,
+      );
+    if (part === "body")
+      return shape(
+        `<path fill="${fur}" d="M-14-17Q-6-22 4-20Q15-19 19-11Q24-4 21 6Q20 15 10 18Q0 20-11 16Q-20 13-21 5Q-23-4-18-10Q-19-14-14-17Z"/>`,
+        `<path fill="${shade}" stroke="none" d="M-19-8Q-22 3-16 9Q-10 16 2 16L12 15Q5 20-7 17Q-18 15-20 7Q-23-1-19-8Z"/>`,
+        `<path fill="${cream}" stroke="none" d="M2-14Q10-16 14-9Q17-3 13 3L15 8Q12 15 4 16Q-4 16-8 10Q-11 4-7-1L-9-7Q-5-13 2-14Z"/>`,
+        `<path fill="${creamShade}" stroke="none" d="M13 1Q15 8 9 12Q4 16-3 13Q4 17 10 14Q17 10 13 1Z"/>`,
+        `<path fill="${light}" stroke="none" d="M-15-13Q-10-18-4-17L-8-13L-13-10Z"/>`,
+        `<path fill="none" stroke="${shade}" stroke-width="1.4" d="M-16 2l2 2m25 4-1 3"/>`,
+      );
+    if (part === "head")
+      return shape(
+        `<path fill="${fur}" d="M-22-15Q-21-24-12-27Q-5-29 1-26Q7-29 14-25Q22-21 22-12Q27-8 29-2Q32 5 27 10Q22 15 12 15L-4 13Q-16 14-22 7Q-28 0-24-8Z"/>`,
+        `<path fill="${shade}" stroke="none" d="M-23-10Q-26 1-19 6Q-12 12 1 11L14 13Q6 16-5 12Q-18 14-23 6Q-27 0-23-10Z"/>`,
+        `<path fill="${light}" stroke="none" d="M-17-21Q-11-26-5-24L-9-20L-15-17Z"/>`,
+        `<path fill="${cream}" stroke="none" d="M6-7Q15-10 23-7Q29-5 30 1Q31 8 24 11Q17 15 9 11Q3 14-3 9Q-8 5-5 0Q-2-5 6-7Z"/>`,
+        `<path fill="${creamShade}" stroke="none" d="M-3 6Q4 11 10 9Q18 14 25 9Q20 15 10 12Q3 15-3 9Z"/>`,
+        `<path fill="${INK}" stroke-width="1.2" d="M24-5Q29-6 31-2Q30 1 27 2Q23 0 23-3Z"/>`,
+        `<path fill="none" stroke="${creamShade}" stroke-width="1.2" d="M26-4l2-.2"/>`,
+        `<path fill="none" stroke-width="1.7" d="M27 2Q25 6 19 7M27 3Q29 5 29 7M19 7l-2 2"/>`,
+        `<path fill="${creamShade}" stroke="none" d="M13-1h1.7v1.7H13Zm4 3h1.7v1.7H17Zm-5 2h1.7v1.7H12Z"/>`,
+        `<path fill="none" stroke="${shade}" stroke-width="1.3" d="M-17-5l4 1m-3 3 4 1"/>`,
       );
     if (part === "eyes")
       return shape(
-        `<path fill="#fff9e9" stroke-width="1.6" d="M16-12L23-16L22-8L18-7Z"/>`,
-        `<path fill="${INK}" stroke="none" d="M20-14L23-13L22-9L19-9Z"/>`,
-        `<path fill="#fff9e9" stroke-width="2" d="M-9-15Q0-18 10-12Q8-3 0-5Q-8-7-9-15Z"/>`,
-        `<path fill="${INK}" stroke="none" d="M3-15Q8-14 7-8Q4-4 1-7Q0-11 3-15Z"/>`,
+        `<path fill="#fff9e9" stroke-width="1.6" d="M15-12Q20-16 23-14L21-8Q18-6 16-8Z"/>`,
+        `<path fill="${INK}" stroke="none" d="M19-14Q22-14 21-9Q19-7 18-10Z"/>`,
+        `<path fill="#fff9e9" stroke-width="2" d="M-8-15Q1-18 10-12Q8-4 1-5Q-6-6-8-15Z"/>`,
+        `<path fill="${INK}" stroke="none" d="M3-15Q8-14 7-8Q5-4 2-7Q1-11 3-15Z"/>`,
         `<circle fill="#fff9e9" stroke="none" cx="5" cy="-11" r="1.2"/>`,
-        `<path fill="${INK}" stroke="none" d="M-11-23L-1-20L11-14L10-10L-1-15L-10-18Z M15-16L22-21L24-18L16-11Z"/>`,
-        `<path fill="none" stroke="${shade}" stroke-width="1.3" d="M-9-3l4 2"/>`,
+        `<path fill="${INK}" stroke="none" d="M-10-22L-1-20L11-15L10-11L0-15L-9-18Z M15-17Q20-21 24-19L23-16L16-12Z"/>`,
+        `<path fill="none" stroke="${shade}" stroke-width="1.3" d="M-8-3l4 2"/>`,
       );
     if (part === "tail")
       return shape(
@@ -258,7 +280,6 @@ export function partMarkup(
         `<path fill="${shade}" stroke="none" d="M-30-4Q-27 6-16 6L-11 5L-11 8Q-25 10-30-4Z"/>`,
         `<path fill="${paw}" stroke="none" d="M-22-26Q-16-27-15-21Q-14-16-19-15L-21-20Z"/>`,
       );
-    return partMarkup("zorro", part, coat ?? "caramel");
   }
 
   // An alpaca is a shorter, fluffier llama: stubby ears and a pom-pom tail.

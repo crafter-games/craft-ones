@@ -80,7 +80,8 @@ export function advanceShot(
   players: Iterable<Pick<PlayerView, "x" | "y" | "hp">>,
 ): Impact {
   const spec = PROJECTILES[shot.kind],
-    dt = ARENA.stepMs / 1000;
+    dt = ARENA.stepMs / 1000,
+    wind = shot.kind === "grapple" ? 0 : (world.wind ?? 0);
   shot.elapsedMs += ARENA.stepMs;
   const bodies = Array.from(players);
   if (shot.stuck) {
@@ -92,8 +93,10 @@ export function advanceShot(
     return shot.elapsedMs + 0.001 >= spec.fuse ? "blast" : "flying";
   }
   if (!world.terrainRows.length && shot.kind === "rocket")
-    return advanceRocket(shot, bodies, world.terrain) ? "blast" : "flying";
-  const dx = shot.vx * dt,
+    return advanceRocket(shot, bodies, world.terrain, wind)
+      ? "blast"
+      : "flying";
+  const dx = shot.vx * dt + 0.5 * wind * dt ** 2,
     dy = shot.vy * dt + 0.5 * ARENA.gravity * spec.gravity * dt ** 2;
   const terrain = gridHit(world, shot.x, shot.y, dx, dy);
   const player =
@@ -105,6 +108,7 @@ export function advanceShot(
     const travel = Math.max(0, hit - 0.001);
     shot.x += dx * travel;
     shot.y += dy * travel;
+    shot.vx += wind * dt * travel;
     if (shot.kind === "grapple")
       return shot.x <= 2 || shot.x >= world.worldWidth - 2 ? "miss" : "anchor";
     if (shot.kind === "sticky") {
@@ -139,6 +143,7 @@ export function advanceShot(
   } else {
     shot.x += dx;
     shot.y += dy;
+    shot.vx += wind * dt;
     shot.vy += ARENA.gravity * spec.gravity * dt;
   }
   if (

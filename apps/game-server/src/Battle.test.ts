@@ -244,6 +244,55 @@ describe("monotonic turn deadlines", () => {
     expect(battle.state.remainingMs).toBe(ARENA.turnMs);
   });
 
+  test("both seats share one wind before the next round changes it", () => {
+    const { battle, advance } = setup();
+    const firstRound = battle.state.wind;
+    advance(ARENA.turnMs);
+    expect(battle.state.wind).toBe(firstRound);
+    advance(ARENA.turnMs);
+    expect(battle.state.wind).not.toBe(firstRound);
+  });
+
+  test.each([1, 2])(
+    "rematches after turn parity %s refresh fair wind and reject earlier fire intents",
+    (endingTurn) => {
+      const { battle, advance, frames } = setup();
+      const old = action(battle);
+      const firstSequence: number[] = [];
+      for (let turn = 0; turn < 6; turn++) {
+        firstSequence.push(battle.state.wind);
+        advance(ARENA.turnMs);
+      }
+      for (let turn = 1; turn < endingTurn; turn++) advance(ARENA.turnMs);
+      const target = battle.state.players.find(
+        (player) => player.sessionId !== battle.state.currentPlayer,
+      );
+      if (!target) throw new Error("Missing target");
+      target.hp = 1;
+      placeProjectile(battle, target.x, target.y);
+      frames(1);
+      advance(ARENA.explosionMs);
+      expect(battle.state.phase).toBe("finished");
+      expect(battle.state.turnNumber).toBe(endingTurn + 6);
+      expect(battle.restart("one", { turnNumber: endingTurn + 6 })).toBeNull();
+      expect(battle.state.turnNumber).toBe(endingTurn + 7);
+      expect(battle.state.currentPlayer).toBe("one");
+      expect(battle.state.roundNumber).toBe(1);
+      expect(battle.fire("one", old)).toBeString();
+      expect(battle.state.projectile.active).toBe(false);
+      const rematchSequence: number[] = [];
+      for (let turn = 0; turn < 6; turn++) {
+        rematchSequence.push(battle.state.wind);
+        expect(battle.state.roundNumber).toBe(Math.floor(turn / 2) + 1);
+        expect(battle.state.currentPlayer).toBe(turn % 2 ? "two" : "one");
+        if (turn % 2)
+          expect(rematchSequence[turn]).toBe(rematchSequence[turn - 1]);
+        advance(ARENA.turnMs);
+      }
+      expect(rematchSequence).not.toEqual(firstSequence);
+    },
+  );
+
   test("an old intent is stale even when the same player's next turn arrives", () => {
     const { battle, advance } = setup();
     const old = action(battle);
@@ -262,7 +311,14 @@ describe("fixed 60 Hz physics and swept collisions", () => {
     expect(battle.state.projectile.x).toBe(x);
     advance(ARENA.stepMs / 2);
     const seconds = ARENA.stepMs / 1000;
-    expect(battle.state.projectile.x).toBeCloseTo(x + vx * seconds, 8);
+    expect(battle.state.projectile.x).toBeCloseTo(
+      x + vx * seconds + 0.5 * battle.state.wind * seconds ** 2,
+      8,
+    );
+    expect(battle.state.projectile.vx).toBeCloseTo(
+      vx + battle.state.wind * seconds,
+      8,
+    );
     expect(battle.state.projectile.y).toBeCloseTo(
       y + vy * seconds + 0.5 * ARENA.gravity * seconds ** 2,
       8,

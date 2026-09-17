@@ -209,7 +209,12 @@ export function HudOverlay({
                 : "Impact!";
   const seconds = Math.ceil((state?.remainingMs ?? 0) / 1000);
   const mapName = WORLD_MAPS[state?.mapId as PlayableMapId]?.name ?? "Flatland";
-  const round = Math.max(1, Math.ceil((state?.turnNumber ?? 1) / 2));
+  const round = Math.max(1, state?.roundNumber ?? 1);
+  const wind = state?.wind ?? 0;
+  const windDirection = wind < 0 ? "LEFT" : wind > 0 ? "RIGHT" : "CALM";
+  const windArrow = wind < 0 ? "←" : wind > 0 ? "→" : "·";
+  const windStrength =
+    Math.abs(wind) >= 45 ? "STRONG" : Math.abs(wind) >= 20 ? "BREEZE" : "LIGHT";
   const setSoundOn = (next: boolean) => {
     setSound(next);
     bridge.current.sound = next;
@@ -268,6 +273,20 @@ export function HudOverlay({
               ROUND {round}
               <span className="hud-map-name"> · {mapName}</span>
             </small>
+            <p
+              className="hud-wind"
+              data-testid="wind-indicator"
+              data-wind={wind}
+            >
+              <span className="sr-only">
+                {wind === 0
+                  ? "Wind calm"
+                  : `Wind ${windDirection.toLowerCase()}, ${windStrength.toLowerCase()}`}
+              </span>
+              <span aria-hidden="true">
+                WIND <i>{windArrow}</i> {wind === 0 ? "CALM" : windStrength}
+              </span>
+            </p>
           </div>
           <p
             className="hud-status hud-panel"
@@ -326,7 +345,15 @@ export function HudOverlay({
         <div className="hud-power hud-panel">
           <div>
             <span>POWER{charging ? <i> · CHARGING</i> : null}</span>
-            <strong>{power}%</strong>
+            <strong aria-hidden="true">
+              {power === 0
+                ? "READY"
+                : power < 34
+                  ? "LOW"
+                  : power < 67
+                    ? "MID"
+                    : "HIGH"}
+            </strong>
           </div>
           {/* biome-ignore lint/a11y/useSemanticElements: a <meter> cannot carry the HUD's flat segmented styling */}
           <div

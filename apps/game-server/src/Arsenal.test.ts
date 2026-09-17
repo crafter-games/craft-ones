@@ -45,7 +45,8 @@ test.each(["andes", "coast"] as const)(
     expect(solidAt(s, 1344, caveY - 270)).toBe(true);
     expect(gridHit(s, 1260, caveY, 150, 0)).toBe(Infinity);
     expect(gridHit(s, 1260, caveY, 450, 0)).toBeLessThan(1);
-    expect(solidAt(s, 1344, map === "andes" ? 450 : 528)).toBe(true);
+    const suspended = map === "andes" ? [800, 480] : [2100, 330];
+    expect(solidAt(s, suspended[0], suspended[1])).toBe(true);
     expect(solidAt(s, 560, 200)).toBe(false);
   },
 );
@@ -104,7 +105,7 @@ test("hook anchors, pulls without tunneling, spends a turn and does no damage", 
   expect(
     battle.fire("one", {
       weapon: "grapple",
-      angle: -Math.PI,
+      angle: Math.atan2(650 - p.y, 200 - p.x),
       power: 0.5,
       turnNumber: 1,
     }),

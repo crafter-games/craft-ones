@@ -1,5 +1,5 @@
 import { abilityProjectile, isWeapon, PROJECTILES, WEAPONS } from "./arsenal";
-import { clamp, launch } from "./ballistics";
+import { clamp, launch, windForTurn } from "./ballistics";
 import {
   defaultAppearance,
   pullTowardAnchor,
@@ -77,6 +77,7 @@ export class Battle {
   constructor(
     private readonly now: () => number = () => performance.now(),
     mapId: MapId = "flat",
+    private windSeed = 0,
   ) {
     this.state.mapId = mapId;
     this.state.terrain.push(...makeTerrain(mapId));
@@ -210,6 +211,8 @@ export class Battle {
     this.state.winner = "";
     this.state.finishReason = "";
     this.state.projectile.active = false;
+    this.state.roundNumber = 0;
+    this.windSeed = (this.windSeed + 1) >>> 0;
     this.startTurn(0, this.clockNow());
     return null;
   }
@@ -413,6 +416,12 @@ export class Battle {
     this.state.phase = "aiming";
     this.state.currentPlayer = this.state.players[index].sessionId;
     this.state.turnNumber++;
+    if (index === 0) this.state.roundNumber++;
+    this.state.wind = windForTurn(
+      this.state.mapId,
+      this.state.roundNumber * 2 - 1,
+      this.windSeed,
+    );
     resetMovement(this.state.players[index]);
     this.moveSequence = 0;
     this.moveAt = -Infinity;
