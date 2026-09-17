@@ -77,7 +77,7 @@ export class Battle {
   constructor(
     private readonly now: () => number = () => performance.now(),
     mapId: MapId = "flat",
-    private readonly windSeed = 0,
+    private windSeed = 0,
   ) {
     this.state.mapId = mapId;
     this.state.terrain.push(...makeTerrain(mapId));
@@ -212,6 +212,7 @@ export class Battle {
     this.state.finishReason = "";
     this.state.projectile.active = false;
     this.state.roundNumber = 0;
+    this.windSeed = (this.windSeed + 1) >>> 0;
     this.startTurn(0, this.clockNow());
     return null;
   }

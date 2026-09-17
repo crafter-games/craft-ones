@@ -254,11 +254,15 @@ describe("monotonic turn deadlines", () => {
   });
 
   test.each([1, 2])(
-    "rematches after turn %s keep wind fair and reject earlier fire intents",
+    "rematches after turn parity %s refresh fair wind and reject earlier fire intents",
     (endingTurn) => {
       const { battle, advance, frames } = setup();
-      const firstWind = battle.state.wind;
       const old = action(battle);
+      const firstSequence: number[] = [];
+      for (let turn = 0; turn < 6; turn++) {
+        firstSequence.push(battle.state.wind);
+        advance(ARENA.turnMs);
+      }
       for (let turn = 1; turn < endingTurn; turn++) advance(ARENA.turnMs);
       const target = battle.state.players.find(
         (player) => player.sessionId !== battle.state.currentPlayer,
@@ -269,22 +273,23 @@ describe("monotonic turn deadlines", () => {
       frames(1);
       advance(ARENA.explosionMs);
       expect(battle.state.phase).toBe("finished");
-      expect(battle.state.turnNumber).toBe(endingTurn);
-      expect(battle.restart("one", { turnNumber: endingTurn })).toBeNull();
-      expect(battle.state.turnNumber).toBe(endingTurn + 1);
+      expect(battle.state.turnNumber).toBe(endingTurn + 6);
+      expect(battle.restart("one", { turnNumber: endingTurn + 6 })).toBeNull();
+      expect(battle.state.turnNumber).toBe(endingTurn + 7);
       expect(battle.state.currentPlayer).toBe("one");
       expect(battle.state.roundNumber).toBe(1);
-      expect(battle.state.wind).toBe(firstWind);
       expect(battle.fire("one", old)).toBeString();
       expect(battle.state.projectile.active).toBe(false);
-      advance(ARENA.turnMs);
-      expect(battle.state.currentPlayer).toBe("two");
-      expect(battle.state.roundNumber).toBe(1);
-      expect(battle.state.wind).toBe(firstWind);
-      advance(ARENA.turnMs);
-      expect(battle.state.currentPlayer).toBe("one");
-      expect(battle.state.roundNumber).toBe(2);
-      expect(battle.state.wind).not.toBe(firstWind);
+      const rematchSequence: number[] = [];
+      for (let turn = 0; turn < 6; turn++) {
+        rematchSequence.push(battle.state.wind);
+        expect(battle.state.roundNumber).toBe(Math.floor(turn / 2) + 1);
+        expect(battle.state.currentPlayer).toBe(turn % 2 ? "two" : "one");
+        if (turn % 2)
+          expect(rematchSequence[turn]).toBe(rematchSequence[turn - 1]);
+        advance(ARENA.turnMs);
+      }
+      expect(rematchSequence).not.toEqual(firstSequence);
     },
   );
 
