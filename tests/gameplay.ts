@@ -70,10 +70,8 @@ function readArena(page: Page, number: number): Promise<Arena> {
       to: player(seat === 1 ? 2 : 1),
       box: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
       zoom,
-      // ArenaScene exposes scroll + half the unzoomed viewport. Normalize it
-      // to the actual world-space camera midpoint before projecting a shot.
-      cx: rawCenterX - vw / 2 + vw / (2 * zoom),
-      cy: rawCenterY - vh / 2 + vh / (2 * zoom),
+      cx: rawCenterX,
+      cy: rawCenterY,
       vw,
       vh,
     };
@@ -120,8 +118,8 @@ function ray(
   from: { x: number; y: number },
   angle: number,
 ): [number, number] {
-  const halfWidth = 480 / arena.zoom - 16;
-  const halfHeight = 270 / arena.zoom - 16;
+  const halfWidth = (arena.vw / 2 - 160) / arena.zoom;
+  const halfHeight = (arena.vh / 2 - 180) / arena.zoom;
   const dx = Math.cos(angle);
   const dy = Math.sin(angle);
   let reach = 480;
@@ -161,9 +159,10 @@ export async function aimAtOpponent(
   const wind = Number(
     await page.getByTestId("wind-indicator").getAttribute("data-wind"),
   );
-  const candidates = [40, 50, 30]
+  const candidates = [40, 50, 30, 60, 20, 70]
     .map((degrees) => practicedShot(from, to, wind, (degrees * Math.PI) / 180))
-    .filter((shot) => shot !== undefined);
+    .filter((shot) => shot !== undefined)
+    .slice(0, 3);
   if (!candidates.length) throw new Error("No reachable ballistic shot");
 
   const tryShot = async (shot: (typeof candidates)[number]) => {
@@ -171,10 +170,14 @@ export async function aimAtOpponent(
     if (!box) throw new Error("Missing arena");
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();
+    await expect.poll(() => power(page)).toBeGreaterThan(1);
     const arena = await readArena(page, number);
     const at = toScreen(arena, ...ray(arena, arena.from, shot.angle));
+    expect(at.x).toBeGreaterThan(box.x);
+    expect(at.x).toBeLessThan(box.x + box.width);
+    expect(at.y).toBeGreaterThan(box.y);
+    expect(at.y).toBeLessThan(box.y + box.height);
     await page.mouse.move(at.x, at.y);
-    await expect.poll(() => power(page)).toBeGreaterThan(1);
     let miss = Number.POSITIVE_INFINITY;
     const deadline = performance.now() + 3000;
     while (performance.now() < deadline && (await power(page)) < 99) {
@@ -195,6 +198,9 @@ export async function aimAtOpponent(
   for (const [index, shot] of candidates.entries()) {
     if ((await tryShot(shot)) || index === candidates.length - 1) {
       await page.mouse.up();
+      await expect
+        .poll(async () => Number(await canvas.getAttribute("data-fire-angle")))
+        .toBeCloseTo(shot.angle, 1);
       return;
     }
     await canvas.dispatchEvent("pointercancel");
