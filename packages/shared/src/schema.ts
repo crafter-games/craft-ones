@@ -159,6 +159,7 @@ export class BattleState extends Schema {
   declare phase: Phase;
   declare currentPlayer: string;
   declare turnNumber: number;
+  declare roundNumber: number;
   declare remainingMs: number;
   declare winner: string;
   declare finishReason: string;
@@ -180,6 +181,7 @@ export class BattleState extends Schema {
       phase: "waiting",
       currentPlayer: "",
       turnNumber: 0,
+      roundNumber: 0,
       remainingMs: 0,
       winner: "",
       finishReason: "",
@@ -204,6 +206,7 @@ defineTypes(BattleState, {
   remainingMs: "number",
   winner: "string",
   finishReason: "string",
+  roundNumber: "number",
 });
 
 export type PlayerView = Pick<
@@ -253,6 +256,7 @@ export type BattleView = {
   phase: Phase;
   currentPlayer: string;
   turnNumber: number;
+  roundNumber: number;
   remainingMs: number;
   winner: string;
   finishReason: string;

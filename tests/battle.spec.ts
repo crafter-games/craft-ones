@@ -147,6 +147,7 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
     );
     await page.getByRole("button", { name: "Play again", exact: true }).click();
     for (const client of [page, rival]) {
+      await expect(client.locator(".hud-clock small")).toContainText("ROUND 1");
       await expect(client.getByTestId("battle")).toHaveAttribute(
         "data-phase",
         "aiming",

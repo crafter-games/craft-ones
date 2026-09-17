@@ -253,6 +253,41 @@ describe("monotonic turn deadlines", () => {
     expect(battle.state.wind).not.toBe(firstRound);
   });
 
+  test.each([1, 2])(
+    "rematches after turn %s keep wind fair and reject earlier fire intents",
+    (endingTurn) => {
+      const { battle, advance, frames } = setup();
+      const firstWind = battle.state.wind;
+      const old = action(battle);
+      for (let turn = 1; turn < endingTurn; turn++) advance(ARENA.turnMs);
+      const target = battle.state.players.find(
+        (player) => player.sessionId !== battle.state.currentPlayer,
+      );
+      if (!target) throw new Error("Missing target");
+      target.hp = 1;
+      placeProjectile(battle, target.x, target.y);
+      frames(1);
+      advance(ARENA.explosionMs);
+      expect(battle.state.phase).toBe("finished");
+      expect(battle.state.turnNumber).toBe(endingTurn);
+      expect(battle.restart("one", { turnNumber: endingTurn })).toBeNull();
+      expect(battle.state.turnNumber).toBe(endingTurn + 1);
+      expect(battle.state.currentPlayer).toBe("one");
+      expect(battle.state.roundNumber).toBe(1);
+      expect(battle.state.wind).toBe(firstWind);
+      expect(battle.fire("one", old)).toBeString();
+      expect(battle.state.projectile.active).toBe(false);
+      advance(ARENA.turnMs);
+      expect(battle.state.currentPlayer).toBe("two");
+      expect(battle.state.roundNumber).toBe(1);
+      expect(battle.state.wind).toBe(firstWind);
+      advance(ARENA.turnMs);
+      expect(battle.state.currentPlayer).toBe("one");
+      expect(battle.state.roundNumber).toBe(2);
+      expect(battle.state.wind).not.toBe(firstWind);
+    },
+  );
+
   test("an old intent is stale even when the same player's next turn arrives", () => {
     const { battle, advance } = setup();
     const old = action(battle);

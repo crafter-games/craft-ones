@@ -209,7 +209,7 @@ export function HudOverlay({
                 : "Impact!";
   const seconds = Math.ceil((state?.remainingMs ?? 0) / 1000);
   const mapName = WORLD_MAPS[state?.mapId as PlayableMapId]?.name ?? "Flatland";
-  const round = Math.max(1, Math.ceil((state?.turnNumber ?? 1) / 2));
+  const round = Math.max(1, state?.roundNumber ?? 1);
   const wind = state?.wind ?? 0;
   const windDirection = wind < 0 ? "LEFT" : wind > 0 ? "RIGHT" : "CALM";
   const windArrow = wind < 0 ? "←" : wind > 0 ? "→" : "·";

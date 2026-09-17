@@ -211,6 +211,7 @@ export class Battle {
     this.state.winner = "";
     this.state.finishReason = "";
     this.state.projectile.active = false;
+    this.state.roundNumber = 0;
     this.startTurn(0, this.clockNow());
     return null;
   }
@@ -414,9 +415,10 @@ export class Battle {
     this.state.phase = "aiming";
     this.state.currentPlayer = this.state.players[index].sessionId;
     this.state.turnNumber++;
+    if (index === 0) this.state.roundNumber++;
     this.state.wind = windForTurn(
       this.state.mapId,
-      this.state.turnNumber,
+      this.state.roundNumber * 2 - 1,
       this.windSeed,
     );
     resetMovement(this.state.players[index]);
