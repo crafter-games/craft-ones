@@ -76,6 +76,7 @@
 - Production browser tests use the built app, with a separate development lifecycle check. Occupied ports fail unless reuse is explicitly requested.
 - Room, connection, message and creation limits reject abuse, release capacity on disconnect and expire abandoned rooms. Metrics require a private token.
 - The container stack uses HTTPS, runs non-root application processes and publishes only its proxy. Follow docs/deployment.md for release verification and rollback.
+- Automatic releases run types, lint, a production build and a dependency audit. Full game, Playwright and container checks are manual through the Full verification workflow; do not restore them as automatic release gates without Hunter asking.
 
 ## Discord Activity acceptance
 - `/` and `/discord` preserve Discord launch parameters and boot the Embedded App SDK. Ordinary browser play remains anonymous.
