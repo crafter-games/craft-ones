@@ -1,12 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 
-/** The Crafter Station isotype in its play livery, next to the wordmark. */
 export function Brand({ as = "link" }: { as?: "link" | "span" }) {
   const inner = (
     <>
       <Image
-        src="/brand/craft-ones-mark.svg"
+        src="/brand/craft-ones-icon.webp"
         alt=""
         width={40}
         height={40}

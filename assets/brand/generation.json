@@ -1,0 +1,19 @@
+{
+  "startedAt": "2026-09-18T03:02:30.994Z",
+  "completedAt": "2026-09-18T03:03:43.351Z",
+  "model": "openai/gpt-image-2",
+  "provider": "Vercel AI Gateway",
+  "intent": "generate with approved icon reference",
+  "mode": "API fallback",
+  "size": "1920x1008",
+  "quality": "high",
+  "usage": {
+    "total_tokens": 6200,
+    "input_tokens": 1477,
+    "output_tokens": 4723,
+    "input_tokens_details": {
+      "text_tokens": 453,
+      "image_tokens": 1024
+    }
+  }
+}

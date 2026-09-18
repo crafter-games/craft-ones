@@ -1,0 +1,11 @@
+Use case: stylized-concept
+Asset type: wide brand key art for Craft Ones, a playful two-player artillery game, used in Open Graph cards and Discord cover art.
+Primary request: recompose the approved icon in Image 1 into a premium, coherent 1920x1008 landscape illustration. It must unmistakably belong to the same game and mascot.
+Input images: Image 1 is the approved final Craft Ones icon, a strict character identity, illustration style, weapon and palette reference. This is a reference, not a request to reproduce a square icon frame.
+Subject: the exact same cream-colored cuy/guinea pig carrying its compact teal rocket launcher with golden muzzle. Preserve the distinctive large cocoa eyebrows, rounded ears, cream/caramel facial planes, muzzle, cheek squares, short body proportions and playful competitive expression. One character, one weapon.
+Scene/backdrop: deep forest green. A single broad golden explosion burst behind the character on the right. At the far bottom-right, a subtle hint of the game's floating grassy islands; keep these extremely restrained and secondary.
+Composition/framing: landscape 40:21. The mascot occupies the right 48 percent. Show the entire face, ears and launcher, with at least 7 percent outer-edge clearance. Keep the entire LEFT 48 percent a quiet, nearly solid dark forest-green field, empty and unobstructed, ready for typography to be added later. The left must have no explosion spikes, objects or bright highlights. No square frame or rounded corners.
+Style/medium: match Image 1's polished stylized game illustration, crisp cocoa outlines, deliberate cel shading and subtle painted finish. Simple, bold, charming, readable at thumbnail size.
+Lighting/mood: warm golden rim highlights, playful confidence, friendly arcade rivalry.
+Text: none. Do not add any text, letters, logos, words, signs or watermarks. Typography will be added separately.
+Constraints: exactly one mascot, same approved identity and palette, same launcher design. Do not invent clothing, armor, hats or accessories. No new characters. No realistic fur, plastic toy rendering, generic esports shields, UI, tiny debris, borrowed franchise characters or photorealistic scenery.
