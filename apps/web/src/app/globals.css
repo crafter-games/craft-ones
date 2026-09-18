@@ -195,6 +195,10 @@ body {
 .cta.dark small {
   color: var(--mint);
 }
+.cta.discord {
+  background: #5865f2;
+  color: #fff;
+}
 
 /* ---------- Home ---------- */
 .home {

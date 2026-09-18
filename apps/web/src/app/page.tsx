@@ -35,6 +35,14 @@ export default function Home() {
           <CtaLink href="/setup?mode=create" className="cta dark">
             Create Game <small>ONLINE · INVITE A FRIEND</small>
           </CtaLink>
+          <a
+            className="cta discord"
+            href="https://discord.com/oauth2/authorize?client_id=1550283370347634758"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Install on Discord <span aria-hidden="true">↗</span>
+          </a>
           <p className="home-note">
             Local opens a one-screen setup: pick a map, a critter and a coat. No
             sign-up.
