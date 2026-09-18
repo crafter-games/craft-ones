@@ -4,7 +4,7 @@
 
 Deploy one game-server instance and one frontend. Rooms live in the game process and cannot migrate between replicas. A disconnect is a forfeit; a restart discards rooms. Anonymous invite play and optional authenticated Discord Activities are supported. See [Discord setup](discord.md) for its private applications, credentials and live verification gates.
 
-Before a release, require unit/network tests, types, lint, production build, clean dependency audit, bundled-server tests, production browser acceptance, development lifecycle tests and the Docker/HTTPS capacity rehearsal (`bun run test:container`). Record the exact commit, image tag and test output. Do not use a green development run as proof of a production artifact.
+Automatic releases require types, lint, a production build and a clean dependency audit. Unit/network tests, bundled-server tests, Playwright and the Docker/HTTPS capacity rehearsal are available through the manual `Full verification` workflow and do not block ordinary releases. Record the exact commit, image tag and completed checks; a fast release does not establish full gameplay regression coverage.
 
 ## Container deployment
 
@@ -105,7 +105,7 @@ Review the current readiness evidence before treating a release as approved. Liv
 
 A successful `CI` push run on `main` starts `Deploy production`. Pull requests never receive deployment secrets. GitHub stores `VPS_API_KEY` and `GAME_METRICS_TOKEN`; the deploy job alone receives write access to repository refs.
 
-The job skips superseded commits, creates an immutable `release-<commit>` tag, waits up to thirty minutes for rooms and sockets to become empty, then deploys that exact tag through Dokploy. Direct Dokploy Git webhook deployment stays disabled because GitHub CI is the release gate. Deployments are serialized and running main releases are not cancelled by newer pushes.
+The job skips superseded commits, creates an immutable `release-<commit>` tag, waits up to thirty minutes for rooms and sockets to become empty, then deploys that exact tag through Dokploy. Direct Dokploy Git webhook deployment stays disabled because GitHub CI is the release gate. Superseded verification jobs are cancelled, while deployments remain serialized and are never cancelled by newer pushes. Playwright browser installation and full game/container tests run only when `Full verification` is started manually.
 
 After the backend succeeds and public health passes, the job advances the `production` branch without force. Vercel is connected to that branch; other branches do not automatically deploy. The job waits for the public `/api/version` endpoint to report the same commit. A backend failure stops frontend promotion. Timeouts fail the workflow visibly; inspect the failed step before rerunning. This is a sequential rollout, not an atomic two-service switch. A new room created between the empty-room check and process replacement can still be disconnected.
 
