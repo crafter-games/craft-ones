@@ -1,5 +1,9 @@
 # Craft Ones
 
+![Craft Ones: Small paws. Big trouble.](apps/web/public/brand/craft-ones-og.jpg)
+
+Play at [craft-ones.crafter.run](https://craft-ones.crafter.run) or [install on Discord](https://discord.com/oauth2/authorize?client_id=1550283370347634758).
+
 An original 1v1 artillery game by Crafter Station. Play locally on one screen or create a room and invite a friend. Nine characters, six weapons/tools, four destructible arenas, 100 HP and 15-second turns.
 
 The arena loads character parts for the selected profiles only, then adds missing parts when a rival joins or a coat changes. The existing canvas, controls, and open setup dialog remain in place. Initial readiness waits for the selected character textures and first scene update. Movement and firing wait for all current character parts. Failed art loads show a keyboard-accessible retry dialog that reloads the arena while preserving the session. Arena mounts own a fresh canvas with readiness cleared before Phaser boots. Scene shutdown and destruction both release external keyboard listeners and synthesized audio.

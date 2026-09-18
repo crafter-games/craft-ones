@@ -248,9 +248,6 @@ body {
 .made-by:hover b {
   color: var(--gold);
 }
-.made-by img {
-  opacity: 0.85;
-}
 .home-scene {
   position: relative;
   margin: 20px 20px 0;

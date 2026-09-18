@@ -15,9 +15,39 @@ const bungee = Bungee({
 });
 
 export const metadata: Metadata = {
-  title: "Craft Ones — One shot. Your turn.",
+  metadataBase: new URL("https://craft-ones.crafter.run"),
+  applicationName: "Craft Ones",
+  title: "Craft Ones | One shot. Your turn.",
   description:
-    "An original, tiny 1v1 artillery playground by Crafter Station. Invite a friend and make your shot count.",
+    "Small paws. Big trouble. A free 1v1 artillery game by Crafter Station. Play in your browser or on Discord, invite a friend and make your shot count.",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    siteName: "Craft Ones",
+    title: "Craft Ones | One shot. Your turn.",
+    description:
+      "Pick your critter, aim your shot and challenge a friend. Free 1v1 artillery in your browser and on Discord.",
+    images: [
+      {
+        url: "/brand/craft-ones-og.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Craft Ones: a cream guinea pig with a rocket launcher against a golden burst. Small paws. Big trouble.",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Craft Ones | One shot. Your turn.",
+    description:
+      "Small paws. Big trouble. Play free 1v1 artillery with a friend in your browser or on Discord.",
+    images: [
+      {
+        url: "/brand/craft-ones-og.jpg",
+        alt: "Craft Ones: a cream guinea pig with a rocket launcher against a golden burst. Small paws. Big trouble.",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({

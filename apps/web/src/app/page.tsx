@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Brand } from "../components/Brand";
 import { CtaLink } from "../components/CtaLink";
@@ -62,12 +61,6 @@ export default function Home() {
             target="_blank"
             rel="noreferrer"
           >
-            <Image
-              src="/brand/crafter-station-mark.svg"
-              alt=""
-              width={14}
-              height={14}
-            />
             Built by <b>Crafter Station</b>
           </a>
         </footer>
