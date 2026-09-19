@@ -6,13 +6,13 @@ test("local projectile simulation catches up after a foreground rendering stall"
   await page.goto("/playground");
   const canvas = page.locator("canvas");
   await expect(canvas).toBeFocused();
-  await page.keyboard.down("Space");
+  await page.keyboard.down("KeyF");
   await expect
     .poll(async () =>
       Number(await page.locator("#power").getAttribute("data-value")),
     )
     .toBe(100);
-  await page.keyboard.up("Space");
+  await page.keyboard.up("KeyF");
   await expect(page.getByTestId("battle")).toHaveAttribute(
     "data-phase",
     "flying",

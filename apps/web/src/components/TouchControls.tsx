@@ -105,7 +105,7 @@ export function TouchControls({
         type="button"
         className="hud-hold hud-jump"
         aria-label="Jump"
-        title="W jumps; A/D sets direction. Jumps are free and stay inside your range. Keeps your shot."
+        title="Up, Space or W jumps; hold Left/Right (or A/D) to jump that way. Jumps are free and stay inside your range. Keeps your shot."
         disabled={disabled}
         onPointerDown={(event) => {
           event.preventDefault();
