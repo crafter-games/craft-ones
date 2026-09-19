@@ -15,6 +15,8 @@ import {
   type RefObject,
   useEffect,
   useId,
+  useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 import type { GameBridge } from "../game/GameBridge";
@@ -141,6 +143,29 @@ export function HudOverlay({
   leave?: () => void;
 }) {
   const inviteId = useId();
+  const hud = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const root = hud.current;
+    const top = root?.querySelector<HTMLElement>(".hud-top");
+    const bottom = root?.querySelector<HTMLElement>(".hud-bottom");
+    if (!root || !top || !bottom) return;
+    const measure = () => {
+      const bounds = root.getBoundingClientRect();
+      const style = getComputedStyle(root);
+      bridge.current.hudInsets = {
+        top: Math.ceil(top.getBoundingClientRect().bottom - bounds.top + 8),
+        bottom: Math.ceil(
+          bounds.bottom - bottom.getBoundingClientRect().top + 8,
+        ),
+        left: Number.parseFloat(style.paddingLeft) || 0,
+        right: Number.parseFloat(style.paddingRight) || 0,
+      };
+    };
+    const observer = new ResizeObserver(measure);
+    for (const element of [root, top, bottom]) observer.observe(element);
+    measure();
+    return () => observer.disconnect();
+  }, [bridge]);
   const [sound, setSound] = useState(true);
   const [focus, setFocus] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -246,144 +271,158 @@ export function HudOverlay({
       data-sound={sound ? "on" : "off"}
     >
       <ArenaCanvas bridge={bridge} />
-      <div className="hud">
-        <PlayerCard
-          number={1}
-          side="left"
-          player={state?.players[0]}
-          you={!local && state?.players[0]?.sessionId === sessionId}
-        />
-        <PlayerCard
-          number={2}
-          side="right"
-          player={state?.players[1]}
-          you={!local && state?.players[1]?.sessionId === sessionId}
-        />
-        <div className="hud-centre">
-          <div className={`hud-clock hud-panel ${urgent ? "is-urgent" : ""}`}>
-            <span>
-              <b data-testid="turn-timer">
-                {aiming
-                  ? charging
-                    ? "··"
-                    : seconds.toString().padStart(2, "0")
-                  : "—"}
-              </b>
-              <i>{charging ? "HOLD" : "SEC"}</i>
-            </span>
-            <small>
-              ROUND {round}
-              <span className="hud-map-name"> · {mapName}</span>
-            </small>
+      <div className="hud" ref={hud}>
+        <div className="hud-top">
+          <PlayerCard
+            number={1}
+            side="left"
+            player={state?.players[0]}
+            you={!local && state?.players[0]?.sessionId === sessionId}
+          />
+          <PlayerCard
+            number={2}
+            side="right"
+            player={state?.players[1]}
+            you={!local && state?.players[1]?.sessionId === sessionId}
+          />
+          <div className="hud-centre">
+            <div className={`hud-clock hud-panel ${urgent ? "is-urgent" : ""}`}>
+              <span>
+                <b data-testid="turn-timer">
+                  {aiming
+                    ? charging
+                      ? "··"
+                      : seconds.toString().padStart(2, "0")
+                    : "—"}
+                </b>
+                <i>{charging ? "HOLD" : "SEC"}</i>
+              </span>
+              <small>
+                ROUND {round}
+                <span className="hud-map-name"> · {mapName}</span>
+              </small>
+              <p
+                className="hud-wind"
+                data-testid="wind-indicator"
+                data-wind={wind}
+              >
+                <span className="sr-only">
+                  {wind === 0
+                    ? "Wind calm"
+                    : `Wind ${windDirection.toLowerCase()}, ${windStrength.toLowerCase()}`}
+                </span>
+                <span aria-hidden="true">
+                  WIND <i>{windArrow}</i> {wind === 0 ? "CALM" : windStrength}
+                </span>
+              </p>
+            </div>
             <p
-              className="hud-wind"
-              data-testid="wind-indicator"
-              data-wind={wind}
+              className="hud-status hud-panel"
+              data-testid="match-status"
+              aria-live="polite"
+              data-tone={
+                urgent ? "urgent" : myTurn && aiming ? "active" : "neutral"
+              }
             >
-              <span className="sr-only">
-                {wind === 0
-                  ? "Wind calm"
-                  : `Wind ${windDirection.toLowerCase()}, ${windStrength.toLowerCase()}`}
-              </span>
-              <span aria-hidden="true">
-                WIND <i>{windArrow}</i> {wind === 0 ? "CALM" : windStrength}
-              </span>
+              {actionNotice ? (
+                <span
+                  className="hud-notice"
+                  role="status"
+                  data-testid="action-notice"
+                >
+                  {actionNotice}
+                </span>
+              ) : (
+                status
+              )}
             </p>
           </div>
-          <p
-            className="hud-status hud-panel"
-            data-testid="match-status"
-            aria-live="polite"
-            data-tone={
-              urgent ? "urgent" : myTurn && aiming ? "active" : "neutral"
-            }
-          >
-            {actionNotice ? (
-              <span
-                className="hud-notice"
-                role="status"
-                data-testid="action-notice"
-              >
-                {actionNotice}
-              </span>
-            ) : (
-              status
-            )}
-          </p>
-        </div>
-        <div className="hud-utilities">
-          <button
-            type="button"
-            className="hud-chip"
-            data-testid="sound-toggle"
-            aria-pressed={sound}
-            aria-label={sound ? "Mute sound" : "Unmute sound"}
-            onClick={() => setSoundOn(!sound)}
-          >
-            {sound ? "SOUND ON" : "SOUND OFF"}
-          </button>
-          <button
-            type="button"
-            className="hud-chip hud-chip-focus"
-            aria-pressed={focus}
-            aria-label="Camera focus"
-            onClick={() => setFocusOn(!focus)}
-          >
-            {focus ? "FOCUS" : "MAP"}
-          </button>
-          <button
-            type="button"
-            className="hud-chip"
-            aria-label="Menu"
-            aria-expanded={menu}
-            onClick={() => setMenu(true)}
-          >
-            MENU
-          </button>
-        </div>
-        <div className="hud-movement">
-          <TouchControls
-            bridge={bridge}
-            disabled={locked}
-            budget={current?.movementLeft ?? 0}
-            home={
-              current
-                ? (Math.sign(current.originX - current.x) as -1 | 0 | 1)
-                : 0
-            }
-          />
-        </div>
-        <Hotbar bridge={bridge} state={state} disabled={locked} local={local} />
-        <div className="hud-power hud-panel">
-          <div>
-            <span>POWER{charging ? <i> · CHARGING</i> : null}</span>
-            <strong aria-hidden="true">
-              {power === 0
-                ? "READY"
-                : power < 34
-                  ? "LOW"
-                  : power < 67
-                    ? "MID"
-                    : "HIGH"}
-            </strong>
+          <div className="hud-utilities">
+            <button
+              type="button"
+              className="hud-chip"
+              data-testid="sound-toggle"
+              aria-pressed={sound}
+              aria-label={sound ? "Mute sound" : "Unmute sound"}
+              onClick={() => setSoundOn(!sound)}
+            >
+              {sound ? "SOUND ON" : "SOUND OFF"}
+            </button>
+            <button
+              type="button"
+              className="hud-chip hud-chip-focus"
+              aria-pressed={focus}
+              aria-label="Camera focus"
+              onClick={() => setFocusOn(!focus)}
+            >
+              {focus ? "FOCUS" : "MAP"}
+            </button>
+            <button
+              type="button"
+              className="hud-chip"
+              aria-label="Menu"
+              aria-expanded={menu}
+              onClick={() => setMenu(true)}
+            >
+              MENU
+            </button>
           </div>
-          {/* biome-ignore lint/a11y/useSemanticElements: a <meter> cannot carry the HUD's flat segmented styling */}
-          <div
-            className="hud-bar"
-            id="power"
-            role="meter"
-            aria-label="Shot power"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={power}
-            data-value={power}
-          >
-            <i
-              style={{
-                width: `${power}%`,
-                background: charging ? "#d2fb78" : "#526a53",
-              }}
+          {error && !blocked ? (
+            <p className="hud-alert hud-panel" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+        <div className="hud-bottom">
+          <div className="hud-movement">
+            <TouchControls
+              bridge={bridge}
+              disabled={locked}
+              budget={current?.movementLeft ?? 0}
+              home={
+                current
+                  ? (Math.sign(current.originX - current.x) as -1 | 0 | 1)
+                  : 0
+              }
             />
+          </div>
+          <Hotbar
+            bridge={bridge}
+            state={state}
+            disabled={locked}
+            local={local}
+          />
+          <div className="hud-power hud-panel">
+            <div>
+              <span>POWER</span>
+              <strong aria-hidden="true">
+                {power === 0
+                  ? "READY"
+                  : power < 34
+                    ? "LOW"
+                    : power < 67
+                      ? "MID"
+                      : "HIGH"}
+              </strong>
+            </div>
+            {/* biome-ignore lint/a11y/useSemanticElements: a <meter> cannot carry the HUD's flat segmented styling */}
+            <div
+              className="hud-bar"
+              id="power"
+              role="meter"
+              aria-label="Shot power"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={power}
+              data-value={power}
+            >
+              <i
+                style={{
+                  width: `${power}%`,
+                  background: charging ? "#d2fb78" : "#526a53",
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -553,6 +592,12 @@ export function HudOverlay({
                 </button>
               ) : null}
             </div>
+            <p className="hud-key-help">
+              A D move · W jump · ← → aim · hold Space · 1–7 tools
+              {local ? " · you control both critters" : ""}
+              {" · "}
+              {ARENA.turnMs / 1000}s turns
+            </p>
             <div className="hud-menu-foot">
               <button
                 type="button"
@@ -605,17 +650,6 @@ export function HudOverlay({
           </aside>
         </div>
       ) : null}
-      {error && !blocked ? (
-        <p className="hud-alert hud-panel" role="alert">
-          {error}
-        </p>
-      ) : null}
-      <p className="hud-keys">
-        A D move · W jump · ← → aim · hold Space · 1–7 tools
-        {local ? " · you control both critters" : ""}
-        {" · "}
-        {ARENA.turnMs / 1000}s turns
-      </p>
     </main>
   );
 }

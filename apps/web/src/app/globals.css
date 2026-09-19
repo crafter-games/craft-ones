@@ -57,7 +57,7 @@ input:focus-visible {
 }
 
 .game-canvas {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 0;
   background: #b6e3df;
@@ -1085,17 +1085,41 @@ body {
 }
 
 /* ---------- Arena HUD ---------- */
-/* z0 canvas, z10 HUD, z20 modals. The HUD never scales: it anchors to edges. */
+/* z0 canvas, z10 HUD, z20 modals. Layout follows the Activity container. */
 .arena {
   position: fixed;
   inset: 0;
   overflow: hidden;
+  container: arena / size;
 }
 .hud {
   position: absolute;
   inset: 0;
   z-index: 10;
   pointer-events: none;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: calc(var(--craft-safe-top) + 16px)
+    calc(var(--craft-safe-right) + 16px) calc(var(--craft-safe-bottom) + 16px)
+    calc(var(--craft-safe-left) + 16px);
+}
+.hud-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas: "one clock two" "status status utilities";
+  align-items: start;
+  gap: 8px 12px;
+  min-width: 0;
+}
+.hud-bottom {
+  grid-row: 3;
+  display: grid;
+  grid-template-columns: minmax(176px, 1fr) auto minmax(120px, 1fr);
+  grid-template-areas: "movement arsenal power";
+  align-items: end;
+  gap: 12px;
+  min-width: 0;
 }
 .hud button,
 .hud input,
@@ -1126,19 +1150,19 @@ body {
 
 /* Player cards */
 .hud-card {
-  position: absolute;
-  top: 20px;
   display: flex;
-  width: 300px;
+  width: min(300px, 100%);
+  min-width: 0;
   align-items: center;
   gap: 12px;
   padding: 10px 14px 10px 10px;
 }
 .hud-card.is-left {
-  left: 20px;
+  grid-area: one;
 }
 .hud-card.is-right {
-  right: 20px;
+  grid-area: two;
+  justify-self: end;
   flex-direction: row-reverse;
   padding: 10px 10px 10px 14px;
 }
@@ -1163,11 +1187,16 @@ body {
 }
 .hud-card-name {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 2px 8px;
 }
 .hud-card-name span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 18px;
   font-weight: 900;
   letter-spacing: -0.02em;
@@ -1178,6 +1207,8 @@ body {
   color: var(--teal);
 }
 .hud-card-name small {
+  flex: none;
+  white-space: nowrap;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -1212,16 +1243,10 @@ body {
 
 /* Clock and status */
 .hud-centre {
-  position: absolute;
-  top: 20px;
-  left: 50%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  transform: translateX(-50%);
+  display: contents;
 }
 .hud-clock {
+  grid-area: clock;
   display: flex;
   min-width: 120px;
   flex-direction: column;
@@ -1271,22 +1296,31 @@ body {
   color: #111512;
   animation: hud-pulse 0.5s ease-in-out infinite;
 }
+.hud-clock.is-urgent .hud-wind,
+.hud-clock.is-urgent .hud-wind i {
+  color: #111512;
+}
 @keyframes hud-pulse {
   0%,
   100% {
     transform: scale(1);
   }
   50% {
-    transform: scale(1.06);
+    filter: brightness(1.15);
   }
 }
 .hud-status {
+  grid-area: status;
+  justify-self: start;
+  align-self: center;
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
   padding: 8px 16px;
   border-radius: 999px;
   font-size: 14px;
   font-weight: 800;
-  white-space: nowrap;
+  white-space: normal;
   color: var(--muted);
 }
 .hud-status[data-tone="active"] {
@@ -1298,14 +1332,15 @@ body {
 
 /* Utilities */
 .hud-utilities {
-  position: absolute;
-  top: 120px;
-  right: 20px;
+  grid-area: utilities;
+  justify-self: end;
+  align-self: center;
   display: flex;
   gap: 6px;
 }
 .hud-chip {
-  height: 36px;
+  min-width: 44px;
+  height: 44px;
   padding: 0 12px;
   background: #111512e0;
   border: 3px solid var(--ink);
@@ -1321,14 +1356,12 @@ body {
 
 /* Movement */
 .hud-movement {
-  position: absolute;
-  left: 20px;
-  bottom: 20px;
+  grid-area: movement;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
   gap: 8px;
-  width: 236px;
+  width: min(236px, 100%);
 }
 .hud-range {
   width: 100%;
@@ -1388,16 +1421,21 @@ body {
 
 /* Hotbar */
 .hud-hotbar {
-  position: absolute;
-  left: 50%;
-  bottom: 20px;
+  grid-area: arsenal;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  transform: translateX(-50%);
 }
 .hud-weapon-label {
+  width: 100%;
+  contain: inline-size;
+  text-align: center;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin: 0;
   padding: 5px 14px;
   border-radius: 999px;
@@ -1418,6 +1456,7 @@ body {
   opacity: 0.5;
 }
 .hud-tiles {
+  max-width: 100%;
   display: flex;
   gap: 6px;
   padding: 8px;
@@ -1426,8 +1465,9 @@ body {
 .hud-tile {
   position: relative;
   display: flex;
-  width: 64px;
-  height: 64px;
+  flex: none;
+  width: 56px;
+  height: 56px;
   align-items: center;
   justify-content: center;
   border: 3px solid var(--ink);
@@ -1499,17 +1539,16 @@ body {
 
 /* Power */
 .hud-power {
-  position: absolute;
-  right: 20px;
-  bottom: 20px;
-  width: 240px;
+  grid-area: power;
+  justify-self: end;
+  width: min(200px, 100%);
+  min-width: 0;
   padding: 10px 14px 12px;
   border-radius: 16px;
 }
 .hud-power > div:first-child {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  display: grid;
+  gap: 4px;
 }
 .hud-power span {
   font-size: 11px;
@@ -1530,19 +1569,11 @@ body {
   margin-top: 6px;
   border-radius: 10px;
 }
-.hud-keys {
-  position: absolute;
-  left: 50%;
-  bottom: 2px;
-  transform: translateX(-50%);
-  margin: 0;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: #ffffff55;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 10;
+.hud-key-help {
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .hud-notice {
@@ -1551,13 +1582,10 @@ body {
 }
 
 .hud-alert {
-  position: absolute;
-  left: 50%;
-  bottom: 96px;
-  z-index: 15;
-  transform: translateX(-50%);
+  grid-column: 1 / -1;
+  justify-self: center;
   margin: 0;
-  max-width: min(560px, 92vw);
+  max-width: min(560px, 100%);
   padding: 10px 16px;
   border-radius: 14px;
   font-size: 13px;
@@ -1578,12 +1606,16 @@ body {
   z-index: 20;
   display: grid;
   place-items: center;
+  grid-template-rows: minmax(0, 1fr);
   padding: 16px;
   background: #111512b8;
 }
 .hud-modal {
   width: 100%;
   max-width: 440px;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 24px;
   border: 3px solid var(--ink);
   border-radius: 24px;
@@ -1844,250 +1876,68 @@ body {
   font-weight: 900;
 }
 
-/* Tablet */
-@media (max-width: 1023px) {
-  .hud-card {
-    width: 240px;
-  }
-  .hud-hint {
-    display: none;
-  }
-  .hud-tile {
-    width: 56px;
-    height: 56px;
-  }
-  .hud-power {
-    width: 200px;
-  }
-  .hud-keys {
-    display: none;
-  }
-}
-
-/* Portrait phones */
-@media (max-width: 639px) {
-  .hud-card {
-    top: calc(var(--craft-safe-top) + 12px);
-    width: 140px;
+/* Compact controls stay in normal flow; no button is smaller than 44px. */
+@container arena (width < 1100px) or (height < 650px) {
+  .hud {
     gap: 8px;
-    padding: 8px;
-    border-radius: 14px;
-    box-shadow: 0 3px 0 var(--ink);
+    padding: calc(var(--craft-safe-top) + 10px)
+      calc(var(--craft-safe-right) + 10px) calc(var(--craft-safe-bottom) + 10px)
+      calc(var(--craft-safe-left) + 10px);
   }
-  .hud-card.is-left {
-    left: 12px;
+  .hud-top {
+    grid-template-columns: minmax(0, 1fr) 100px auto minmax(0, 1fr);
+    grid-template-areas: "one clock utilities two" "status status status status";
+    gap: 4px 8px;
+    align-items: center;
   }
+  .hud-card,
   .hud-card.is-right {
-    right: 12px;
-    padding: 8px;
-  }
-  .hud-portrait {
-    width: 36px;
-    height: 36px;
-    border-width: 2px;
-    border-radius: 10px;
-  }
-  .hud-card-name small,
-  .hud-shield {
-    display: none;
-  }
-  .hud-card-name span {
-    font-size: 13px;
-  }
-  .hud-card-hp {
-    margin-top: 4px;
-  }
-  .hud-card-hp strong {
-    min-width: 22px;
-    font-size: 13px;
-  }
-  .hud-bar {
-    height: 10px;
-    border-radius: 5px;
-  }
-  .hud-centre {
-    top: calc(var(--craft-safe-top) + 12px);
-    align-items: stretch;
-    width: 100%;
-    padding: 0 12px;
-    gap: 10px;
-  }
-  .hud-clock {
-    width: 70px;
-    height: 62px;
-    min-width: 0;
-    align-self: center;
-    justify-content: center;
-    padding: 0;
-    border-radius: 14px;
-  }
-  .hud-clock b {
-    font-size: 30px;
-  }
-  .hud-clock i,
-  .hud-clock small {
-    font-size: 9px;
-  }
-  .hud-clock small {
-    margin: 0;
-  }
-  .hud-status {
-    align-self: flex-start;
-    max-width: 250px;
-    margin-top: 16px;
-    padding: 6px 12px;
-    font-size: 12px;
-    white-space: normal;
-  }
-  .hud-utilities {
-    top: calc(var(--craft-safe-top) + 128px);
-    right: 12px;
-  }
-  .hud-chip {
-    width: 44px;
-    height: 36px;
-    padding: 0;
-    border-radius: 10px;
-    font-size: 9px;
-  }
-  .hud-chip-focus {
-    display: none;
-  }
-  .hud-movement {
-    left: 12px;
-    right: 12px;
-    bottom: calc(var(--craft-safe-bottom) + 150px);
-    width: auto;
-    justify-content: space-between;
-  }
-  .hud-range {
-    width: 124px;
-    order: -1;
-    margin-bottom: 8px;
-    border-radius: 10px;
-    font-size: 9px;
-  }
-  .hud-jump {
-    width: 76px;
-    padding: 0;
-    font-size: 12px;
-  }
-  .hud-jump span {
-    font-size: 22px;
-  }
-  .hud-hotbar {
-    bottom: calc(var(--craft-safe-bottom) + 46px);
     gap: 6px;
-  }
-  .hud-weapon-label {
-    padding: 4px 12px;
-    font-size: 11px;
-    max-width: 92vw;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .hud-tiles {
-    gap: 4px;
-    padding: 6px;
-    border-radius: 18px;
-  }
-  .hud-tile {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-  }
-  .hud-tile img {
-    width: 28px;
-  }
-  .hud-tile b {
-    display: none;
-  }
-  /* The power gauge stands up beside the jump thumb. */
-  .hud-power {
-    right: 12px;
-    bottom: calc(var(--craft-safe-bottom) + 214px);
-    display: flex;
-    width: 76px;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    padding: 6px 8px 8px;
-    border-radius: 12px;
-  }
-  .hud-power > div:first-child {
-    flex-direction: column;
-    align-items: center;
-  }
-  .hud-power span {
-    font-size: 9px;
-    letter-spacing: 0.1em;
-  }
-  .hud-power i {
-    display: none;
-  }
-  .hud-power strong {
-    font-size: 14px;
-  }
-  .hud-power .hud-bar {
-    width: 22px;
-    height: 96px;
-    flex: none;
-    margin-top: 0;
-    border-radius: 11px;
-    flex-direction: column-reverse;
-  }
-  .hud-power .hud-bar i {
-    width: 100%;
-  }
-  .hud-modal h2 {
-    font-size: 30px;
-  }
-}
-
-/* Landscape phones */
-@media (orientation: landscape) and (max-height: 599px) {
-  .hud-card {
-    top: 10px;
-    width: 190px;
-    gap: 8px;
     padding: 6px 8px;
     border-radius: 12px;
-  }
-  .hud-card.is-left {
-    left: calc(var(--craft-safe-left) + 52px);
-  }
-  .hud-card.is-right {
-    right: calc(var(--craft-safe-right) + 52px);
-    padding: 6px 8px;
   }
   .hud-portrait {
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     border-width: 2px;
     border-radius: 8px;
   }
-  .hud-card-name span,
-  .hud-card-hp strong {
+  .hud-card-name {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+  .is-right .hud-card-name {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  .hud-card-name span {
+    max-width: 100%;
     font-size: 12px;
   }
-  .hud-card-name small,
-  .hud-shield {
-    display: none;
+  .hud-card-name small {
+    font-size: 10px;
+    letter-spacing: 0;
+  }
+  .hud-card-hp {
+    margin-top: 2px;
+    gap: 4px;
+  }
+  .hud-card-hp strong {
+    min-width: 22px;
+    font-size: 12px;
   }
   .hud-bar {
     height: 8px;
   }
-  .hud-centre {
-    top: 10px;
-    flex-direction: row;
-    align-items: center;
+  .hud-shield {
+    font-size: 9px;
+    margin-top: 2px;
   }
   .hud-clock {
-    width: 64px;
-    height: 48px;
     min-width: 0;
-    justify-content: center;
-    padding: 0;
+    width: 100px;
+    padding: 4px;
     border-radius: 12px;
   }
   .hud-clock b {
@@ -2095,74 +1945,181 @@ body {
   }
   .hud-clock i,
   .hud-clock small {
-    font-size: 8px;
+    font-size: 9px;
+    letter-spacing: 0;
   }
-  .hud-clock small {
-    margin: 0;
+  .hud-clock .hud-wind {
+    margin-top: 2px;
+    font-size: 9px;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+  .hud-clock .hud-wind i {
+    font-size: 11px;
+    margin: 0 1px;
+  }
+  .hud-map-name {
+    display: none;
   }
   .hud-status {
-    padding: 5px 10px;
-    font-size: 11px;
+    padding: 3px 10px;
+    font-size: 12px;
   }
   .hud-utilities {
-    top: 64px;
-    right: calc(var(--craft-safe-right) + 52px);
+    gap: 4px;
   }
   .hud-chip {
-    width: 44px;
-    height: 32px;
-    padding: 0;
-    border-radius: 9px;
+    padding: 0 6px;
     font-size: 9px;
+    border-radius: 10px;
   }
-  .hud-chip-focus {
-    display: inline-flex;
+  .hud-bottom {
+    grid-template-columns: minmax(148px, 1fr) auto minmax(86px, 1fr);
+    gap: 8px;
   }
   .hud-movement {
-    left: calc(var(--craft-safe-left) + 52px);
-    bottom: 14px;
-    width: 180px;
+    width: 164px;
+    max-width: 100%;
+    gap: 4px;
   }
-  .hud-jump {
-    position: fixed;
-    right: calc(var(--craft-safe-right) + 52px);
-    bottom: 14px;
-    width: 76px;
-    padding: 0;
-    height: 54px;
+  .hud-range {
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+  .hud-range .hud-bar {
+    height: 4px;
+    margin-top: 3px;
+  }
+  .hud-walk {
+    gap: 4px;
   }
   .hud-hold {
-    height: 54px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+  }
+  .hud-jump {
+    width: 52px;
+    padding: 0;
+    gap: 2px;
+    font-size: 9px;
+    letter-spacing: 0;
+  }
+  .hud-jump span {
+    font-size: 18px;
   }
   .hud-hotbar {
-    bottom: 14px;
-    gap: 5px;
+    gap: 4px;
+  }
+  .hud-weapon-label {
+    padding: 3px 10px;
+    font-size: 11px;
+  }
+  .hud-hint,
+  .hud-weapon-description {
+    display: none;
+  }
+  .hud-tiles {
+    gap: 4px;
+    padding: 4px;
+    border-radius: 16px;
   }
   .hud-tile {
     width: 44px;
     height: 44px;
-    border-radius: 11px;
+    border-radius: 10px;
   }
   .hud-tile img {
-    width: 26px;
+    width: 28px;
   }
   .hud-tile b {
     display: none;
   }
+  .hud-tile-divider {
+    display: none;
+  }
   .hud-power {
-    right: calc(var(--craft-safe-right) + 136px);
-    bottom: 14px;
-    width: 110px;
-    padding: 6px 10px 8px;
+    width: 140px;
+    max-width: 100%;
+    padding: 6px 8px;
     border-radius: 12px;
+  }
+  .hud-power span {
+    font-size: 9px;
   }
   .hud-power strong {
     font-size: 14px;
+    line-height: 1.2;
   }
   .hud-power .hud-bar {
-    height: 12px;
+    height: 10px;
     margin-top: 4px;
-    border-radius: 6px;
+  }
+}
+
+@container arena (width >= 1000px) and (height < 650px) {
+  .hud-top {
+    grid-template-columns: minmax(0, 1fr) 100px minmax(0, 1fr) auto minmax(
+        0,
+        1fr
+      );
+    grid-template-areas: "one clock status utilities two";
+  }
+}
+
+@container arena (width < 600px) {
+  .hud-top {
+    grid-template-columns: minmax(0, 1fr) 100px minmax(0, 1fr);
+    grid-template-areas: "one clock two" "status status utilities";
+    gap: 8px;
+  }
+  .hud-chip-focus {
+    display: none;
+  }
+  .hud-status {
+    padding: 6px 8px;
+  }
+  .hud-card,
+  .hud-card.is-right {
+    padding: 6px;
+    gap: 4px;
+  }
+  .hud-portrait {
+    width: 28px;
+    height: 28px;
+  }
+  .hud-card-name span {
+    font-size: 11px;
+  }
+  .hud-card-name small {
+    font-size: 9px;
+  }
+  .hud-bottom {
+    grid-template-columns: minmax(0, 1fr) 100px;
+    grid-template-areas: "movement power" "arsenal arsenal";
+    gap: 10px;
+  }
+  .hud-movement {
+    width: 180px;
+  }
+  .hud-hold {
+    width: 52px;
+    height: 52px;
+  }
+  .hud-jump {
+    width: 68px;
+    font-size: 11px;
+  }
+  .hud-tiles {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding-top: 8px;
+  }
+  .hud-power {
+    width: 100%;
+  }
+  .hud-modal h2 {
+    font-size: 30px;
   }
 }
 
@@ -2244,12 +2201,6 @@ body {
   background: #d2fb78;
   color: #14251f;
   font-weight: 700;
-}
-
-@media (max-width: 639px), (orientation: landscape) and (max-height: 599px) {
-  .hud-clock .hud-map-name {
-    display: none;
-  }
 }
 
 :root {

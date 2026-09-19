@@ -2,7 +2,6 @@
 
 import * as Phaser from "phaser";
 import { type RefObject, useEffect, useRef, useState } from "react";
-import type { HudInsets } from "../game/ArenaCamera";
 import { ArenaScene, type GameBridge } from "../game/ArenaScene";
 
 function rendererType() {
@@ -20,37 +19,6 @@ function rendererType() {
   } finally {
     gl.getExtension("WEBGL_lose_context")?.loseContext();
   }
-}
-
-/** Edges the fixed HUD covers at this size, in CSS pixels. */
-function hudInsets(): HudInsets {
-  const probe = document.createElement("div");
-  probe.style.cssText =
-    "position:fixed;top:0;left:0;visibility:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)";
-  document.body.append(probe);
-  const style = getComputedStyle(probe);
-  const safe = {
-    top: Number.parseFloat(style.paddingTop) || 0,
-    right: Number.parseFloat(style.paddingRight) || 0,
-    bottom: Number.parseFloat(style.paddingBottom) || 0,
-    left: Number.parseFloat(style.paddingLeft) || 0,
-  };
-  probe.remove();
-  if (window.innerHeight < 600 && window.innerWidth > window.innerHeight)
-    return {
-      top: 104,
-      bottom: 116,
-      left: 150 + safe.left,
-      right: 150 + safe.right,
-    };
-  if (window.innerWidth < 640)
-    return {
-      top: 172 + safe.top,
-      bottom: 300 + safe.bottom,
-      left: 0,
-      right: 0,
-    };
-  return { top: 150, bottom: 140, left: 0, right: 0 };
 }
 
 export default function ArenaCanvas({
@@ -76,7 +44,6 @@ export default function ArenaCanvas({
       const width = parent.clientWidth;
       const height = parent.clientHeight;
       if (!width || !height) return;
-      bridge.current.hudInsets = hudInsets();
       if (game) {
         game.scale.resize(width, height);
         return;
