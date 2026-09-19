@@ -50,6 +50,7 @@ export class BattleRoom extends Room<BattleState> {
         if (!this.allowMessage(client)) return;
         const error = this.battle[action](client.sessionId, payload);
         if (error) client.send("actionError", error);
+        else client.send("actionAccepted");
       });
     this.onMessage("*", (client) => {
       if (!this.allowMessage(client)) return;

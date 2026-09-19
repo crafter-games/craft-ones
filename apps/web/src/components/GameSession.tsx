@@ -13,6 +13,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { createBridge } from "../game/GameBridge";
 import { acquireBattle, hasBattle } from "../lib/connection";
+import { useActionNotice } from "../lib/useActionNotice";
 import { Brand } from "./Brand";
 import { HudOverlay } from "./HudOverlay";
 import { SeatPicker } from "./MatchSetup";
@@ -30,6 +31,9 @@ export default function GameSession({
   const [sessionId, setSessionId] = useState("");
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState("");
+  const { message: actionNotice, notice } = useActionNotice(
+    `${roomId}:${state?.turnNumber ?? 0}`,
+  );
   const [power, setPower] = useState(0);
   const [copied, setCopied] = useState(false);
   const [manualLink, setManualLink] = useState("");
@@ -120,13 +124,17 @@ export default function GameSession({
         room.onLeave(onLeave);
         room.onError(onError);
         const offAction = room.onMessage("actionError", (message: string) => {
-          if (active) setError(message);
+          if (active) notice.report(message);
+        });
+        const offAccepted = room.onMessage("actionAccepted", () => {
+          if (active) notice.clear();
         });
         unsubscribe = () => {
           room.onStateChange.remove(sync);
           room.onLeave.remove(onLeave);
           room.onError.remove(onError);
           offAction();
+          offAccepted();
         };
         sync();
       })
@@ -142,7 +150,7 @@ export default function GameSession({
       unsubscribe();
       connection.release();
     };
-  }, [roomId, joined]);
+  }, [roomId, joined, notice]);
 
   async function copyInvite() {
     if (platform) {
@@ -262,6 +270,7 @@ export default function GameSession({
       }}
       leave={platform?.leave}
       error={error}
+      actionNotice={actionNotice}
     />
   );
 }
