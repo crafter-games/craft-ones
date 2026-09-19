@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 import { HudOverlay } from "../../components/HudOverlay";
 import { MapPicker, SeatPicker } from "../../components/MatchSetup";
 import { createBridge } from "../../game/GameBridge";
+import { useActionNotice } from "../../lib/useActionNotice";
 
 /** The local hot-seat match; `lab` adds the debugging toggles to the menu. */
 export default function Playground({ lab = false }: { lab?: boolean }) {
@@ -50,7 +51,9 @@ export default function Playground({ lab = false }: { lab?: boolean }) {
           coat: "cream",
         },
   );
-  const [error, setError] = useState("");
+  const { message: actionNotice, notice } = useActionNotice(
+    `${revision}:${state?.turnNumber ?? 0}`,
+  );
   const profiles = useRef({ one, two });
   profiles.current = { one, two };
   const battle = useRef<Battle | null>(null);
@@ -88,28 +91,30 @@ export default function Playground({ lab = false }: { lab?: boolean }) {
     bridge.current.generation = revision;
     bridge.current.connected = true;
     bridge.current.fire = (action) => {
-      setError(engine.fire(engine.state.currentPlayer, action) ?? "");
+      notice.report(engine.fire(engine.state.currentPlayer, action));
       sync();
     };
     bridge.current.move = (direction) => {
-      engine.move(engine.state.currentPlayer, {
-        direction,
-        sequence: ++sequence,
-        turnNumber: engine.state.turnNumber,
-      });
+      notice.report(
+        engine.move(engine.state.currentPlayer, {
+          direction,
+          sequence: ++sequence,
+          turnNumber: engine.state.turnNumber,
+        }),
+      );
       sync();
     };
     bridge.current.jump = (direction = 0) => {
-      setError(
+      notice.report(
         engine.jump(engine.state.currentPlayer, {
           turnNumber: engine.state.turnNumber,
           direction,
-        }) ?? "",
+        }),
       );
       sync();
     };
     bridge.current.ability = (aim) => {
-      setError(
+      notice.report(
         engine.ability(engine.state.currentPlayer, {
           turnNumber: engine.state.turnNumber,
           direction: aim
@@ -118,11 +123,11 @@ export default function Playground({ lab = false }: { lab?: boolean }) {
               : -1
             : bridge.current.direction,
           ...aim,
-        }) ?? "",
+        }),
       );
       sync();
     };
-    setError("");
+    notice.clear();
     sync();
     let previous = performance.now(),
       reported = previous;
@@ -156,7 +161,7 @@ export default function Playground({ lab = false }: { lab?: boolean }) {
       bridge.current.connected = false;
       battle.current = null;
     };
-  }, [mapId, revision]);
+  }, [mapId, revision, notice]);
   const reset = () => setRevision((value) => value + 1);
   const labTools = (
     <fieldset className="hud-lab">
@@ -238,7 +243,7 @@ export default function Playground({ lab = false }: { lab?: boolean }) {
       restart={reset}
       labTools={lab ? labTools : undefined}
       setupDrawer={setup}
-      error={error}
+      actionNotice={actionNotice}
     />
   );
 }

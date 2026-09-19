@@ -314,6 +314,8 @@ describe("real Colyseus SDK clients", () => {
     );
     const terrain = [...one.state.terrain];
     const x = one.state.players[0].x;
+    let accepted = 0;
+    one.onMessage("actionAccepted", () => accepted++);
     one.send("move", {
       direction: 1,
       sequence: 1,
@@ -325,6 +327,7 @@ describe("real Colyseus SDK clients", () => {
     expect(two.state.players[0].x).toBe(one.state.players[0].x);
     expect(two.state.currentPlayer).toBe(one.sessionId);
     expect(two.state.turnNumber).toBe(1);
+    expect(accepted).toBe(1);
     const moved = two.state.players[0].x;
     const errors: string[] = [];
     one.onMessage("actionError", (error: string) => errors.push(error));
@@ -337,6 +340,7 @@ describe("real Colyseus SDK clients", () => {
     one.send("infiniteHp", true);
     one.send("destructible", true);
     await waitFor(() => errors.length === 4);
+    expect(accepted).toBe(1);
     expect(one.state.players[0].x).toBe(moved);
     expect([...two.state.terrain]).toEqual(terrain);
     await one.leave();

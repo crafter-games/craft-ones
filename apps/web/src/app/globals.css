@@ -1545,6 +1545,11 @@ body {
   z-index: 10;
 }
 
+.hud-notice {
+  color: #ffae9d;
+  pointer-events: none;
+}
+
 .hud-alert {
   position: absolute;
   left: 50%;

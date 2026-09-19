@@ -124,6 +124,7 @@ export function HudOverlay({
   setupDrawer,
   leave,
   error,
+  actionNotice,
 }: {
   state: BattleView | null;
   sessionId: string;
@@ -136,6 +137,7 @@ export function HudOverlay({
   labTools?: ReactNode;
   setupDrawer?: ReactNode;
   error?: string;
+  actionNotice?: string;
   leave?: () => void;
 }) {
   const inviteId = useId();
@@ -296,7 +298,17 @@ export function HudOverlay({
               urgent ? "urgent" : myTurn && aiming ? "active" : "neutral"
             }
           >
-            {status}
+            {actionNotice ? (
+              <span
+                className="hud-notice"
+                role="status"
+                data-testid="action-notice"
+              >
+                {actionNotice}
+              </span>
+            ) : (
+              status
+            )}
           </p>
         </div>
         <div className="hud-utilities">
