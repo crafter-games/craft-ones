@@ -1,4 +1,5 @@
 import type { BattleView, FireAction, WeaponId } from "@craft-ones/shared";
+import type { CameraView } from "./ArenaCamera";
 export type GameBridge = {
   state: BattleView | null;
   sessionId: string;
@@ -8,7 +9,7 @@ export type GameBridge = {
   debug: boolean;
   weapon: WeaponId;
   abilityAim: boolean;
-  focus: boolean;
+  view: CameraView;
   sound: boolean;
   suspended: boolean;
   paused: boolean;
@@ -33,7 +34,7 @@ export function createBridge(charge: GameBridge["charge"]): GameBridge {
     debug: false,
     weapon: "rocket",
     abilityAim: false,
-    focus: false,
+    view: "action",
     sound: true,
     suspended: false,
     paused: false,

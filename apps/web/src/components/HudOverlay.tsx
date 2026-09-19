@@ -17,6 +17,7 @@ import {
   useId,
   useState,
 } from "react";
+import type { CameraView } from "../game/ArenaCamera";
 import type { GameBridge } from "../game/GameBridge";
 import { Hotbar } from "./Hotbar";
 import { TouchControls } from "./TouchControls";
@@ -31,6 +32,17 @@ const ArenaCanvas = dynamic(() => import("./ArenaCanvas"), {
 });
 
 const SOUND_KEY = "craft-ones:sound";
+/** The compact chip cycles the camera views the menu lists side by side. */
+const VIEW_LABELS: Record<CameraView, string> = {
+  action: "ACTION",
+  focus: "FOCUS",
+  map: "MAP",
+};
+const NEXT_VIEW: Record<CameraView, CameraView> = {
+  action: "focus",
+  focus: "map",
+  map: "action",
+};
 
 export type InviteControls = {
   roomId: string;
@@ -142,7 +154,7 @@ export function HudOverlay({
 }) {
   const inviteId = useId();
   const [sound, setSound] = useState(true);
-  const [focus, setFocus] = useState(false);
+  const [view, setView] = useState<CameraView>("action");
   const [menu, setMenu] = useState(false);
   const [setup, setSetup] = useState(false);
   useEffect(() => {
@@ -226,9 +238,9 @@ export function HudOverlay({
       // A browser with storage switched off simply forgets the choice.
     }
   };
-  const setFocusOn = (next: boolean) => {
-    setFocus(next);
-    bridge.current.focus = next;
+  const setCameraView = (next: CameraView) => {
+    setView(next);
+    bridge.current.view = next;
   };
   return (
     <main
@@ -325,11 +337,10 @@ export function HudOverlay({
           <button
             type="button"
             className="hud-chip hud-chip-focus"
-            aria-pressed={focus}
-            aria-label="Camera focus"
-            onClick={() => setFocusOn(!focus)}
+            aria-label="Camera view"
+            onClick={() => setCameraView(NEXT_VIEW[view])}
           >
-            {focus ? "FOCUS" : "MAP"}
+            {VIEW_LABELS[view]}
           </button>
           <button
             type="button"
@@ -503,15 +514,22 @@ export function HudOverlay({
               <div className="hud-segmented">
                 <button
                   type="button"
-                  aria-pressed={focus}
-                  onClick={() => setFocusOn(true)}
+                  aria-pressed={view === "action"}
+                  onClick={() => setCameraView("action")}
+                >
+                  Follow action
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={view === "focus"}
+                  onClick={() => setCameraView("focus")}
                 >
                   Focus character
                 </button>
                 <button
                   type="button"
-                  aria-pressed={!focus}
-                  onClick={() => setFocusOn(false)}
+                  aria-pressed={view === "map"}
+                  onClick={() => setCameraView("map")}
                 >
                   View whole map
                 </button>
