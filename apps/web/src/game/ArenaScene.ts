@@ -32,6 +32,8 @@ export class ArenaScene extends Phaser.Scene {
   private initialized = false;
   private loadFailed = false;
   private labels: Phaser.GameObjects.Text[] = [];
+  /** Marks the viewer's own character; the bouncing arrow marks the turn. */
+  private youTag?: Phaser.GameObjects.Text;
   private lastPhase = "";
   private speakers!: SoundBoard;
   private heard: BattleView | null = null;
@@ -97,6 +99,18 @@ export class ArenaScene extends Phaser.Scene {
         .setOrigin(0.5)
         .setDepth(12),
     );
+    this.youTag = this.add
+      .text(0, 0, "YOU", {
+        fontFamily: "Arial",
+        fontSize: "11px",
+        fontStyle: "bold",
+        color: "#3c3033",
+        backgroundColor: "#fff1d6",
+        padding: { x: 7, y: 3 },
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(12)
+      .setVisible(false);
   }
   update(_time: number, dt: number) {
     const now = performance.now();
@@ -154,6 +168,7 @@ export class ArenaScene extends Phaser.Scene {
     }
     this.lastPhase = state.phase;
     let aimImpact: { x: number; y: number } | undefined;
+    let youShown = false;
     state.players.forEach((player, i) => {
       const key = `${player.species}-${player.coat}`;
       if (this.rigKeys[i] !== key) {
@@ -173,8 +188,10 @@ export class ArenaScene extends Phaser.Scene {
         this.rigs[i] = new CharacterRig(this, player.species, player.coat);
         this.rigKeys[i] = key;
       }
+      const mine = !this.bridge.local && player.sessionId === sessionId;
+      const role = this.bridge.local ? "" : mine ? " · YOU" : " · OPPONENT";
       this.labels[i]?.setText(
-        `${CHARACTERS[player.species].name.toUpperCase()} · P${player.number}`,
+        `${CHARACTERS[player.species].name.toUpperCase()} · P${player.number}${role}`,
       );
       const active = state.currentPlayer === player.sessionId;
       const angle =
@@ -197,7 +214,18 @@ export class ArenaScene extends Phaser.Scene {
             ? selectedShot
             : "rocket",
       );
-      this.labels[i]?.setPosition(player.x, player.y + 38);
+      // Labels keep their screen size so they stay readable at any zoom.
+      const zoom = this.cameras.main.zoom;
+      this.labels[i]
+        ?.setPosition(player.x, player.y + 22 + 16 / zoom)
+        .setScale(1 / zoom);
+      const headTop = player.y - (player.species === "cuy" ? 76 : 103);
+      if (mine && this.rigs[i]) {
+        youShown = true;
+        this.youTag
+          ?.setPosition(player.x, headTop - 18 / zoom)
+          .setScale(1 / zoom);
+      }
       g.fillStyle(0x3b2b38, 0.18).fillEllipse(
         player.x,
         player.y + ARENA.playerRadius + 3,
@@ -212,10 +240,7 @@ export class ArenaScene extends Phaser.Scene {
           83,
         );
       if (active && state.phase !== "finished") {
-        const y =
-          player.y -
-          (player.species === "cuy" ? 76 : 103) +
-          Math.sin(this.time.now / 180) * 2;
+        const y = headTop + Math.sin(this.time.now / 180) * 2;
         g.fillStyle(i === 0 ? 0xf5c367 : 0x6ad1b7).fillTriangle(
           player.x - 7,
           y,
@@ -358,6 +383,7 @@ export class ArenaScene extends Phaser.Scene {
       this.rigs[i]?.root.setVisible(false);
       this.labels[i]?.setVisible(false);
     }
+    this.youTag?.setVisible(youShown);
     for (let i = 0; i < state.players.length; i++)
       this.labels[i]?.setVisible(!!this.rigs[i]);
     this.effects.update(state);

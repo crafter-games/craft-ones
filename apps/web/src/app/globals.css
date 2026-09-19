@@ -1183,6 +1183,25 @@ body {
   letter-spacing: 0.08em;
   color: var(--muted);
 }
+/* The role badge is identity, not turn state: it stays at every size. */
+.hud-card-role {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--ink);
+  font-size: 10px;
+  font-weight: 900;
+  font-style: normal;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.hud-card.is-you .hud-card-role {
+  background: var(--cream);
+  color: #3c3033;
+}
+.hud-card.is-you {
+  border-color: var(--cream);
+}
 .hud-card-hp {
   display: flex;
   align-items: center;
@@ -2249,6 +2268,23 @@ body {
 @media (max-width: 639px), (orientation: landscape) and (max-height: 599px) {
   .hud-clock .hud-map-name {
     display: none;
+  }
+  /* Compact cards have no room in the name row: the badge rides the border. */
+  .hud-card-role {
+    position: absolute;
+    top: -9px;
+    left: 8px;
+    padding: 1px 5px;
+    font-size: 8px;
+  }
+  .hud-card.is-right .hud-card-role {
+    right: 8px;
+    left: auto;
+  }
+  .hud-card-name span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 }
 

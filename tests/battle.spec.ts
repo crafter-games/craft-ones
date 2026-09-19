@@ -57,6 +57,18 @@ test("invite flow and a complete mouse-controlled 1v1 reach the same winner", as
       );
       await expect(client.locator("canvas")).toHaveCount(1);
     }
+    // Each client marks its own seat, whatever the turn indicator says.
+    for (const [client, seat] of [
+      [page, 1],
+      [rival, 2],
+    ] as const) {
+      const own = client.getByTestId(`player-${seat}`);
+      const other = client.getByTestId(`player-${3 - seat}`);
+      await expect(own).toHaveAttribute("data-role", "you");
+      await expect(own.locator(".hud-card-role")).toHaveText("YOU");
+      await expect(other).toHaveAttribute("data-role", "opponent");
+      await expect(other.locator(".hud-card-role")).toHaveText("OPPONENT");
+    }
     for (let shot = 0; shot < 12; shot++) {
       if (
         (await page.getByTestId("battle").getAttribute("data-phase")) ===

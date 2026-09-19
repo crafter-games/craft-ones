@@ -2,6 +2,8 @@ import type { BattleView, FireAction, WeaponId } from "@craft-ones/shared";
 export type GameBridge = {
   state: BattleView | null;
   sessionId: string;
+  /** Shared local play: both seats belong to this browser, so neither is "you". */
+  local: boolean;
   connected: boolean;
   generation: number;
   showTrajectory: boolean;
@@ -27,6 +29,7 @@ export function createBridge(charge: GameBridge["charge"]): GameBridge {
   return {
     state: null,
     sessionId: "",
+    local: false,
     connected: false,
     generation: 0,
     showTrajectory: false,

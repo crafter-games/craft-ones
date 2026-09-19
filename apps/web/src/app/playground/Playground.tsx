@@ -90,6 +90,7 @@ export default function Playground({ lab = false }: { lab?: boolean }) {
     };
     bridge.current.generation = revision;
     bridge.current.connected = true;
+    bridge.current.local = true;
     bridge.current.fire = (action) => {
       notice.report(engine.fire(engine.state.currentPlayer, action));
       sync();
