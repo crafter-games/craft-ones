@@ -75,7 +75,8 @@ test("navigation and restart retain one live arena", async ({ page }) => {
     await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "1");
     await expect(page.locator("canvas")).toHaveCount(1);
     await page.getByRole("button", { name: "Menu", exact: true }).click();
-    await page.getByRole("link", { name: "Leave", exact: true }).click();
+    await page.getByRole("button", { name: "Leave", exact: true }).click();
+    await page.getByRole("link", { name: "Leave match", exact: true }).click();
     await expect(page.getByRole("link", { name: /Create Game/ })).toBeVisible();
   }
 });

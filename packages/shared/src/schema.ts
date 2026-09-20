@@ -175,6 +175,7 @@ export class BattleState extends Schema {
   declare waitingRemainingMs: number;
   declare winner: string;
   declare finishReason: string;
+  declare openingSeat: string;
 
   constructor() {
     super();
@@ -198,6 +199,7 @@ export class BattleState extends Schema {
       waitingRemainingMs: 0,
       winner: "",
       finishReason: "",
+      openingSeat: "host",
     });
   }
 }
@@ -221,6 +223,7 @@ defineTypes(BattleState, {
   winner: "string",
   finishReason: "string",
   roundNumber: "number",
+  openingSeat: "string",
 });
 
 export type PlayerView = Pick<
@@ -277,4 +280,5 @@ export type BattleView = {
   waitingRemainingMs: number;
   winner: string;
   finishReason: string;
+  openingSeat: string;
 };

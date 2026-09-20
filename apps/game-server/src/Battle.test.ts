@@ -79,6 +79,7 @@ describe("players and lifecycle", () => {
     const battle = new Battle(() => time, "flat", 0, "guest");
     battle.addPlayer("one");
     battle.addPlayer("two");
+    expect(battle.state.openingSeat).toBe("guest");
     expect(battle.state.currentPlayer).toBe("two");
     expect(battle.state.turnNumber).toBe(1);
     expect(battle.state.roundNumber).toBe(1);

@@ -15,6 +15,7 @@ import {
   WORLD_MAPS,
 } from "@craft-ones/shared";
 import Image from "next/image";
+import { useRef, useState } from "react";
 
 /** One seat: the roster lineup, coat swatches and the ability note. */
 export function SeatPicker({
@@ -156,22 +157,42 @@ export function MapPicker({
   value: PlayableMapId;
   onChange: (id: PlayableMapId) => void;
 }) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const [surpriseId, setSurpriseId] = useState<PlayableMapId | null>(null);
+
   const pickRandom = () => {
     const others = PLAYABLE_MAP_IDS.filter((id) => id !== value);
-    onChange(others[Math.floor(Math.random() * others.length)] ?? value);
+    const next = others[Math.floor(Math.random() * others.length)] ?? value;
+    onChange(next);
+    setSurpriseId(next);
+    requestAnimationFrame(() => {
+      const card = listRef.current?.querySelector<HTMLButtonElement>(
+        `[data-map-id="${next}"]`,
+      );
+      card?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+      card?.focus({ preventScroll: true });
+    });
   };
+
   return (
     <fieldset className="panel map-picker">
       <legend>Battleground</legend>
-      <div className="map-list">
+      <div className="map-list" ref={listRef}>
         {PLAYABLE_MAP_IDS.map((id) => (
           <button
             type="button"
             key={id}
             data-map-id={id}
             aria-pressed={value === id}
-            className="map-card"
+            className={`map-card${surpriseId === id ? " is-surprise" : ""}`}
             onClick={() => onChange(id)}
+            onAnimationEnd={() => {
+              if (surpriseId === id) setSurpriseId(null);
+            }}
           >
             <Image
               src={`/art/maps/${id}-preview.svg`}
