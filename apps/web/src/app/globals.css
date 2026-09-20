@@ -1925,11 +1925,27 @@ body {
   margin: 0;
   justify-content: center;
 }
-.hud-menu-foot a {
+.hud-menu-foot button:not(.cta) {
   padding: 0 8px;
+  border: 0;
+  background: transparent;
+  font: inherit;
   font-size: 12px;
   font-weight: 800;
   color: var(--muted);
+  cursor: pointer;
+}
+.hud-confirm-foot {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+.hud-confirm-foot .cta {
+  flex: 1;
+  margin: 0;
+  min-height: 48px;
+  justify-content: center;
 }
 .hud-lab {
   margin: 0;

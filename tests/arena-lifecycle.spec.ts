@@ -58,7 +58,8 @@ test("leaving the arena releases its window keyboard listeners", async ({
     await expect(page.locator("canvas")).toBeFocused();
     await expect.poll(count).toBeGreaterThan(before);
     await page.getByRole("button", { name: "Menu", exact: true }).click();
-    await page.getByRole("link", { name: "Leave", exact: true }).click();
+    await page.getByRole("button", { name: "Leave", exact: true }).click();
+    await page.getByRole("link", { name: "Leave match", exact: true }).click();
     await expect(page.getByRole("link", { name: /Create Game/ })).toBeVisible();
     await expect.poll(count).toBe(before);
   }

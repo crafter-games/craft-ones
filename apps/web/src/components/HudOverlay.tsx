@@ -167,6 +167,8 @@ export function HudOverlay({
 }) {
   const inviteId = useId();
   const hud = useRef<HTMLDivElement>(null);
+  const allowLeave = useRef(false);
+  const freeLeave = useRef(false);
   useLayoutEffect(() => {
     const root = hud.current;
     const top = root?.querySelector<HTMLElement>(".hud-top");
@@ -193,6 +195,7 @@ export function HudOverlay({
   const [view, setView] = useState<CameraView>("action");
   const [menu, setMenu] = useState(false);
   const [setup, setSetup] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
   useEffect(() => {
     let stored: string | null = null;
     try {
@@ -216,26 +219,50 @@ export function HudOverlay({
     local ? "shared" : player?.sessionId === sessionId ? "you" : "opponent";
   const charging = power > 0;
   const urgent = aiming && !charging && (state?.remainingMs ?? 0) < 5000;
-  const locked = !aiming || !myTurn || !connected || charging || menu || setup;
+  const locked =
+    !aiming || !myTurn || !connected || charging || menu || setup || confirmLeave;
   const result = finished ? (winner ? "win" : "draw") : null;
   const forfeit = finished && state?.finishReason === "forfeit";
   const blocked = !!error && !state;
+  freeLeave.current = blocked || forfeit;
   // A modal owns the pointer: the arena stops aiming underneath it.
-  const modal = menu || setup || waiting || finished || !state;
+  const modal = menu || setup || confirmLeave || waiting || finished || !state;
   useEffect(() => {
     bridge.current.suspended = modal;
-    bridge.current.paused = local && (menu || setup);
-  }, [bridge, modal, local, menu, setup]);
+    bridge.current.paused = local && (menu || setup || confirmLeave);
+  }, [bridge, modal, local, menu, setup, confirmLeave]);
   useEffect(() => {
-    if (!menu && !setup) return;
+    const guard = { craftOnesLeaveGuard: true };
+    window.history.pushState(guard, "", window.location.href);
+    const onPopState = () => {
+      if (allowLeave.current) return;
+      if (freeLeave.current) {
+        allowLeave.current = true;
+        window.history.back();
+        return;
+      }
+      window.history.pushState(guard, "", window.location.href);
+      setMenu(false);
+      setSetup(false);
+      setConfirmLeave(true);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+  useEffect(() => {
+    if (!menu && !setup && !confirmLeave) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      if (confirmLeave) {
+        setConfirmLeave(false);
+        return;
+      }
       setMenu(false);
       setSetup(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, setup]);
+  }, [menu, setup, confirmLeave]);
   const status = !state
     ? "Loading arena…"
     : waiting
@@ -529,11 +556,23 @@ export function HudOverlay({
             ) : null}
             {blocked || forfeit ? (
               leave ? (
-                <button type="button" onClick={leave}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    allowLeave.current = true;
+                    leave();
+                  }}
+                >
                   Leave Discord Activity
                 </button>
               ) : (
-                <Link href="/" className="hud-home">
+                <Link
+                  href="/"
+                  className="hud-home"
+                  onClick={() => {
+                    allowLeave.current = true;
+                  }}
+                >
                   Back to home
                 </Link>
               )
@@ -641,12 +680,64 @@ export function HudOverlay({
               >
                 Resume
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenu(false);
+                  setConfirmLeave(true);
+                }}
+              >
+                {leave ? "Leave Discord Activity" : "Leave"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {confirmLeave ? (
+        <div
+          className="hud-scrim"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Leave match"
+        >
+          <div className="hud-modal">
+            <p className="hud-kicker">LEAVE</p>
+            <h2>{leave ? "Leave this Activity?" : "Leave this match?"}</h2>
+            <p className="hud-modal-body">
+              {local
+                ? "You'll return home and lose this duel."
+                : "Leaving forfeits — your opponent wins."}
+            </p>
+            <div className="hud-confirm-foot">
+              <button
+                type="button"
+                className="cta dark"
+                onClick={() => setConfirmLeave(false)}
+              >
+                Stay
+              </button>
               {leave ? (
-                <button type="button" onClick={leave}>
-                  Leave Discord Activity
+                <button
+                  type="button"
+                  className="cta gold"
+                  onClick={() => {
+                    allowLeave.current = true;
+                    setConfirmLeave(false);
+                    leave();
+                  }}
+                >
+                  Leave Activity
                 </button>
               ) : (
-                <Link href="/">Leave</Link>
+                <Link
+                  href="/"
+                  className="cta gold"
+                  onClick={() => {
+                    allowLeave.current = true;
+                  }}
+                >
+                  Leave match
+                </Link>
               )}
             </div>
           </div>
