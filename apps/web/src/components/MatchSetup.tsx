@@ -5,6 +5,8 @@ import {
   COATS,
   type CoatId,
   isExclusive,
+  OPENING_SEATS,
+  type OpeningSeat,
   PLAYABLE_MAP_IDS,
   type PlayableMapId,
   type PlayerOptions,
@@ -196,6 +198,50 @@ export function MapPicker({
         >
           Surprise me
         </button>
+      </div>
+    </fieldset>
+  );
+}
+
+const OPENING_LABELS: Record<OpeningSeat, string> = {
+  host: "Host first",
+  guest: "Guest first",
+  random: "Coin flip",
+};
+
+/** Who takes the first aiming turn — fair rules, no handicaps. */
+export function OpeningSeatPicker({
+  value,
+  onChange,
+  hostLabel = "Host first",
+  guestLabel = "Guest first",
+}: {
+  value: OpeningSeat;
+  onChange: (value: OpeningSeat) => void;
+  hostLabel?: string;
+  guestLabel?: string;
+}) {
+  const labels = {
+    host: hostLabel,
+    guest: guestLabel,
+    random: OPENING_LABELS.random,
+  };
+  return (
+    <fieldset className="panel opening-picker">
+      <legend>Who starts</legend>
+      <div className="opening-options" role="group" aria-label="Who starts">
+        {OPENING_SEATS.map((seat) => (
+          <button
+            type="button"
+            key={seat}
+            data-opening-seat={seat}
+            aria-pressed={value === seat}
+            className="opening-option"
+            onClick={() => onChange(seat)}
+          >
+            {labels[seat]}
+          </button>
+        ))}
       </div>
     </fieldset>
   );

@@ -1,6 +1,10 @@
 "use client";
 
-import type { PlayableMapId, PlayerOptions } from "@craft-ones/shared";
+import type {
+  OpeningSeat,
+  PlayableMapId,
+  PlayerOptions,
+} from "@craft-ones/shared";
 import { useEffect, useRef, useState } from "react";
 import { consumeDiscordReservation } from "../lib/connection";
 import {
@@ -11,7 +15,7 @@ import {
 } from "../lib/discord";
 import { Brand } from "./Brand";
 import GameSession from "./GameSession";
-import { MapPicker, SeatPicker } from "./MatchSetup";
+import { MapPicker, OpeningSeatPicker, SeatPicker } from "./MatchSetup";
 
 export default function DiscordActivity() {
   const [session, setSession] = useState<DiscordSession | null>(null);
@@ -20,6 +24,7 @@ export default function DiscordActivity() {
   const [attempt, setAttempt] = useState(0);
   const [roomId, setRoomId] = useState("");
   const [mapId, setMapId] = useState<PlayableMapId>("andes");
+  const [openingSeat, setOpeningSeat] = useState<OpeningSeat>("host");
   const [player, setPlayer] = useState<PlayerOptions>({
     species: "cuy",
     coat: "caramel",
@@ -58,6 +63,7 @@ export default function DiscordActivity() {
         instanceId: session.sdk.instanceId,
         accessToken: session.accessToken,
         mapId,
+        openingSeat,
         player,
       });
       setRoomId(await consumeDiscordReservation(reservation));
@@ -107,6 +113,10 @@ export default function DiscordActivity() {
               onChange={setPlayer}
             />
             <MapPicker value={mapId} onChange={setMapId} />
+            <OpeningSeatPicker
+              value={openingSeat}
+              onChange={setOpeningSeat}
+            />
           </div>
           <footer className="setup-footer">
             <button type="button" className="cta dark" onClick={closeDiscord}>

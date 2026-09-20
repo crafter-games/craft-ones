@@ -214,6 +214,7 @@ export function discordService(
           provision,
           instanceKey: key,
           mapId: body.mapId,
+          openingSeat: body.openingSeat,
         });
         instance = { roomId: room.roomId, pending: new Map() };
         instances.set(key, instance);

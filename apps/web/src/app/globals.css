@@ -815,6 +815,38 @@ body {
 .map-random:active {
   transform: translateY(1px);
 }
+.opening-picker {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 16px;
+}
+.opening-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.opening-option {
+  flex: 1;
+  min-width: 6.5rem;
+  margin: 0;
+  padding: 10px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  background: var(--inset);
+  color: var(--cream);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.opening-option[aria-pressed="true"] {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px #f3c67733;
+}
 
 /* In-game setup drawer: the same panels, folded into the arena page. */
 .match-setup {
@@ -939,6 +971,9 @@ body {
   .setup-body.is-single {
     grid-template-columns: minmax(0, 560px) 420px;
     justify-content: center;
+  }
+  .setup .opening-picker {
+    grid-column: 1 / -1;
   }
   .setup-body .panel {
     padding: 20px;

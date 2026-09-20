@@ -1,5 +1,6 @@
 import type {
   BattleState,
+  OpeningSeat,
   PlayableMapId,
   PlayerOptions,
 } from "@craft-ones/shared";
@@ -41,8 +42,13 @@ function scheduleRelease(id: string, entry: Connection, delay: number) {
 export async function createBattle(
   mapId: PlayableMapId = "andes",
   player: PlayerOptions = { species: "cuy", coat: "caramel" },
+  openingSeat: OpeningSeat = "host",
 ) {
-  const room = await client().create<BattleState>("battle", { mapId, player });
+  const room = await client().create<BattleState>("battle", {
+    mapId,
+    player,
+    openingSeat,
+  });
   const entry = { promise: Promise.resolve(room), users: 0 };
   connections.set(room.roomId, entry);
   scheduleRelease(room.roomId, entry, 30_000);
