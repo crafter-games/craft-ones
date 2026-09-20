@@ -1242,6 +1242,7 @@ body {
 
 /* Player cards */
 .hud-card {
+  position: relative;
   display: flex;
   width: min(300px, 100%);
   min-width: 0;
