@@ -51,6 +51,7 @@ export class BattleRoom extends Room<BattleState> {
         void this.disconnect(4000);
     }, 100);
     for (const action of [
+      "select",
       "fire",
       "move",
       "jump",

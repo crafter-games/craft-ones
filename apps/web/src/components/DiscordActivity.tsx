@@ -113,10 +113,7 @@ export default function DiscordActivity() {
               onChange={setPlayer}
             />
             <MapPicker value={mapId} onChange={setMapId} />
-            <OpeningSeatPicker
-              value={openingSeat}
-              onChange={setOpeningSeat}
-            />
+            <OpeningSeatPicker value={openingSeat} onChange={setOpeningSeat} />
           </div>
           <footer className="setup-footer">
             <button type="button" className="cta dark" onClick={closeDiscord}>

@@ -23,7 +23,14 @@ export type FireAction = {
   weapon?: WeaponId;
 };
 
+export type SelectionAction = {
+  selection: WeaponId | "ability";
+  turnNumber: number;
+};
+
 export class Player extends Schema {
+  declare selectedWeapon: WeaponId;
+  declare abilityArmed: boolean;
   declare species: Species;
   declare coat: CoatId;
   declare abilityReadyTurn: number;
@@ -43,6 +50,8 @@ export class Player extends Schema {
   constructor() {
     super();
     Object.assign(this, {
+      selectedWeapon: "rocket",
+      abilityArmed: false,
       species: "cuy",
       coat: "caramel",
       abilityReadyTurn: 0,
@@ -62,6 +71,8 @@ export class Player extends Schema {
   }
 }
 defineTypes(Player, {
+  selectedWeapon: "string",
+  abilityArmed: "boolean",
   species: "string",
   coat: "string",
   abilityReadyTurn: "number",
@@ -214,6 +225,8 @@ defineTypes(BattleState, {
 
 export type PlayerView = Pick<
   Player,
+  | "selectedWeapon"
+  | "abilityArmed"
   | "species"
   | "coat"
   | "abilityReadyTurn"

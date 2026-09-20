@@ -208,11 +208,9 @@ export class ArenaScene extends Phaser.Scene {
         angle,
         active ? power : 0,
         dt,
-        active && state.phase !== "aiming"
-          ? state.projectile.kind
-          : active
-            ? selectedShot
-            : "rocket",
+        player.abilityArmed
+          ? abilityProjectile(player.species)
+          : player.selectedWeapon,
       );
       // Labels keep their screen size so they stay readable at any zoom.
       const zoom = this.cameras.main.zoom;
@@ -226,6 +224,13 @@ export class ArenaScene extends Phaser.Scene {
           ?.setPosition(player.x, headTop - 18 / zoom)
           .setScale(1 / zoom);
       }
+      // Report the actual displayed texture, alongside the camera diagnostics.
+      const rig = this.rigs[i];
+      if (rig)
+        this.game.canvas.dataset[`player${player.number}Weapon`] = rig.weapon
+          .visible
+          ? (rig.weapon.list[0] as Phaser.GameObjects.Image).texture.key
+          : "none";
       g.fillStyle(0x3b2b38, 0.18).fillEllipse(
         player.x,
         player.y + ARENA.playerRadius + 3,

@@ -81,6 +81,8 @@ function PlayerCard({
       data-movement={player?.movementLeft ?? ""}
       data-species={player?.species}
       data-coat={player?.coat}
+      data-selected-weapon={player?.selectedWeapon}
+      data-ability-armed={player?.abilityArmed}
     >
       {player ? (
         <Image
@@ -415,12 +417,7 @@ export function HudOverlay({
               }
             />
           </div>
-          <Hotbar
-            bridge={bridge}
-            state={state}
-            disabled={locked}
-            local={local}
-          />
+          <Hotbar bridge={bridge} state={state} disabled={locked} />
           <div className="hud-power hud-panel">
             <div>
               <span>POWER</span>

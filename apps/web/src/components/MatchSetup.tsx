@@ -229,7 +229,7 @@ export function OpeningSeatPicker({
   return (
     <fieldset className="panel opening-picker">
       <legend>Who starts</legend>
-      <div className="opening-options" role="group" aria-label="Who starts">
+      <div className="opening-options">
         {OPENING_SEATS.map((seat) => (
           <button
             type="button"
