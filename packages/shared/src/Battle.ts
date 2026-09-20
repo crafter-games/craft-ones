@@ -104,6 +104,7 @@ export class Battle {
     }
     this.openingSeat = isOpeningSeat(openingSeat) ? openingSeat : "host";
     this.openingIndex = resolveOpeningIndex(this.openingSeat);
+    this.state.openingSeat = this.openingSeat;
   }
 
   move(sessionId: string, payload: unknown): string | null {

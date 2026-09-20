@@ -784,7 +784,6 @@ body {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px #f3c67733;
 }
-
 .map-card.is-surprise {
   animation: map-surprise 0.55s ease-out;
 }
@@ -1829,6 +1828,59 @@ body {
   color: #d2fb78;
 }
 
+.hud-scrim.is-kickoff {
+  z-index: 21;
+  background: #111512a6;
+  pointer-events: none;
+}
+.hud-modal.is-kickoff {
+  max-width: 340px;
+  padding: 28px 24px 30px;
+  perspective: 480px;
+}
+.hud-coin {
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin: 18px auto 0;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, #fff1c2, var(--gold) 52%, #b07a12);
+  box-shadow: inset 0 -6px 0 #00000022;
+  animation: kickoff-coin 0.75s ease-in-out;
+}
+.hud-kickoff-title {
+  margin: 14px 0 0;
+}
+.hud-modal.is-kickoff:not(.is-flip) .hud-kickoff-title {
+  animation: kickoff-reveal 0.4s ease-out both;
+}
+.hud-modal.is-flip .hud-kickoff-title {
+  animation: kickoff-reveal 0.45s ease-out 0.8s both;
+}
+@keyframes kickoff-coin {
+  0% {
+    transform: rotateY(0deg) scale(0.85);
+  }
+  55% {
+    transform: rotateY(540deg) scale(1.08);
+  }
+  100% {
+    transform: rotateY(720deg) scale(1);
+  }
+}
+@keyframes kickoff-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Pause panel */
 .hud-modal.is-menu {
   max-width: 400px;
@@ -2271,7 +2323,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .hud-clock.is-urgent,
   .hud-room i,
-  .map-card.is-surprise {
+  .map-card.is-surprise,
+  .hud-coin,
+  .hud-kickoff-title {
     animation: none;
   }
   .hud-tile {

@@ -196,6 +196,12 @@ export function HudOverlay({
   const [menu, setMenu] = useState(false);
   const [setup, setSetup] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [kickoff, setKickoff] = useState<{
+    id: number;
+    flipped: boolean;
+    title: string;
+  } | null>(null);
+  const prevPhase = useRef<BattleView["phase"] | null>(null);
   useEffect(() => {
     let stored: string | null = null;
     try {
@@ -220,17 +226,61 @@ export function HudOverlay({
   const charging = power > 0;
   const urgent = aiming && !charging && (state?.remainingMs ?? 0) < 5000;
   const locked =
-    !aiming || !myTurn || !connected || charging || menu || setup || confirmLeave;
+    !aiming ||
+    !myTurn ||
+    !connected ||
+    charging ||
+    menu ||
+    setup ||
+    confirmLeave ||
+    !!kickoff;
   const result = finished ? (winner ? "win" : "draw") : null;
   const forfeit = finished && state?.finishReason === "forfeit";
   const blocked = !!error && !state;
   freeLeave.current = blocked || forfeit;
   // A modal owns the pointer: the arena stops aiming underneath it.
-  const modal = menu || setup || confirmLeave || waiting || finished || !state;
+  const modal =
+    menu || setup || confirmLeave || !!kickoff || waiting || finished || !state;
   useEffect(() => {
     bridge.current.suspended = modal;
-    bridge.current.paused = local && (menu || setup || confirmLeave);
-  }, [bridge, modal, local, menu, setup, confirmLeave]);
+    bridge.current.paused = local && (menu || setup || confirmLeave || !!kickoff);
+  }, [bridge, modal, local, menu, setup, confirmLeave, kickoff]);
+  useEffect(() => {
+    if (!state) {
+      prevPhase.current = null;
+      return;
+    }
+    const phase = state.phase;
+    const prev = prevPhase.current;
+    const matchStart =
+      phase === "aiming" &&
+      state.roundNumber === 1 &&
+      (prev === "waiting" || prev === "finished" || prev === null);
+    if (matchStart) {
+      const starter = state.players.find(
+        (player) => player.sessionId === state.currentPlayer,
+      );
+      if (starter) {
+        const yours = !local && starter.sessionId === sessionId;
+        setKickoff({
+          id: state.turnNumber,
+          flipped: state.openingSeat === "random",
+          title: yours
+            ? "You start!"
+            : local
+              ? `Player ${starter.number} starts`
+              : `${CHARACTERS[starter.species].name} starts`,
+        });
+      }
+    }
+    prevPhase.current = phase;
+  }, [state, local, sessionId]);
+  useEffect(() => {
+    if (!kickoff) return;
+    const delay = kickoff.flipped ? 2200 : 1600;
+    const timer = window.setTimeout(() => setKickoff(null), delay);
+    return () => window.clearTimeout(timer);
+  }, [kickoff]);
   useEffect(() => {
     const guard = { craftOnesLeaveGuard: true };
     window.history.pushState(guard, "", window.location.href);
@@ -250,9 +300,13 @@ export function HudOverlay({
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
   useEffect(() => {
-    if (!menu && !setup && !confirmLeave) return;
+    if (!menu && !setup && !confirmLeave && !kickoff) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
+      if (kickoff) {
+        setKickoff(null);
+        return;
+      }
       if (confirmLeave) {
         setConfirmLeave(false);
         return;
@@ -262,7 +316,7 @@ export function HudOverlay({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [menu, setup, confirmLeave]);
+  }, [menu, setup, confirmLeave, kickoff]);
   const status = !state
     ? "Loading arena…"
     : waiting
@@ -479,6 +533,26 @@ export function HudOverlay({
           </div>
         </div>
       </div>
+      {kickoff ? (
+        <div
+          className="hud-scrim is-kickoff"
+          role="status"
+          aria-live="polite"
+          data-testid="kickoff-banner"
+        >
+          <div
+            className={`hud-modal is-kickoff${kickoff.flipped ? " is-flip" : ""}`}
+          >
+            <p className="hud-kicker">
+              {kickoff.flipped ? "COIN FLIP" : "KICKOFF"}
+            </p>
+            {kickoff.flipped ? (
+              <span className="hud-coin" aria-hidden="true" />
+            ) : null}
+            <h2 className="hud-kickoff-title">{kickoff.title}</h2>
+          </div>
+        </div>
+      ) : null}
       {blocked || waiting || finished || !state ? (
         <div className="hud-scrim" role="dialog" aria-modal="true">
           <div className="hud-modal">
