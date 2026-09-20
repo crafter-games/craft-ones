@@ -784,6 +784,22 @@ body {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px #f3c67733;
 }
+
+.map-card.is-surprise {
+  animation: map-surprise 0.55s ease-out;
+}
+@keyframes map-surprise {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 5px #f3c67755;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
 .map-picker-foot {
   display: flex;
   align-items: flex-start;
@@ -2238,7 +2254,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .hud-clock.is-urgent,
-  .hud-room i {
+  .hud-room i,
+  .map-card.is-surprise {
     animation: none;
   }
   .hud-tile {
