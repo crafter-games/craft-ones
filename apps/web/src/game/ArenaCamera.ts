@@ -93,8 +93,8 @@ export class ArenaCamera {
     this.camera.setZoom(Phaser.Math.Linear(this.camera.zoom, zoom, factor));
     // Shift the framing so the free area, not the whole canvas, holds the action.
     this.camera.centerOn(
-      this.centerX + (insets.left - insets.right) / 2 / this.camera.zoom,
-      this.centerY + (insets.top - insets.bottom) / 2 / this.camera.zoom,
+      this.centerX + (insets.right - insets.left) / 2 / this.camera.zoom,
+      this.centerY + (insets.bottom - insets.top) / 2 / this.camera.zoom,
     );
   }
 }
