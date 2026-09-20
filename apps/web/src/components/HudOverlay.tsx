@@ -243,7 +243,8 @@ export function HudOverlay({
     menu || setup || confirmLeave || !!kickoff || waiting || finished || !state;
   useEffect(() => {
     bridge.current.suspended = modal;
-    bridge.current.paused = local && (menu || setup || confirmLeave || !!kickoff);
+    bridge.current.paused =
+      local && (menu || setup || confirmLeave || !!kickoff);
   }, [bridge, modal, local, menu, setup, confirmLeave, kickoff]);
   useEffect(() => {
     if (!state) {

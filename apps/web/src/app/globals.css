@@ -1845,8 +1845,12 @@ body {
   margin: 18px auto 0;
   border: 3px solid var(--ink);
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 28%, #fff1c2, var(--gold) 52%, #b07a12);
+  background: radial-gradient(
+    circle at 32% 28%,
+    #fff1c2,
+    var(--gold) 52%,
+    #b07a12
+  );
   box-shadow: inset 0 -6px 0 #00000022;
   animation: kickoff-coin 0.75s ease-in-out;
 }
