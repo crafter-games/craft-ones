@@ -631,7 +631,7 @@ export function HudOverlay({
               ) : null}
             </div>
             <p className="hud-key-help">
-              A D move · W jump · ← → aim · hold Space · 1–7 tools
+              ← → move · ↑ or Space jump · Q E aim · hold F to fire · 1–7 tools
               {local ? " · you control both critters" : ""}
               {" · "}
               {ARENA.turnMs / 1000}s turns

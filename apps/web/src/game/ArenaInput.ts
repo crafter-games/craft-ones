@@ -2,6 +2,17 @@ import { ARENA } from "@craft-ones/shared";
 import * as Phaser from "phaser";
 import type { GameBridge } from "./GameBridge";
 
+/** Key codes per action; the letters stay as aliases of the arrows. */
+const KEYS = {
+  left: ["ArrowLeft", "KeyA"],
+  right: ["ArrowRight", "KeyD"],
+  jump: ["ArrowUp", "Space", "KeyW"],
+  aimLeft: ["KeyQ"],
+  aimRight: ["KeyE"],
+  fire: ["KeyF"],
+};
+const BOUND = Object.values(KEYS).flat();
+
 export class ArenaInput {
   angle = -Math.PI / 4;
   private charging = false;
@@ -25,7 +36,7 @@ export class ArenaInput {
     canvas.setAttribute("role", "application");
     canvas.setAttribute(
       "aria-label",
-      "Battle arena. Mouse or touch: aim, hold, release to fire. A/D move, W jumps. Combine A/D and W to run and jump. Arrows aim. Hold and release Space to fire.",
+      "Battle arena. Mouse or touch: aim, hold, release to fire. Left and Right arrows move, Up or Space jumps; A, D and W still work. Hold a direction while jumping to jump that way. Q and E aim. Hold and release F to fire.",
     );
     scene.input.on("pointermove", (p: Phaser.Input.Pointer) => this.aim(p));
     scene.input.on("pointerdown", (p: Phaser.Input.Pointer) => {
@@ -61,44 +72,42 @@ export class ArenaInput {
         (target && target !== document.body && !target.closest(".arena"))
       )
         return;
-      if (
-        !["ArrowLeft", "ArrowRight", "Space", "KeyA", "KeyD", "KeyW"].includes(
-          event.code,
-        )
-      )
-        return;
+      const code = event.code;
+      if (!BOUND.includes(code)) return;
+      // A focused HUD button already jumps or walks on Space; let it, or the
+      // same press would act twice.
+      if (code === "Space" && target?.closest("button,a,[role=button]")) return;
       event.preventDefault();
-      this.held.add(event.code);
-      if (event.code === "Space" && !event.repeat && this.canFire())
+      this.held.add(code);
+      if (KEYS.fire.includes(code) && !event.repeat && this.canFire())
         this.begin();
+      // Auto-repeat never jumps again: one press is one intention.
       if (
-        event.code === "KeyW" &&
+        KEYS.jump.includes(code) &&
         !event.repeat &&
         this.canFire() &&
         !this.charging
       )
         this.bridge.jump(this.direction);
-      if (event.code === "KeyA") this.direction = -1;
-      if (event.code === "KeyD") this.direction = 1;
-      if (event.code === "ArrowLeft") this.angleDirection = -1;
-      if (event.code === "ArrowRight") this.angleDirection = 1;
+      if (KEYS.left.includes(code)) this.direction = -1;
+      if (KEYS.right.includes(code)) this.direction = 1;
+      if (KEYS.aimLeft.includes(code)) this.angleDirection = -1;
+      if (KEYS.aimRight.includes(code)) this.angleDirection = 1;
     };
     const keyup = (event: KeyboardEvent) => {
-      this.held.delete(event.code);
-      if (event.code === "Space") {
+      const code = event.code;
+      this.held.delete(code);
+      const holding = (codes: string[]) => codes.some((c) => this.held.has(c));
+      if (KEYS.fire.includes(code)) {
         event.preventDefault();
         this.shoot();
       }
-      if (["KeyA", "KeyD"].includes(event.code))
-        this.direction = this.held.has("KeyD")
+      if (KEYS.left.includes(code) || KEYS.right.includes(code))
+        this.direction = holding(KEYS.right) ? 1 : holding(KEYS.left) ? -1 : 0;
+      if (KEYS.aimLeft.includes(code) || KEYS.aimRight.includes(code))
+        this.angleDirection = holding(KEYS.aimRight)
           ? 1
-          : this.held.has("KeyA")
-            ? -1
-            : 0;
-      if (["ArrowLeft", "ArrowRight"].includes(event.code))
-        this.angleDirection = this.held.has("ArrowRight")
-          ? 1
-          : this.held.has("ArrowLeft")
+          : holding(KEYS.aimLeft)
             ? -1
             : 0;
     };

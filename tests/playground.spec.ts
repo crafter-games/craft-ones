@@ -709,6 +709,72 @@ test("walking range drains away from the origin and refills on the way back", as
   expect(await at()).toBeLessThan(start);
 });
 
+test("arrows walk, Up or Space jumps once, Q/E aim and F charges and fires", async ({
+  page,
+}) => {
+  await page.goto("/playground");
+  const canvas = page.locator("canvas");
+  await expect(canvas).toBeVisible();
+  await expect(canvas).toBeFocused();
+  const player = page.getByTestId("player-1");
+  const at = async () => Number(await player.getAttribute("data-x"));
+  const height = async () => Number(await player.getAttribute("data-y"));
+  const impact = async () =>
+    Number(await canvas.getAttribute("data-aim-impact-x"));
+  const start = await at();
+  await page.keyboard.down("ArrowRight");
+  await expect.poll(at).toBeGreaterThan(start + 20);
+  await page.keyboard.up("ArrowRight");
+  const stopped = await at();
+  await page.waitForTimeout(250);
+  expect(await at()).toBe(stopped);
+  await page.keyboard.down("ArrowLeft");
+  await expect.poll(at).toBeLessThan(stopped - 20);
+  await page.keyboard.up("ArrowLeft");
+  // Up jumps; a held key auto-repeats keydown but never jumps again.
+  const ground = await height();
+  await page.keyboard.press("ArrowUp");
+  await expect.poll(height).toBeLessThan(ground - 15);
+  await page.evaluate(() => {
+    for (let i = 0; i < 5; i++)
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { code: "ArrowUp", repeat: true }),
+      );
+  });
+  await expect(page.getByTestId("action-notice")).toHaveCount(0);
+  await expect.poll(height, { timeout: 5_000 }).toBeCloseTo(ground, 0);
+  // Space jumps too, without charging a shot or scrolling the page.
+  const scroll = await page.evaluate(() => window.scrollY);
+  await page.keyboard.down("Space");
+  await expect.poll(height).toBeLessThan(ground - 15);
+  await page.waitForTimeout(200);
+  expect(await power(page)).toBe(0);
+  await page.keyboard.up("Space");
+  await expect(page.getByTestId("battle")).toHaveAttribute(
+    "data-phase",
+    "aiming",
+  );
+  expect(await page.evaluate(() => window.scrollY)).toBe(scroll);
+  await expect.poll(height, { timeout: 5_000 }).toBeCloseTo(ground, 0);
+  // Q and E turn the aim; the previewed landing spot follows.
+  const aimed = await impact();
+  await page.keyboard.down("KeyE");
+  await expect.poll(impact).not.toBe(aimed);
+  await page.keyboard.up("KeyE");
+  const turned = await impact();
+  await page.keyboard.down("KeyQ");
+  await expect.poll(impact).not.toBe(turned);
+  await page.keyboard.up("KeyQ");
+  // F charges while held and fires on release.
+  await page.keyboard.down("KeyF");
+  await expect.poll(() => power(page)).toBeGreaterThan(20);
+  await page.keyboard.up("KeyF");
+  await expect(page.getByTestId("battle")).toHaveAttribute(
+    "data-phase",
+    "flying",
+  );
+});
+
 test("the arena makes noise, the toggle silences it, and the choice sticks", async ({
   page,
 }) => {

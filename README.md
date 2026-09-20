@@ -30,8 +30,8 @@ The frontend derives a WebSocket endpoint from its hostname on port 2567. Set `N
 
 ## Play
 
-- Aim with mouse or touch, hold to charge and release to fire. The short launch guide shows direction, not the impact point; read the round's wind and learn the shot through play. Full charge takes 2.8 seconds. Arrow keys aim; hold/release Space to fire.
-- A/D moves; W jumps. Hold A/D and press W to jump directionally. Touch movement and Jump controls are available in both orientations.
+- Aim with mouse or touch, hold to charge and release to fire. The short launch guide shows direction, not the impact point; read the round's wind and learn the shot through play. Full charge takes 2.8 seconds. Q/E aim; hold/release F to fire.
+- Left/Right arrows move (A/D still work); Up or Space jumps (W still works). Hold a direction and jump to jump that way. Touch movement and Jump controls are available in both orientations.
 - Walking and jumping keep your shot. Walking away from the turn's starting point spends the shared 240-point range; returning restores it. Jumps are free and unlimited, but jump travel stays inside that same range.
 - Keys 1–6 choose rocket, grenade, sticky bomb, mortar, dynamite or grapple. All spend a turn. Grenades and sticky bombs have a 3-second fuse, dynamite 2 seconds. Grapples pull toward terrain and stop at obstacles.
 - Llama leaps, Fox dashes, Capybara shields, Puma pounces and Alpaca heals 25 HP. Guinea Pig has no ability. Freddy, Michi and Railly Hugo have aimed projectile powers with signature looks. Key 7 selects an ability; aimed abilities use the same charge/release controls. Abilities cost a turn and have a four-global-turn cooldown.
