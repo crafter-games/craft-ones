@@ -784,9 +784,36 @@ body {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px #f3c67733;
 }
-.map-hint {
-  font-size: 10px;
-  color: var(--dim);
+.map-picker-foot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.map-tip {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #c5d0bc;
+}
+.map-random {
+  flex: none;
+  margin: 0;
+  padding: 6px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  background: var(--inset);
+  color: var(--cream);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+.map-random:active {
+  transform: translateY(1px);
 }
 
 /* In-game setup drawer: the same panels, folded into the arena page. */
@@ -980,8 +1007,8 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .map-hint {
-    display: none;
+  .map-picker-foot {
+    flex-wrap: wrap;
   }
 }
 

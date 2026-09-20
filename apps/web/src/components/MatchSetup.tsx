@@ -154,6 +154,10 @@ export function MapPicker({
   value: PlayableMapId;
   onChange: (id: PlayableMapId) => void;
 }) {
+  const pickRandom = () => {
+    const others = PLAYABLE_MAP_IDS.filter((id) => id !== value);
+    onChange(others[Math.floor(Math.random() * others.length)] ?? value);
+  };
   return (
     <fieldset className="panel map-picker">
       <legend>Battleground</legend>
@@ -180,7 +184,19 @@ export function MapPicker({
           </button>
         ))}
       </div>
-      <p className="map-hint">swipe → {PLAYABLE_MAP_IDS.length} maps</p>
+      <div className="map-picker-foot">
+        <p className="map-tip" aria-live="polite">
+          {WORLD_MAPS[value].tip}
+        </p>
+        <button
+          type="button"
+          className="map-random"
+          data-map-random=""
+          onClick={pickRandom}
+        >
+          Surprise me
+        </button>
+      </div>
     </fieldset>
   );
 }

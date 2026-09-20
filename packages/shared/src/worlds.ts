@@ -20,6 +20,7 @@ export const WORLD_MAPS = {
   andes: {
     name: "Cloudbreak Valley",
     subtitle: "Hanging gardens · stone arches · deep ravines",
+    tip: "Deep ravines punish missed landings — keep ground under you.",
     spawns: [
       [432, 918],
       [2256, 918],
@@ -50,6 +51,7 @@ export const WORLD_MAPS = {
   coast: {
     name: "Amber Hollows",
     subtitle: "Wind-carved cliffs · caves · sandstone bridges",
+    tip: "Caves and bridges — splash hits hard in tight stone.",
     spawns: [
       [456, 870],
       [2232, 870],
@@ -80,6 +82,7 @@ export const WORLD_MAPS = {
   canopy: {
     name: "Emerald Ladder",
     subtitle: "Split treetop islands · root caves · open sky",
+    tip: "Split islands over open sky — one bad step is a void fall.",
     spawns: [
       [384, 894],
       [2304, 894],
@@ -110,6 +113,7 @@ export const WORLD_MAPS = {
   caldera: {
     name: "Cinder Crown",
     subtitle: "Hollow crater · brittle approaches · basalt caves",
+    tip: "Brittle crater rims — the hollow middle drops away fast.",
     spawns: [
       [360, 894],
       [2328, 894],
@@ -140,6 +144,7 @@ export const WORLD_MAPS = {
   totora: {
     name: "Totora Drift",
     subtitle: "Reed villages · broad decks · deep channels",
+    tip: "Broad reed decks over deep channels — stay on the path.",
     spawns: [
       [672, 894],
       [2016, 894],
@@ -170,6 +175,7 @@ export const WORLD_MAPS = {
   saltglass: {
     name: "Saltglass Basin",
     subtitle: "White terraces · crystal arches · long sightlines",
+    tip: "Long sightlines — lob shots travel farther than they look.",
     spawns: [
       [408, 870],
       [2280, 870],
@@ -200,6 +206,7 @@ export const WORLD_MAPS = {
   huaca: {
     name: "Moonlit Huaca",
     subtitle: "Adobe strongholds · temple chambers · moonlit roofs",
+    tip: "Temple chambers — fights turn close once you go indoors.",
     spawns: [
       [680, 918],
       [2008, 918],
@@ -230,6 +237,7 @@ export const WORLD_MAPS = {
   frost: {
     name: "Frostbite Shelf",
     subtitle: "Glacier halls · snow bridges · vertical shelves",
+    tip: "Vertical shelves and snow bridges — height wins trades.",
     spawns: [
       [408, 894],
       [2280, 894],
@@ -260,6 +268,7 @@ export const WORLD_MAPS = {
   loom: {
     name: "Storm Loom",
     subtitle: "Woven islands · hooked routes · thunder gap",
+    tip: "Hooked island routes — the thunder gap is a long fall.",
     spawns: [
       [408, 894],
       [2280, 894],
@@ -290,6 +299,7 @@ export const WORLD_MAPS = {
   harbor: {
     name: "Clockwork Harbor",
     subtitle: "Timber docks · ship chambers · towering cranes",
+    tip: "Docks and cranes — vertical cover, open water below.",
     spawns: [
       [600, 894],
       [2088, 894],

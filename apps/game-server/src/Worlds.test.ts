@@ -125,6 +125,9 @@ test("the public map catalog includes ten authored worlds and excludes flat", ()
     expect(WORLD_MAPS[id].preview).toBe(`maps/${id}-preview.svg`);
     expect(WORLD_MAPS[id].name.length).toBeGreaterThan(5);
   }
+  for (const id of worlds.PLAYABLE_MAP_IDS) {
+    expect(WORLD_MAPS[id].tip.length).toBeGreaterThan(12);
+  }
 });
 
 test.each([...worlds.PLAYABLE_MAP_IDS])(
