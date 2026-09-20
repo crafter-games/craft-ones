@@ -1,5 +1,6 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
+import { expectCameraToRespectHud, expectHudToFit, hudViewports } from "./hud";
 
 const clientId = "111111111111111111";
 const origin = `https://${clientId}.discordsays.com`;
@@ -202,6 +203,21 @@ test("Discord SDK flow joins two players through the proxy, invites and rejects 
     await pages[0].screenshot({
       path: test.info().outputPath("discord-match.png"),
     });
+    // Participant panels and fullscreen change the embedded viewport in place.
+    for (const page of pages.slice(0, 2)) {
+      await page.bringToFront();
+      const canvas = await page.locator("canvas").elementHandle();
+      for (const viewport of hudViewports) {
+        await page.setViewportSize(viewport);
+        await expectHudToFit(page);
+        await expectCameraToRespectHud(page);
+        expect(
+          await canvas?.evaluate(
+            (element) => element === document.querySelector("canvas"),
+          ),
+        ).toBe(true);
+      }
+    }
     await pages[2]
       .getByRole("button", { name: "Join arena", exact: true })
       .click();

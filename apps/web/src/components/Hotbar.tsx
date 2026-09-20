@@ -106,12 +106,14 @@ export function Hotbar({
     <div className="hud-hotbar">
       <p className="hud-weapon-label hud-panel">
         <strong>{aimingAbility ? ability?.name : WEAPONS[weapon].name}</strong>{" "}
-        ·{" "}
-        {aimingAbility
-          ? movementAbility
-            ? "Aim left or right · release to move. Press 7 again to cancel."
-            : "Aim · hold to charge · release to use skill. Press 7 again to cancel."
-          : WEAPONS[weapon].description}
+        <span className="hud-weapon-description">
+          ·{" "}
+          {aimingAbility
+            ? movementAbility
+              ? "Aim left or right · release to move. Press 7 again to cancel."
+              : "Aim · hold to charge · release to use skill. Press 7 again to cancel."
+            : WEAPONS[weapon].description}
+        </span>
         <span className="hud-hint">
           {aimingAbility && movementAbility
             ? "move pointer · release to move · 1–7 pick"
