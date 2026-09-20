@@ -122,9 +122,9 @@ export class CharacterRig {
     angle: number,
     power: number,
     dt: number,
-    kind: ProjectileKind = "rocket",
+    kind: ProjectileKind | null = "rocket",
   ) {
-    if (this.weaponKind !== kind) {
+    if (kind && this.weaponKind !== kind) {
       this.weaponKind = kind;
       this.weaponImage.setTexture(`weapon-${kind}`);
     }
@@ -174,11 +174,16 @@ export class CharacterRig {
     this.deadEyes.setVisible(player.hp <= 0);
     const origin = weaponPose(this.species, localAngle);
     this.weapon
-      .setVisible(player.hp > 0)
+      .setVisible(player.hp > 0 && kind !== null)
       .setRotation(localAngle)
       .setPosition(origin.x - recoil * 3, origin.y);
     [this.handBack, this.handFront].forEach((hand, i) => {
-      const pose = handPose(this.species, i === 1, localAngle, kind);
+      const pose = handPose(
+        this.species,
+        i === 1,
+        localAngle,
+        kind ?? undefined,
+      );
       hand.setPosition(pose.x - (i === 1 ? recoil * 3 : 0), pose.y);
       hand.rotation = pose.angle;
     });

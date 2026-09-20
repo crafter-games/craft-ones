@@ -5,6 +5,7 @@ import {
   ARENA,
   type BattleView,
   CELL,
+  WEAPONS,
   WORLD_HEIGHT,
   WORLD_WIDTH,
 } from "@craft-ones/shared";
@@ -308,6 +309,60 @@ describe("real Colyseus SDK clients", () => {
     await two.leave();
     await expect(new Client(endpoint).joinById(roomId)).rejects.toThrow();
   }, 10_000);
+
+  test("weapon selections synchronize independently and reject forged or stale requests", async () => {
+    const one = await join(),
+      two = await join();
+    try {
+      await waitFor(
+        () => one.state.phase === "aiming" && two.state.phase === "aiming",
+      );
+      const errors: string[] = [];
+      two.onMessage("actionError", (error: string) => errors.push(error));
+      two.send("select", {
+        selection: "mortar",
+        turnNumber: 1,
+        sessionId: one.sessionId,
+      });
+      await waitFor(() => errors.length === 1);
+      expect(one.state.players[0].selectedWeapon).toBe("rocket");
+      for (const selection of Object.keys(WEAPONS)) {
+        one.send("select", { selection, turnNumber: 1 });
+        await waitFor(() =>
+          [one, two].every(
+            (room) => room.state.players[0].selectedWeapon === selection,
+          ),
+        );
+        expect(two.state.players[1].selectedWeapon).toBe("rocket");
+      }
+      one.send("select", { selection: "grenade", turnNumber: 1 });
+      one.send("fire", { angle: -Math.PI / 2, power: 0.8, turnNumber: 1 });
+      await waitFor(() => two.state.phase === "flying");
+      expect(two.state.projectile.kind).toBe("grenade");
+      await waitFor(
+        () => one.state.turnNumber === 2 && two.state.turnNumber === 2,
+        10000,
+      );
+      two.send("select", { selection: "mortar", turnNumber: 1 });
+      await waitFor(() => errors.length === 2);
+      expect(two.state.players[1].selectedWeapon).toBe("rocket");
+      two.send("select", { selection: "mortar", turnNumber: 2 });
+      await waitFor(() =>
+        [one, two].every(
+          (room) => room.state.players[1].selectedWeapon === "mortar",
+        ),
+      );
+      expect(one.state.players[0].selectedWeapon).toBe("grenade");
+      two.send("select", { selection: "ability", turnNumber: 2 });
+      await waitFor(() =>
+        [one, two].every((room) => room.state.players[1].abilityArmed),
+      );
+      expect(one.state.players[1].selectedWeapon).toBe("mortar");
+    } finally {
+      await one.leave();
+      await two.leave();
+    }
+  }, 20000);
 
   test("movement synchronizes; remote debug options and stale movement cannot change state", async () => {
     const one = await join(),

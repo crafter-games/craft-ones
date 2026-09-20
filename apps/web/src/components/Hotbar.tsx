@@ -9,13 +9,7 @@ import {
   type WeaponId,
 } from "@craft-ones/shared";
 import Image from "next/image";
-import {
-  type RefObject,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { type RefObject, useEffect } from "react";
 import type { GameBridge } from "../game/GameBridge";
 
 const IDS = Object.keys(WEAPONS) as WeaponId[];
@@ -25,18 +19,24 @@ export function Hotbar({
   bridge,
   state,
   disabled,
-  local,
 }: {
   bridge: RefObject<GameBridge>;
   state: BattleView | null;
   disabled: boolean;
-  local: boolean;
 }) {
-  const [weapon, setWeapon] = useState<WeaponId>("rocket");
   const me = state?.players.find(
     (p) => p.sessionId === bridge.current.sessionId,
   );
-  const [aimingAbility, setAimingAbility] = useState(false);
+  const weapon = me?.selectedWeapon ?? "rocket";
+  const aimingAbility = me?.abilityArmed ?? false;
+  const opponent = state?.players.find(
+    (p) => p.sessionId !== me?.sessionId && p.sessionId === state.currentPlayer,
+  );
+  const opponentSelection = opponent?.abilityArmed
+    ? ABILITIES[opponent.species]?.name
+    : opponent
+      ? WEAPONS[opponent.selectedWeapon].name
+      : null;
   const aimed = me ? abilityNeedsAim(me.species) : false;
   const movementAbility = me ? isMovementAbility(me.species) : false;
   const ability = me ? ABILITIES[me.species] : null;
@@ -55,30 +55,20 @@ export function Hotbar({
   const selectAbility = () => {
     if (disabled || !ability || cooldown || shieldActive) return;
     if (aimed) {
-      bridge.current.abilityAim = !bridge.current.abilityAim;
-      setAimingAbility(bridge.current.abilityAim);
+      bridge.current.select(aimingAbility ? weapon : "ability");
     } else bridge.current.ability();
   };
-  const selectionKey = `${bridge.current.generation}:${state?.turnNumber}:${state?.phase}`;
-  const previousSelection = useRef(selectionKey);
-  useEffect(() => {
-    if (previousSelection.current === selectionKey) return;
-    previousSelection.current = selectionKey;
-    bridge.current.abilityAim = false;
-    setAimingAbility(false);
-  }, [bridge, selectionKey]);
-  const localTurnKey = `${bridge.current.generation}:${state?.currentPlayer}:${state?.turnNumber}`;
-  const previousLocalTurn = useRef(localTurnKey);
-  useLayoutEffect(() => {
-    if (!local || previousLocalTurn.current === localTurnKey) return;
-    previousLocalTurn.current = localTurnKey;
-    setWeapon("rocket");
-    bridge.current.weapon = "rocket";
-  }, [bridge, local, localTurnKey]);
   // Keys 1–6 pick a tool; 7 arms an aimed skill or uses an instant one.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey || disabled) return;
+      if (
+        event.repeat ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        disabled
+      )
+        return;
       const target = event.target as HTMLElement | null;
       if (target?.closest("input, textarea, [contenteditable]")) return;
       const slot = Number(event.key);
@@ -86,25 +76,35 @@ export function Hotbar({
       if (slot === 7) {
         if (ability && !cooldown && !shieldActive) {
           if (aimed) {
-            bridge.current.abilityAim = !bridge.current.abilityAim;
-            setAimingAbility(bridge.current.abilityAim);
+            bridge.current.select(aimingAbility ? weapon : "ability");
           } else bridge.current.ability();
         }
         return;
       }
       const id = IDS[slot - 1];
       if (!id) return;
-      setWeapon(id);
-      bridge.current.weapon = id;
-      bridge.current.abilityAim = false;
-      setAimingAbility(false);
+      bridge.current.select(id);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [bridge, disabled, ability, cooldown, shieldActive, aimed]);
+  }, [
+    bridge,
+    disabled,
+    ability,
+    cooldown,
+    shieldActive,
+    aimed,
+    aimingAbility,
+    weapon,
+  ]);
   return (
     <div className="hud-hotbar">
       <p className="hud-weapon-label hud-panel">
+        {opponentSelection ? (
+          <span data-testid="opponent-selection">
+            Opponent: {opponentSelection} · Your selection:{" "}
+          </span>
+        ) : null}
         <strong>{aimingAbility ? ability?.name : WEAPONS[weapon].name}</strong>{" "}
         ·{" "}
         {aimingAbility
@@ -128,10 +128,7 @@ export function Hotbar({
             aria-label={WEAPONS[id].name}
             disabled={disabled}
             onClick={() => {
-              setWeapon(id);
-              bridge.current.weapon = id;
-              bridge.current.abilityAim = false;
-              setAimingAbility(false);
+              bridge.current.select(id);
             }}
             title={WEAPONS[id].description}
           >

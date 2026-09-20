@@ -77,6 +77,11 @@ export default function GameSession({
         bridge.current.sessionId = room.sessionId;
         bridge.current.connected = true;
         let sequence = 0;
+        bridge.current.select = (selection) =>
+          room.send("select", {
+            selection,
+            turnNumber: bridge.current.state?.turnNumber,
+          });
         bridge.current.fire = (action) => room.send("fire", action);
         bridge.current.move = (direction) =>
           room.send("move", {

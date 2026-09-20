@@ -171,7 +171,6 @@ export class ArenaInput {
       else
         this.bridge.fire({
           ...aim,
-          weapon: this.bridge.weapon,
           turnNumber: this.bridge.state.turnNumber,
         });
     }

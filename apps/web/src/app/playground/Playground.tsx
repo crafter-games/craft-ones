@@ -90,6 +90,15 @@ export default function Playground({ lab = false }: { lab?: boolean }) {
     };
     bridge.current.generation = revision;
     bridge.current.connected = true;
+    bridge.current.select = (selection) => {
+      notice.report(
+        engine.select(engine.state.currentPlayer, {
+          selection,
+          turnNumber: engine.state.turnNumber,
+        }),
+      );
+      sync();
+    };
     bridge.current.fire = (action) => {
       notice.report(engine.fire(engine.state.currentPlayer, action));
       sync();

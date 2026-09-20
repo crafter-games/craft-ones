@@ -1,4 +1,9 @@
-import type { BattleView, FireAction, WeaponId } from "@craft-ones/shared";
+import type {
+  BattleView,
+  FireAction,
+  SelectionAction,
+  WeaponId,
+} from "@craft-ones/shared";
 export type GameBridge = {
   state: BattleView | null;
   sessionId: string;
@@ -6,8 +11,9 @@ export type GameBridge = {
   generation: number;
   showTrajectory: boolean;
   debug: boolean;
-  weapon: WeaponId;
-  abilityAim: boolean;
+  readonly weapon: WeaponId;
+  readonly abilityAim: boolean;
+  select: (selection: SelectionAction["selection"]) => void;
   focus: boolean;
   sound: boolean;
   suspended: boolean;
@@ -31,8 +37,19 @@ export function createBridge(charge: GameBridge["charge"]): GameBridge {
     generation: 0,
     showTrajectory: false,
     debug: false,
-    weapon: "rocket",
-    abilityAim: false,
+    get weapon() {
+      return (
+        this.state?.players.find((p) => p.sessionId === this.sessionId)
+          ?.selectedWeapon ?? "rocket"
+      );
+    },
+    get abilityAim() {
+      return (
+        this.state?.players.find((p) => p.sessionId === this.sessionId)
+          ?.abilityArmed ?? false
+      );
+    },
+    select: () => {},
     focus: false,
     sound: true,
     suspended: false,

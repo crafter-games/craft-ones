@@ -1,4 +1,10 @@
-import { abilityProjectile, isWeapon, PROJECTILES, WEAPONS } from "./arsenal";
+import {
+  abilityNeedsAim,
+  abilityProjectile,
+  isWeapon,
+  PROJECTILES,
+  WEAPONS,
+} from "./arsenal";
 import { clamp, launch, windForTurn } from "./ballistics";
 import {
   defaultAppearance,
@@ -197,6 +203,8 @@ export class Battle {
           WORLD_MAPS[this.state.mapId as PlayableMapId].spawns[
             player.number - 1
           ];
+      player.selectedWeapon = "rocket";
+      player.abilityArmed = false;
       player.hp = 100;
       player.vy = 0;
       player.vx = 0;
@@ -261,6 +269,30 @@ export class Battle {
     this.finish(opponent?.sessionId ?? "", "forfeit");
   }
 
+  select(sessionId: string, payload: unknown): string | null {
+    const now = this.clockNow();
+    if (this.state.phase === "aiming" && now >= this.turnDeadline) {
+      this.nextTurn(now);
+      return "Turn expired";
+    }
+    const player = validateTurn(this.state, sessionId, payload);
+    if (!player) return "Cannot select now";
+    const { selection } = payload as { selection?: unknown };
+    if (selection === "ability") {
+      if (
+        !abilityNeedsAim(player.species) ||
+        this.state.turnNumber < player.abilityReadyTurn
+      )
+        return "Ability unavailable";
+      player.abilityArmed = true;
+    } else {
+      if (!isWeapon(selection)) return "Invalid weapon selection";
+      player.selectedWeapon = selection;
+      player.abilityArmed = false;
+    }
+    return null;
+  }
+
   fire(sessionId: string, payload: unknown): string | null {
     const now = this.clockNow();
     if (this.state.phase === "aiming" && now >= this.turnDeadline) {
@@ -281,7 +313,9 @@ export class Battle {
     );
     if (!player?.connected || player.hp <= 0) return "Player cannot fire";
     const projectile = this.state.projectile;
-    const kind = payload.weapon ?? "rocket";
+    const kind = payload.weapon ?? player.selectedWeapon;
+    player.selectedWeapon = kind;
+    player.abilityArmed = false;
     if (this.state.terrainRows.length || kind !== "rocket")
       Object.assign(
         projectile,
@@ -413,6 +447,8 @@ export class Battle {
     for (const player of this.controlledMotion) player.vx = 0;
     this.controlledMotion.clear();
     this.volley = null;
+    // Tools persist per seat; aimed powers must be armed again on a new turn.
+    for (const player of this.state.players) player.abilityArmed = false;
     this.state.phase = "aiming";
     this.state.currentPlayer = this.state.players[index].sessionId;
     this.state.turnNumber++;
@@ -503,6 +539,7 @@ export class Battle {
     const projectile = abilityProjectile(player.species);
     if (projectile) {
       if (!isFireAction(payload)) return "Invalid ability aim";
+      player.abilityArmed = true;
       player.abilityReadyTurn = this.state.turnNumber + 4;
       this.volley =
         projectile === "shuriken"
@@ -560,6 +597,7 @@ export class Battle {
       this.state.lastAction = "leap";
     }
     this.controlledMotion.delete(player);
+    player.abilityArmed = true;
     player.abilityReadyTurn = this.state.turnNumber + 4;
     this.resolve(now, 550);
     return null;
