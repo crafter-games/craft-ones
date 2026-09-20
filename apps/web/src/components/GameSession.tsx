@@ -163,9 +163,25 @@ export default function GameSession({
       }
       return;
     }
+    const url = shareLink();
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setManualLink("");
+    } catch {
+      setManualLink(url);
+    }
+  }
+
+  function shareLink() {
     const url = new URL(
-      invitePath ?? window.location.pathname,
-      window.location.origin,
+      invitePath ??
+        (typeof window === "undefined"
+          ? `/game/${roomId}`
+          : window.location.pathname),
+      typeof window === "undefined"
+        ? "http://localhost"
+        : window.location.origin,
     );
     const host = state?.players[0];
     if (host) {
@@ -173,13 +189,7 @@ export default function GameSession({
       url.searchParams.set("coat", host.coat);
     }
     if (state?.mapId) url.searchParams.set("map", state.mapId);
-    try {
-      await navigator.clipboard.writeText(url.href);
-      setCopied(true);
-      setManualLink("");
-    } catch {
-      setManualLink(url.href);
-    }
+    return url.href;
   }
 
   const canRestart =
@@ -195,6 +205,15 @@ export default function GameSession({
       <main className="lobby join">
         <header className="lobby-header">
           <Brand />
+          <div className="step-line">
+            <span className="step" aria-current="step">
+              1 · YOUR CRITTER
+            </span>
+            <span aria-hidden="true" style={{ color: "#526a53" }}>
+              ———
+            </span>
+            <span className="step">2 · JOIN</span>
+          </div>
           <span className="font-mono text-xs text-[#a9b7a5]">
             room {roomId}
           </span>
@@ -229,9 +248,16 @@ export default function GameSession({
                 ) : null}
               </span>
             </p>
+            {map ? (
+              <p className="join-map" data-testid="join-map">
+                <span>Battleground locked by host</span>
+                <strong>{map.name}</strong>
+                <small>{map.subtitle}</small>
+              </p>
+            ) : null}
             <p className="hero-lead">
-              Pick your critter and coat. The match starts the moment you join —
-              15-second turns, 100 HP each.
+              Pick your critter and coat, then join. The match starts
+              immediately — 15-second turns, 100 HP each.
             </p>
           </div>
           <SeatPicker
@@ -265,6 +291,7 @@ export default function GameSession({
         roomId,
         copied,
         manualLink,
+        link: shareLink(),
         copy: copyInvite,
         label: platform ? "Invite in Discord" : undefined,
       }}

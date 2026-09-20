@@ -36,6 +36,7 @@ export type InviteControls = {
   roomId: string;
   copied: boolean;
   manualLink: string;
+  link: string;
   copy: () => void;
   label?: string;
 };
@@ -211,6 +212,13 @@ export function HudOverlay({
                 : "Impact!";
   const seconds = Math.ceil((state?.remainingMs ?? 0) / 1000);
   const mapName = WORLD_MAPS[state?.mapId as PlayableMapId]?.name ?? "Flatland";
+  const waitingMs = state?.waitingRemainingMs ?? 0;
+  const waitingClock =
+    waiting && waitingMs > 0
+      ? `${Math.floor(waitingMs / 60_000)}:${String(
+          Math.floor((waitingMs % 60_000) / 1000),
+        ).padStart(2, "0")}`
+      : null;
   const round = Math.max(1, state?.roundNumber ?? 1);
   const wind = state?.wind ?? 0;
   const windDirection = wind < 0 ? "LEFT" : wind > 0 ? "RIGHT" : "CALM";
@@ -413,7 +421,7 @@ export function HudOverlay({
                     : result === "draw"
                       ? "Both critters went down together. Nobody brags today."
                       : "Small paws. Big bragging rights."
-                  : "Send the invite. The match starts the moment they pick a critter."}
+                  : "Copy the invite. They pick a critter, then the duel starts — 15 s turns, 100 HP."}
             </p>
             {waiting && invite && !blocked ? (
               <>
@@ -425,6 +433,7 @@ export function HudOverlay({
                       readOnly
                       value={
                         invite.manualLink ||
+                        invite.link ||
                         (typeof window === "undefined"
                           ? ""
                           : window.location.href)
@@ -443,7 +452,8 @@ export function HudOverlay({
                 </div>
                 <p className="hud-room">
                   <i aria-hidden="true" />
-                  ROOM OPEN · {mapName}
+                  ROOM {invite.roomId} · {mapName}
+                  {waitingClock ? ` · CLOSES IN ${waitingClock}` : ""}
                 </p>
               </>
             ) : null}

@@ -1054,6 +1054,33 @@ body {
   color: var(--cream);
   font-weight: 800;
 }
+.join-map {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: #16211d;
+  text-align: left;
+}
+.join-map span {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  color: var(--gold);
+}
+.join-map strong {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--cream);
+}
+.join-map small {
+  font-size: 12px;
+  line-height: 1.35;
+  color: #b6c5ad;
+}
 .join-actions {
   flex: none;
   padding: 12px 16px max(24px, var(--craft-safe-bottom));
@@ -1086,6 +1113,9 @@ body {
   }
   .join-intro {
     gap: 20px;
+  }
+  .join-intro .join-map {
+    max-width: 440px;
   }
   .join-intro .hero-title {
     font-size: clamp(56px, 6vw, 84px);
