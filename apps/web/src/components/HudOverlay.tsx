@@ -55,23 +55,26 @@ export type InviteControls = {
   label?: string;
 };
 
+/** Who this seat is to the viewer; shared local play claims neither seat. */
+type SeatRole = "you" | "opponent" | "shared";
 function PlayerCard({
   player,
   number,
-  you,
+  role,
   side,
 }: {
   player?: PlayerView;
   number: number;
-  you: boolean;
+  role: SeatRole;
   side: "left" | "right";
 }) {
   const hp = player?.hp ?? 0;
   const shield = player?.shield ?? 0;
   return (
     <div
-      className={`hud-card hud-panel is-${side}`}
+      className={`hud-card hud-panel is-${side} ${role === "you" ? "is-you" : ""}`}
       data-testid={`player-${number}`}
+      data-role={role}
       data-hp={player?.hp ?? ""}
       data-x={player?.x ?? ""}
       data-y={player?.y ?? ""}
@@ -95,8 +98,13 @@ function PlayerCard({
           <span>{player ? CHARACTERS[player.species].name : "Player"}</span>
           <small>
             P{number}
-            {you ? " · YOU" : player ? "" : " · WAITING"}
+            {player ? "" : " · WAITING"}
           </small>
+          {player && role !== "shared" && (
+            <b className="hud-card-role">
+              {role === "you" ? "YOU" : "OPPONENT"}
+            </b>
+          )}
         </div>
         <div className="hud-card-hp">
           {/* biome-ignore lint/a11y/useSemanticElements: health and shield render as two segments in one bar */}
@@ -202,6 +210,8 @@ export function HudOverlay({
     finished = state?.phase === "finished",
     waiting = state?.phase === "waiting";
   const myTurn = current?.sessionId === sessionId;
+  const seatRole = (player?: PlayerView): SeatRole =>
+    local ? "shared" : player?.sessionId === sessionId ? "you" : "opponent";
   const charging = power > 0;
   const urgent = aiming && !charging && (state?.remainingMs ?? 0) < 5000;
   const locked = !aiming || !myTurn || !connected || charging || menu || setup;
@@ -297,13 +307,13 @@ export function HudOverlay({
             number={1}
             side="left"
             player={state?.players[0]}
-            you={!local && state?.players[0]?.sessionId === sessionId}
+            role={seatRole(state?.players[0])}
           />
           <PlayerCard
             number={2}
             side="right"
             player={state?.players[1]}
-            you={!local && state?.players[1]?.sessionId === sessionId}
+            role={seatRole(state?.players[1])}
           />
           <div className="hud-centre">
             <div className={`hud-clock hud-panel ${urgent ? "is-urgent" : ""}`}>

@@ -483,6 +483,12 @@ test("character colors, every weapon, turn camera and crater feedback are playab
     "data-coat",
     "rose",
   );
+  // Shared local play owns both seats, so neither is singled out as "you".
+  await expect(page.getByTestId("player-1")).toHaveAttribute(
+    "data-role",
+    "shared",
+  );
+  await expect(page.locator(".hud-card-role")).toHaveCount(0);
   await page.screenshot({
     path: test.info().outputPath("match-setup.png"),
     fullPage: true,
