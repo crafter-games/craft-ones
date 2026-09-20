@@ -167,12 +167,10 @@ export class ArenaInput {
       this.scene.game.canvas.dataset.fireAngle = String(this.angle);
       this.scene.game.canvas.dataset.firePower = String(this.power());
       const aim = { angle: this.angle, power: this.power() };
-      if (this.bridge.abilityAim) this.bridge.ability(aim);
-      else
-        this.bridge.fire({
-          ...aim,
-          turnNumber: this.bridge.state.turnNumber,
-        });
+      this.bridge.fire({
+        ...aim,
+        turnNumber: this.bridge.state.turnNumber,
+      });
     }
     this.cancel();
   }

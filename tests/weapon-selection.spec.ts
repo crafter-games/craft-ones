@@ -1,5 +1,5 @@
-import { WEAPONS, type WeaponId } from "@craft-ones/shared";
 import { expect, type Page, test } from "@playwright/test";
+import { WEAPONS, type WeaponId } from "../packages/shared/src/arsenal";
 import {
   aimWorld,
   overview,

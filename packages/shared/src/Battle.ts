@@ -312,6 +312,13 @@ export class Battle {
       (entry) => entry.sessionId === sessionId,
     );
     if (!player?.connected || player.hp <= 0) return "Player cannot fire";
+    // Selection and fire arrive in order even before the client sees a patch.
+    // Resolve a plain fire intention from the authoritative selection.
+    if (payload.weapon === undefined && player.abilityArmed)
+      return this.ability(sessionId, {
+        ...payload,
+        direction: Math.cos(payload.angle) >= 0 ? 1 : -1,
+      });
     const projectile = this.state.projectile;
     const kind = payload.weapon ?? player.selectedWeapon;
     player.selectedWeapon = kind;

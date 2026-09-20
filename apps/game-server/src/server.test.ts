@@ -358,6 +358,13 @@ describe("real Colyseus SDK clients", () => {
         [one, two].every((room) => room.state.players[1].abilityArmed),
       );
       expect(one.state.players[1].selectedWeapon).toBe("mortar");
+      // No state round trip between these commands: the final choice wins.
+      two.send("select", { selection: "ability", turnNumber: 2 });
+      two.send("select", { selection: "rocket", turnNumber: 2 });
+      two.send("fire", { angle: -Math.PI / 2, power: 0.8, turnNumber: 2 });
+      await waitFor(() => one.state.phase === "flying");
+      expect(one.state.projectile.kind).toBe("rocket");
+      expect(one.state.players[1].abilityArmed).toBe(false);
     } finally {
       await one.leave();
       await two.leave();

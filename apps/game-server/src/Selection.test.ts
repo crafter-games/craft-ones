@@ -150,3 +150,27 @@ test("selection cannot extend an expired turn or alter dead and waiting players"
     battle.select("two", { selection: "mortar", turnNumber: 2 }),
   ).toBeString();
 });
+
+test("firing immediately after selection uses the server's armed power without waiting for a snapshot", () => {
+  const { battle, one } = fixture();
+  battle.select("one", { selection: "grenade", turnNumber: 1 });
+  battle.select("one", { selection: "ability", turnNumber: 1 });
+  expect(
+    battle.fire("one", { angle: -1, power: 0.5, turnNumber: 1 }),
+  ).toBeNull();
+  expect(battle.state.projectile.kind).toBe("shuriken");
+  expect(one.abilityArmed).toBe(true);
+  expect(one.selectedWeapon).toBe("grenade");
+});
+
+test("a movement ability fired through the selected action derives direction from aim", () => {
+  const { battle, one } = fixture("llama");
+  battle.select("one", { selection: "ability", turnNumber: 1 });
+  expect(
+    battle.fire("one", { angle: -Math.PI, power: 0.5, turnNumber: 1 }),
+  ).toBeNull();
+  expect(one.vx).toBeLessThan(0);
+  expect(one.vy).toBeLessThan(0);
+  expect(battle.state.lastAction).toBe("leap");
+  expect(battle.state.projectile.active).toBe(false);
+});
