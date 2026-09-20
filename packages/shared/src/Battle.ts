@@ -481,11 +481,7 @@ export class Battle {
     // Rounds are turn pairs from the opening seat so wind stays fair.
     const turnInMatch = this.state.turnNumber - this.matchOriginTurn;
     if ((turnInMatch - 1) % 2 === 0) this.state.roundNumber++;
-    this.state.wind = windForTurn(
-      this.state.mapId,
-      turnInMatch,
-      this.windSeed,
-    );
+    this.state.wind = windForTurn(this.state.mapId, turnInMatch, this.windSeed);
     resetMovement(this.state.players[index]);
     this.moveSequence = 0;
     this.moveAt = -Infinity;
