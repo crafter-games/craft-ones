@@ -2,6 +2,8 @@
 
 import {
   CHARACTERS,
+  isOpeningSeat,
+  type OpeningSeat,
   PLAYABLE_MAP_IDS,
   type PlayableMapId,
   type PlayerOptions,
@@ -11,7 +13,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
 import { Brand } from "../../components/Brand";
-import { MapPicker, SeatPicker } from "../../components/MatchSetup";
+import {
+  MapPicker,
+  OpeningSeatPicker,
+  SeatPicker,
+} from "../../components/MatchSetup";
 import { createBattle } from "../../lib/connection";
 
 export default function SetupScreen() {
@@ -25,6 +31,10 @@ export default function SetupScreen() {
   const [mapId, setMapId] = useState<PlayableMapId>(
     PLAYABLE_MAP_IDS.find((id) => id === search.get("map")) ?? "andes",
   );
+  const [openingSeat, setOpeningSeat] = useState<OpeningSeat>(() => {
+    const value = search.get("opening");
+    return isOpeningSeat(value) ? value : "host";
+  });
   const [one, setOne] = useState<PlayerOptions>({
     species: "cuy",
     coat: "caramel",
@@ -42,6 +52,7 @@ export default function SetupScreen() {
         coat: one.coat,
         species2: two.species,
         coat2: two.coat,
+        opening: openingSeat,
       });
       router.push(`/local?${query}`);
       return;
@@ -51,15 +62,26 @@ export default function SetupScreen() {
     setBusy(true);
     setError("");
     try {
-      router.push(`/game/${await createBattle(mapId, one)}`);
+      router.push(`/game/${await createBattle(mapId, one, openingSeat)}`);
     } catch {
       setError(
         "Could not reach the game server. Make sure it is running, then try again.",
       );
       creating.current = false;
-      setBusy(false);
     }
+    setBusy(false);
   }
+
+  const openingSummary =
+    openingSeat === "guest"
+      ? local
+        ? "P2 opens"
+        : "guest opens"
+      : openingSeat === "random"
+        ? "coin flip"
+        : local
+          ? "P1 opens"
+          : "host opens";
 
   return (
     <main className="lobby setup">
@@ -94,6 +116,12 @@ export default function SetupScreen() {
           />
         ) : null}
         <MapPicker value={mapId} onChange={setMapId} />
+        <OpeningSeatPicker
+          value={openingSeat}
+          onChange={setOpeningSeat}
+          hostLabel={local ? "Player 1 first" : "Host first"}
+          guestLabel={local ? "Player 2 first" : "Guest first"}
+        />
       </div>
       {error ? (
         <p role="alert" className="px-4 text-sm text-[#ffae9d] lg:px-12">
@@ -104,7 +132,7 @@ export default function SetupScreen() {
         <p className="setup-summary">
           {CHARACTERS[one.species].name} <b>vs</b>{" "}
           {local ? CHARACTERS[two.species].name : "your rival"} ·{" "}
-          {WORLD_MAPS[mapId].name} · 100 HP · 15 s turns
+          {WORLD_MAPS[mapId].name} · {openingSummary} · 100 HP · 15 s turns
         </p>
         <Link href="/" className="cta dark">
           Back

@@ -2,6 +2,8 @@
 import {
   Battle,
   type BattleView,
+  isOpeningSeat,
+  type OpeningSeat,
   PLAYABLE_MAP_IDS,
   type PlayableMapId,
   type PlayerOptions,
@@ -25,6 +27,10 @@ export default function Playground({ lab = false }: { lab?: boolean }) {
     species: search.get("species2"),
     coat: search.get("coat2"),
   };
+  const requestedOpening = search.get("opening");
+  const openingSeat: OpeningSeat = isOpeningSeat(requestedOpening)
+    ? requestedOpening
+    : "host";
   const [mapId, setMapId] = useState<PlayableMapId>(
     PLAYABLE_MAP_IDS.find((id) => id === search.get("map")) ?? "andes",
   );
@@ -75,6 +81,7 @@ export default function Playground({ lab = false }: { lab?: boolean }) {
       () => elapsed,
       mapId,
       Math.floor(Math.random() * 0x1_0000_0000),
+      openingSeat,
     );
     engine.infiniteHp = options.current.infiniteHp;
     engine.destructible = options.current.destructible;
@@ -161,7 +168,7 @@ export default function Playground({ lab = false }: { lab?: boolean }) {
       bridge.current.connected = false;
       battle.current = null;
     };
-  }, [mapId, revision, notice]);
+  }, [mapId, revision, notice, openingSeat]);
   const reset = () => setRevision((value) => value + 1);
   const labTools = (
     <fieldset className="hud-lab">

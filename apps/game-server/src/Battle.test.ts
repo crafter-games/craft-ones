@@ -74,6 +74,28 @@ describe("players and lifecycle", () => {
     expect(() => battle.addPlayer("three")).toThrow();
   });
 
+  test("guest opening seat takes the first turn and keeps shared round wind", () => {
+    let time = 0;
+    const battle = new Battle(() => time, "flat", 0, "guest");
+    battle.addPlayer("one");
+    battle.addPlayer("two");
+    expect(battle.state.currentPlayer).toBe("two");
+    expect(battle.state.turnNumber).toBe(1);
+    expect(battle.state.roundNumber).toBe(1);
+    const firstWind = battle.state.wind;
+    time += ARENA.turnMs;
+    battle.step(ARENA.turnMs);
+    expect(battle.state.currentPlayer).toBe("one");
+    expect(battle.state.turnNumber).toBe(2);
+    expect(battle.state.roundNumber).toBe(1);
+    expect(battle.state.wind).toBe(firstWind);
+    time += ARENA.turnMs;
+    battle.step(ARENA.turnMs);
+    expect(battle.state.currentPlayer).toBe("two");
+    expect(battle.state.roundNumber).toBe(2);
+    expect(battle.state.wind).not.toBe(firstWind);
+  });
+
   test("waiting disconnect leaves an open slot and a fresh first player", () => {
     const { battle } = setup(false);
     battle.addPlayer("old");

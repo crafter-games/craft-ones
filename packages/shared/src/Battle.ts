@@ -8,6 +8,11 @@ import {
   worldMove,
 } from "./battleActions";
 import { ARENA } from "./config";
+import {
+  isOpeningSeat,
+  type OpeningSeat,
+  resolveOpeningIndex,
+} from "./matchOptions";
 import { settlePlayers } from "./playerMotion";
 import { advanceShot, launchShot } from "./projectiles";
 import { BattleState, type FireAction, Player } from "./schema";
@@ -73,11 +78,15 @@ export class Battle {
   infiniteHp = false;
   destructible = false;
   private resolveDeadline = 0;
+  private openingSeat: OpeningSeat = "host";
+  private openingIndex = 0;
+  private matchOriginTurn = 0;
 
   constructor(
     private readonly now: () => number = () => performance.now(),
     mapId: MapId = "flat",
     private windSeed = 0,
+    openingSeat: OpeningSeat | unknown = "host",
   ) {
     this.state.mapId = mapId;
     this.state.terrain.push(...makeTerrain(mapId));
@@ -87,6 +96,8 @@ export class Battle {
       this.state.worldWidth = WORLD_WIDTH;
       this.state.worldHeight = WORLD_HEIGHT;
     }
+    this.openingSeat = isOpeningSeat(openingSeat) ? openingSeat : "host";
+    this.openingIndex = resolveOpeningIndex(this.openingSeat);
   }
 
   move(sessionId: string, payload: unknown): string | null {
@@ -213,7 +224,7 @@ export class Battle {
     this.state.projectile.active = false;
     this.state.roundNumber = 0;
     this.windSeed = (this.windSeed + 1) >>> 0;
-    this.startTurn(0, this.clockNow());
+    this.beginMatch(this.clockNow());
     return null;
   }
 
@@ -239,7 +250,7 @@ export class Battle {
     if (options) setAppearance(player, options);
     resetMovement(player);
     this.state.players.push(player);
-    if (this.state.players.length === 2) this.startTurn(0, this.clockNow());
+    if (this.state.players.length === 2) this.beginMatch(this.clockNow());
     return player;
   }
 
@@ -409,6 +420,14 @@ export class Battle {
     return this.lastNow;
   }
 
+  private beginMatch(now: number) {
+    if (this.openingSeat === "random")
+      this.openingIndex = resolveOpeningIndex("random");
+    this.state.roundNumber = 0;
+    this.matchOriginTurn = this.state.turnNumber;
+    this.startTurn(this.openingIndex, now);
+  }
+
   private startTurn(index: number, now: number) {
     for (const player of this.controlledMotion) player.vx = 0;
     this.controlledMotion.clear();
@@ -416,10 +435,12 @@ export class Battle {
     this.state.phase = "aiming";
     this.state.currentPlayer = this.state.players[index].sessionId;
     this.state.turnNumber++;
-    if (index === 0) this.state.roundNumber++;
+    // Rounds are turn pairs from the opening seat so wind stays fair.
+    const turnInMatch = this.state.turnNumber - this.matchOriginTurn;
+    if ((turnInMatch - 1) % 2 === 0) this.state.roundNumber++;
     this.state.wind = windForTurn(
       this.state.mapId,
-      this.state.roundNumber * 2 - 1,
+      turnInMatch,
       this.windSeed,
     );
     resetMovement(this.state.players[index]);

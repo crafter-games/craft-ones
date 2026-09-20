@@ -1,6 +1,11 @@
 import { type Client, Room, ServerError } from "@colyseus/core";
 import { Encoder } from "@colyseus/schema";
-import { ARENA, type BattleState, PLAYABLE_MAP_IDS } from "@craft-ones/shared";
+import {
+  ARENA,
+  type BattleState,
+  isOpeningSeat,
+  PLAYABLE_MAP_IDS,
+} from "@craft-ones/shared";
 import { Battle } from "./Battle";
 import { type Admission, TokenBucket } from "./limits";
 
@@ -14,13 +19,14 @@ export class BattleRoom extends Room<BattleState> {
   protected admission!: Admission;
   private messages = new Map<string, TokenBucket>();
 
-  onCreate(options: { mapId?: unknown } = {}) {
+  onCreate(options: { mapId?: unknown; openingSeat?: unknown } = {}) {
     if (!this.admission.acquireRoom(this.roomId))
       throw new ServerError(503, "All arenas are busy. Try again shortly.");
     this.battle = new Battle(
       undefined,
       PLAYABLE_MAP_IDS.find((id) => id === options.mapId) ?? "andes",
       Math.floor(Math.random() * 0x1_0000_0000),
+      isOpeningSeat(options.openingSeat) ? options.openingSeat : "host",
     );
     this.setState(this.battle.state);
     this.setPatchRate(ARENA.stepMs * 3);
