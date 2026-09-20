@@ -231,11 +231,14 @@ describe("real Colyseus SDK clients", () => {
   test("two clients share a schema match, rejected actions report errors, shots sync, disconnect forfeits", async () => {
     const one = await join();
     expect(one.state.phase).toBe("waiting");
+    expect(one.state.waitingRemainingMs).toBeGreaterThan(0);
+    expect(one.state.waitingRemainingMs).toBeLessThanOrEqual(300_000);
     const two = await join();
     expect(two.roomId).toBe(one.roomId);
     await waitFor(
       () => one.state.phase === "aiming" && two.state.phase === "aiming",
     );
+    expect(one.state.waitingRemainingMs).toBe(0);
     expect(one.state.players.map((player) => player.sessionId)).toEqual([
       one.sessionId,
       two.sessionId,

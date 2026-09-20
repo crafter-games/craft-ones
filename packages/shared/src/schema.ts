@@ -161,6 +161,7 @@ export class BattleState extends Schema {
   declare turnNumber: number;
   declare roundNumber: number;
   declare remainingMs: number;
+  declare waitingRemainingMs: number;
   declare winner: string;
   declare finishReason: string;
 
@@ -183,6 +184,7 @@ export class BattleState extends Schema {
       turnNumber: 0,
       roundNumber: 0,
       remainingMs: 0,
+      waitingRemainingMs: 0,
       winner: "",
       finishReason: "",
     });
@@ -204,6 +206,7 @@ defineTypes(BattleState, {
   currentPlayer: "string",
   turnNumber: "number",
   remainingMs: "number",
+  waitingRemainingMs: "number",
   winner: "string",
   finishReason: "string",
   roundNumber: "number",
@@ -258,6 +261,7 @@ export type BattleView = {
   turnNumber: number;
   roundNumber: number;
   remainingMs: number;
+  waitingRemainingMs: number;
   winner: string;
   finishReason: string;
 };

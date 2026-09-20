@@ -27,8 +27,13 @@ export class BattleRoom extends Room<BattleState> {
     this.setSimulationInterval((dtMs) => this.battle.step(dtMs), ARENA.stepMs);
     let finishedAt = 0;
     const createdAt = performance.now();
+    this.state.waitingRemainingMs = this.admission.waitingMs;
     this.clock.setInterval(() => {
       const now = performance.now();
+      this.state.waitingRemainingMs =
+        this.state.phase === "waiting"
+          ? Math.max(0, this.admission.waitingMs - (now - createdAt))
+          : 0;
       if (this.state.phase === "finished") finishedAt ||= now;
       else finishedAt = 0;
       if (
@@ -69,7 +74,10 @@ export class BattleRoom extends Room<BattleState> {
   async onJoin(client: Client, options: { player?: unknown } = {}) {
     this.messages.set(client.sessionId, new TokenBucket(40, 20));
     this.battle.addPlayer(client.sessionId, options.player);
-    if (this.state.phase !== "waiting") await this.lock();
+    if (this.state.phase !== "waiting") {
+      this.state.waitingRemainingMs = 0;
+      await this.lock();
+    }
   }
 
   onLeave(client: Client) {
