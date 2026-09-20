@@ -129,7 +129,7 @@ export class ArenaScene extends Phaser.Scene {
     this.director.update(
       state,
       cameraDt,
-      this.bridge.focus,
+      this.bridge.view,
       this.controls.power() > 0,
       this.bridge.hudInsets,
     );

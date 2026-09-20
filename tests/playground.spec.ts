@@ -418,6 +418,48 @@ test("mobile local movement and touch aim survive portrait-to-landscape resize",
   }
 });
 
+test("short viewports keep the active character legible and leave the whole map to its own view", async ({
+  page,
+}) => {
+  const zoom = async () =>
+    Number(await page.locator("canvas").getAttribute("data-camera-zoom"));
+  const wholeMap = async () =>
+    Math.min(
+      Number(
+        await page.locator("canvas").getAttribute("data-camera-frame-width"),
+      ) / 2688,
+      Number(
+        await page.locator("canvas").getAttribute("data-camera-frame-height"),
+      ) / 1536,
+    );
+  await page.setViewportSize({ width: 640, height: 360 });
+  await page.goto("/playground?map=andes");
+  await expect(page.locator("canvas")).toBeVisible();
+  await overview(page);
+  // The rig is 100 world units tall; the issue asks for at least 32 pixels.
+  expect(await zoom()).toBeGreaterThanOrEqual(0.32);
+  expect(await wholeMap()).toBeLessThan(0.2);
+  await openMenu(page);
+  await page
+    .getByRole("button", { name: "View whole map", exact: true })
+    .click();
+  await closeMenu(page);
+  await expect
+    .poll(async () => Math.abs((await zoom()) - (await wholeMap())))
+    .toBeLessThan(0.006);
+  await openMenu(page);
+  await page
+    .getByRole("button", { name: "Follow action", exact: true })
+    .click();
+  await closeMenu(page);
+  await overview(page);
+  // Freed height reframes the same match instead of restarting it.
+  await page.setViewportSize({ width: 640, height: 1200 });
+  await overview(page);
+  expect(await wholeMap()).toBeGreaterThan(0.2);
+  await expect(page.getByTestId("battle")).toHaveAttribute("data-turn", "1");
+});
+
 test("character colors, every weapon, turn camera and crater feedback are playable", async ({
   page,
 }) => {

@@ -2,6 +2,8 @@ import { expect, type Locator, type Page } from "@playwright/test";
 
 const GRAVITY = 420;
 const ROCKET_MAX_SPEED = 1000;
+/** Mirrors MIN_ACTION_ZOOM in ArenaCamera: a 100-unit rig stays 36px tall. */
+const ACTION_ZOOM_FLOOR = 0.36;
 
 type Arena = {
   from: { x: number; y: number };
@@ -240,7 +242,7 @@ export async function settled(page: Page) {
     .toBeLessThan(0.5);
 }
 
-/** Wait until the camera frames the whole map. */
+/** Wait until the turn introduction ends and the camera settles on its normal framing. */
 export async function overview(page: Page) {
   const canvas = page.locator("canvas");
   await expect
@@ -248,10 +250,16 @@ export async function overview(page: Page) {
       Math.abs(
         Number(await canvas.getAttribute("data-camera-zoom")) -
           // The framing excludes the HUD, so read the free area from the scene.
-          Math.min(
-            Number(await canvas.getAttribute("data-camera-frame-width")) / 2688,
-            Number(await canvas.getAttribute("data-camera-frame-height")) /
-              1536,
+          // Normal play never zooms out past the action floor, so a short
+          // viewport settles there rather than on the whole map.
+          Math.max(
+            Math.min(
+              Number(await canvas.getAttribute("data-camera-frame-width")) /
+                2688,
+              Number(await canvas.getAttribute("data-camera-frame-height")) /
+                1536,
+            ),
+            ACTION_ZOOM_FLOOR,
           ),
       ),
     )
