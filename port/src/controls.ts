@@ -123,7 +123,9 @@ export function createControls(input: Input, W: number, H: number): Controls {
         slingPower = 0;
       }
     }
-    if (fingers.length > 0) return bits;
+    // Once a finger has touched, the mouse is ignored: phones synthesize mouse events from touches, and that
+    // pointer would overwrite the slingshot's aim on the release frame.
+    if (touched) return bits;
     const p = input.pointer();
     const px = p.x * W;
     const py = p.y * H;
