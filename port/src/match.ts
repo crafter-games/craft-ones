@@ -40,6 +40,16 @@ export const Bit = {
 const SLOT_SHIFT = 10;
 export const slotBits = (slot: number): number => (slot & 7) << SLOT_SHIFT;
 const slotOf = (bits: number): number => (bits >> SLOT_SHIFT) & 7;
+// Bit 13 says bits 14-23 hold an absolute aim angle (pointer and touch aim), quantized to 1024 steps.
+const AIM_SET = 1 << 13;
+const AIM_SHIFT = 14;
+const AIM_STEPS = 1024;
+export const aimBits = (angle: number): number =>
+  AIM_SET |
+  ((Math.round(((angle + Math.PI) / (2 * Math.PI)) * AIM_STEPS) % AIM_STEPS) <<
+    AIM_SHIFT);
+const aimOf = (bits: number): number =>
+  (((bits >> AIM_SHIFT) & (AIM_STEPS - 1)) / AIM_STEPS) * 2 * Math.PI - Math.PI;
 
 // The screen area below the HUD bar, which the camera frames.
 export const HUD_HEIGHT = 64;
@@ -74,6 +84,7 @@ export interface Match {
   charge: number[];
   previous: number[];
   sequence: number;
+  movedAt: number;
   // Frames left on the kickoff banner; the battle clock waits for it.
   kickoff: number;
   notice: string;
@@ -87,6 +98,7 @@ export interface Match {
 function newBattle(match: Match): void {
   const { options } = match;
   match.elapsed = 0;
+  match.movedAt = -Infinity;
   match.battle = new Battle(
     () => match.elapsed,
     options.map,
@@ -168,6 +180,7 @@ export function step(match: Match, inputs: number[]): void {
     const player = state.players.find((p) => p.sessionId === id);
     // Up raises the barrel on whichever side the critter faces.
     const facing = Math.cos(match.angle[seat]) >= 0 ? 1 : -1;
+    if (bits & AIM_SET) match.angle[seat] = aimOf(bits);
     if (bits & Bit.AimUp) match.angle[seat] -= AIM_SPEED * facing;
     if (bits & Bit.AimDown) match.angle[seat] += AIM_SPEED * facing;
     match.angle[seat] = Math.atan2(
@@ -188,7 +201,12 @@ export function step(match: Match, inputs: number[]): void {
         );
       if (pressed & Bit.Jump)
         report(match, battle.jump(id, { turnNumber, direction }));
-      else if (direction !== 0)
+      // Battle takes one step per moveIntervalMs; asking every frame would only collect refusals.
+      else if (
+        direction !== 0 &&
+        match.elapsed - match.movedAt >= ARENA.moveIntervalMs
+      ) {
+        match.movedAt = match.elapsed;
         report(
           match,
           battle.move(id, {
@@ -197,6 +215,7 @@ export function step(match: Match, inputs: number[]): void {
             turnNumber,
           }),
         );
+      }
       const slot =
         slotOf(bits) !== slotOf(match.previous[seat]) ? slotOf(bits) : 0;
       if (pressed & Bit.Weapon) {
@@ -335,7 +354,8 @@ export function encode(input: unknown): number {
     (i.ability ? Bit.Ability : 0) |
     (i.map ? Bit.Map : 0) |
     (i.restart ? Bit.Restart : 0) |
-    slotBits(typeof i.slot === "number" ? i.slot : 0)
+    slotBits(typeof i.slot === "number" ? i.slot : 0) |
+    (typeof i.aim === "number" ? aimBits(i.aim) : 0)
   );
 }
 

@@ -305,7 +305,8 @@ export function createRenderer(
     d.restore();
   };
 
-  const render = (match: Match, d: Draw2D): void => {
+  // touch: draw the on-screen walk and jump buttons (a finger has touched the screen).
+  const render = (match: Match, d: Draw2D, touch = false): void => {
     const W = window.width;
     const H = window.height;
     const state = view(match);
@@ -517,7 +518,7 @@ export function createRenderer(
       d.fill();
     }
     d.restore();
-    drawHud(d, match, state, W, window.height);
+    drawHud(d, match, state, W, window.height, touch);
   };
 
   return { render };
@@ -585,6 +586,52 @@ function portrait(
       );
 }
 
+// Screen rectangles of hotbar slots 1-7, shared by drawing and pointer hit tests.
+export function hotbarSlots(
+  W: number,
+  H: number,
+): { x: number; y: number; size: number }[] {
+  const size = 54;
+  const gap = 8;
+  const count = WEAPON_IDS.length + 1;
+  const total = count * size + (count - 1) * gap + 14;
+  const left = W / 2 - total / 2;
+  return Array.from({ length: count }, (_, n) => ({
+    x: left + n * (size + gap) + (n === count - 1 ? 14 : 0),
+    y: H - size - 14,
+    size,
+  }));
+}
+
+// Touch buttons, as TouchControls places them: walk left, walk right, jump.
+export function touchButtons(H: number): {
+  id: "left" | "right" | "jump";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}[] {
+  const y = H - 150;
+  return [
+    { id: "left", x: 12, y, w: 64, h: 64 },
+    { id: "right", x: 84, y, w: 64, h: 64 },
+    { id: "jump", x: 156, y, w: 100, h: 64 },
+  ];
+}
+
+// The world point under a screen point, through the same camera transform render uses.
+export function screenToWorld(
+  match: Match,
+  sx: number,
+  sy: number,
+): { x: number; y: number } {
+  const zoom = match.camera.zoom;
+  return {
+    x: match.camera.x - FRAME.width / 2 / zoom + sx / zoom,
+    y: match.camera.y - FRAME.height / 2 / zoom + (sy - HUD_HEIGHT) / zoom,
+  };
+}
+
 // The web HUD's information on canvas: cards, clock, turn line, hotbar, meters, kickoff and results.
 function drawHud(
   d: Draw2D,
@@ -592,6 +639,7 @@ function drawHud(
   state: BattleView,
   W: number,
   H: number,
+  touch: boolean,
 ): void {
   d.setFillStyle(HUD.ink);
   d.fillRect(0, 0, W, HUD_HEIGHT);
@@ -720,17 +768,21 @@ function drawHud(
 
   // Hotbar: the six tools, then the critter's ability with its cooldown.
   if (current && state.phase !== "finished") {
-    const size = 54;
-    const gap = 8;
-    const count = WEAPON_IDS.length + 1;
-    const total = count * size + (count - 1) * gap + 14;
-    let x = W / 2 - total / 2;
-    const y = H - size - 14;
-    panel(d, x - 10, y - 8, total + 20, size + 16, HUD.ink);
+    const slots = hotbarSlots(W, H);
+    const { size } = slots[0];
+    const y = slots[0].y;
+    panel(
+      d,
+      slots[0].x - 10,
+      y - 8,
+      slots[slots.length - 1].x + size - slots[0].x + 20,
+      size + 16,
+      HUD.ink,
+    );
     const cooldown = Math.max(0, current.abilityReadyTurn - state.turnNumber);
-    for (let n = 0; n < count; n++) {
+    for (let n = 0; n < slots.length; n++) {
       const ability = n === WEAPON_IDS.length;
-      if (ability) x += 14;
+      const x = slots[n].x;
       const kind = ability ? null : WEAPON_IDS[n];
       const selected = ability
         ? current.abilityArmed
@@ -774,7 +826,6 @@ function drawHud(
         "10px Archivo Black",
         selected ? HUD.ink : HUD.dim,
       );
-      x += size + gap;
     }
     // Power and walking range.
     const charge = seat >= 0 ? power01(match.charge[seat]) : 0;
@@ -812,6 +863,20 @@ function drawHud(
     d.fillRect(26, H - 36, (192 * range) / ARENA.moveBudget, 10);
   }
 
+  if (touch && current && state.phase === "aiming")
+    for (const b of touchButtons(H)) {
+      panel(d, b.x, b.y, b.w, b.h, HUD.ink);
+      const label = b.id === "left" ? "<" : b.id === "right" ? ">" : "JUMP";
+      text(
+        d,
+        label,
+        b.x + b.w / 2,
+        b.y + b.h / 2,
+        b.id === "jump" ? "16px Archivo Black" : "28px Archivo Black",
+        HUD.cream,
+        "center",
+      );
+    }
   // Kickoff banner while the clock waits, then the results card.
   if (match.kickoff > 0 && current && state.phase !== "finished") {
     d.setFillStyle("rgba(24,18,28,0.55)");
