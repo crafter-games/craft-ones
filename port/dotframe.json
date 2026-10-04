@@ -24,6 +24,19 @@
         "platform": "macos",
         "entry": "main.native.ts"
       }
+    },
+    "ios": {
+      "steps": [
+        {
+          "label": "ios",
+          "argv": [
+            "sh",
+            "scripts/build-ios.sh"
+          ]
+        }
+      ],
+      "app": "ios/build/derived/Build/Products/Debug-iphoneos/CraftOnes.app",
+      "device": "00008120-001A5D690A52201E"
     }
   },
   "assets": {

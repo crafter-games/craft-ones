@@ -64,7 +64,29 @@ export const art: Art = { textures: new Map() };
 
 export type LoadBytes = (path: string) => Promise<Uint8Array>;
 
-// Loads fonts, the maps and weapons, and every species/coat part. Paths are relative to the port root.
+// Fonts, map backgrounds and weapons, by texture key. Paths are relative to the port root.
+const FONTS: { names: string[]; file: string }[] = [
+  { names: ["Archivo Black", "sans-serif"], file: "archivo-black" },
+  { names: ["Bangers"], file: "bangers" },
+];
+function artImages(): { key: string; path: string }[] {
+  const list: { key: string; path: string }[] = [];
+  for (const id of PLAYABLE_MAP_IDS)
+    list.push({
+      key: `map-${id}`,
+      path: WORLD_MAPS[id].background.replace(/\.svg$/, ""),
+    });
+  for (const kind of Object.keys(PROJECTILES)) {
+    list.push({ key: `weapon-${kind}`, path: `weapons/${kind}` });
+    list.push({
+      key: `projectile-${kind}`,
+      path: `weapons/${kind}-projectile`,
+    });
+  }
+  return list;
+}
+
+// Loads fonts, the maps and weapons. Paths are relative to the port root.
 export async function loadArt(
   gpu: Gpu,
   draw: Draw2D,
@@ -73,32 +95,23 @@ export async function loadArt(
 ): Promise<void> {
   const decoder = new TextDecoder();
   const fonts = `${root}/node_modules/dotframe/assets/fonts`;
-  draw.addFont(
-    ["Archivo Black", "sans-serif"],
-    await gpu.createImage(await load(`${fonts}/archivo-black.png`), true),
-    decoder.decode(await load(`${fonts}/archivo-black.json`)),
-  );
-  draw.addFont(
-    ["Bangers"],
-    await gpu.createImage(await load(`${fonts}/bangers.png`), true),
-    decoder.decode(await load(`${fonts}/bangers.json`)),
-  );
-  const image = async (key: string, path: string): Promise<void> => {
-    art.textures.set(
-      key,
-      await gpu.createImage(await load(`${root}/assets/art/${path}.png`), true),
+  for (const font of FONTS)
+    draw.addFont(
+      font.names,
+      await gpu.createImage(await load(`${fonts}/${font.file}.png`), true),
+      decoder.decode(await load(`${fonts}/${font.file}.json`)),
     );
-  };
-  const jobs: Promise<void>[] = [];
-  for (const id of PLAYABLE_MAP_IDS)
-    jobs.push(
-      image(`map-${id}`, WORLD_MAPS[id].background.replace(/\.svg$/, "")),
-    );
-  for (const kind of Object.keys(PROJECTILES)) {
-    jobs.push(image(`weapon-${kind}`, `weapons/${kind}`));
-    jobs.push(image(`projectile-${kind}`, `weapons/${kind}-projectile`));
-  }
-  await Promise.all(jobs);
+  await Promise.all(
+    artImages().map(async (img): Promise<void> => {
+      art.textures.set(
+        img.key,
+        await gpu.createImage(
+          await load(`${root}/assets/art/${img.path}.png`),
+          true,
+        ),
+      );
+    }),
+  );
 }
 
 // Parts load per species and coat on first use, like the web client: only critters in the match.
@@ -122,6 +135,35 @@ export function loadCritter(
         );
     }),
   ).then((): void => undefined);
+}
+
+// The same loading, synchronous, for hosts without promises (scriptc library mode on iOS).
+export function loadArtSync(
+  draw: Draw2D,
+  read: (path: string) => Uint8Array,
+  image: (png: Uint8Array) => Texture,
+  root: string,
+  critters: { species: string; coat: string }[],
+): void {
+  const decoder = new TextDecoder();
+  const fonts = `${root}/node_modules/dotframe/assets/fonts`;
+  for (const font of FONTS)
+    draw.addFont(
+      font.names,
+      image(read(`${fonts}/${font.file}.png`)),
+      decoder.decode(read(`${fonts}/${font.file}.json`)),
+    );
+  for (const img of artImages())
+    art.textures.set(
+      img.key,
+      image(read(`${root}/assets/art/${img.path}.png`)),
+    );
+  for (const c of critters)
+    for (const part of PARTS)
+      art.textures.set(
+        `${c.species}-${c.coat}-${part}`,
+        image(read(`${root}/assets/art/${c.species}/${c.coat}/${part}.png`)),
+      );
 }
 
 export function critterLoaded(species: string, coat: string): boolean {

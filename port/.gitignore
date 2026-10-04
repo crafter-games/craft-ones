@@ -3,3 +3,6 @@ dist
 assets/art
 .dotframe
 assets/sfx
+ios/build
+ios/vendor
+ios/*.xcodeproj

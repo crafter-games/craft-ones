@@ -1,6 +1,6 @@
 // Plays the synthesized sounds (assets/sfx, built by tools/synth-sounds.ts) for the shared sound cues.
 // Cues come from comparing two views, so this reads the match and never changes it.
-import type { Audio } from "dotframe/src/audio";
+import type { Audio, AudioPlayer } from "dotframe/src/audio";
 import { type BattleView, soundCues } from "../../packages/shared/src";
 import { cueSound, SOUND_NAMES } from "./sounds";
 
@@ -29,6 +29,26 @@ export async function loadSpeakers(
       );
     }),
   );
+  return createSpeakers(audio, sounds);
+}
+
+// Synchronous loading for hosts without promises (scriptc library mode on iOS).
+export function loadSpeakersSync(
+  audio: AudioPlayer,
+  read: (path: string) => Uint8Array,
+  decode: (mp3: Uint8Array) => number,
+  root: string,
+): Speakers {
+  const sounds = new Map<string, number>();
+  for (const name of SOUND_NAMES)
+    sounds.set(name, decode(read(`${root}/assets/sfx/${name}.mp3`)));
+  return createSpeakers(audio, sounds);
+}
+
+function createSpeakers(
+  audio: AudioPlayer,
+  sounds: Map<string, number>,
+): Speakers {
   let lastStep = -1000;
   let frame = 0;
   const play = (name: string, rate = 1): void => {
