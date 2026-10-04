@@ -1,5 +1,6 @@
 // Craft Ones on the web: setup screen, then a local hot-seat match where one keyboard drives whichever seat
-// has the turn, like /playground. ?map=coast&species=puma&coat=sage&species2=zorro&coat2=slate skips setup.
+// has the turn, like /playground. ?map=coast&species=puma&coat=sage&species2=zorro&coat2=slate skips setup;
+// &infiniteHp=1 and &destructible=0 are the lab toggles.
 import { createDraw2D } from "dotframe/src/draw2d";
 import type { Frame } from "dotframe/src/gpu";
 import { Key } from "dotframe/src/input";
@@ -43,6 +44,9 @@ const params = new URLSearchParams(location.search);
 const direct = params.has("map") || params.has("species");
 const fromUrl: MatchOptions = {
   ...DEFAULT_OPTIONS,
+  // Lab toggles from the web /playground?lab drawer.
+  infiniteHp: params.get("infiniteHp") === "1",
+  destructible: params.get("destructible") !== "0",
   map: (params.get("map") ?? DEFAULT_OPTIONS.map) as PlayableMapId,
   one: {
     species: (params.get("species") ?? DEFAULT_OPTIONS.one.species) as Species,

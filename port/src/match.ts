@@ -64,6 +64,9 @@ export interface MatchOptions {
   one: PlayerOptions;
   two: PlayerOptions;
   opening: "host" | "guest";
+  // The /playground?lab toggles.
+  infiniteHp: boolean;
+  destructible: boolean;
 }
 
 export const DEFAULT_OPTIONS: MatchOptions = {
@@ -71,6 +74,8 @@ export const DEFAULT_OPTIONS: MatchOptions = {
   one: { species: "cuy", coat: "caramel" },
   two: { species: "llama", coat: "cream" },
   opening: "host",
+  infiniteHp: false,
+  destructible: true,
 };
 
 export interface Match {
@@ -107,7 +112,8 @@ function newBattle(match: Match): void {
     (match.seed + match.rematches) >>> 0,
     options.opening,
   );
-  match.battle.destructible = true;
+  match.battle.destructible = options.destructible;
+  match.battle.infiniteHp = options.infiniteHp;
   match.battle.addPlayer("p1", options.one);
   match.battle.addPlayer("p2", options.two);
   match.angle = [-Math.PI / 4, (-3 * Math.PI) / 4];
@@ -308,7 +314,11 @@ export function summary(match: Match): unknown {
     terrainRevision: s.terrainRevision,
     winner: s.winner,
     rematches: match.rematches,
-    effects: { trail: match.fx.trail.length, bursts: match.fx.bursts.length, popups: match.fx.popups.map((t) => t.amount) },
+    effects: {
+      trail: match.fx.trail.length,
+      bursts: match.fx.bursts.length,
+      popups: match.fx.popups.map((t) => t.amount),
+    },
     notice: match.frame < match.noticeUntil ? match.notice : "",
     players: s.players.map((p, i) => ({
       id: p.sessionId,
