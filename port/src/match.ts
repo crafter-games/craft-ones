@@ -49,6 +49,14 @@ export const aimBits = (angle: number): number =>
   AIM_SET |
   ((Math.round(((angle + Math.PI) / (2 * Math.PI)) * AIM_STEPS) % AIM_STEPS) <<
     AIM_SHIFT);
+// Bit 24 shoots at once with the aim in bits 14-23 and a power in bits 25-30: one gesture from a touch slingshot.
+const SHOOT = 1 << 24;
+const POWER_SHIFT = 25;
+const POWER_STEPS = 63;
+export const shootBits = (angle: number, power: number): number =>
+  aimBits(angle) |
+  SHOOT |
+  (Math.round(Math.max(0, Math.min(1, power)) * POWER_STEPS) << POWER_SHIFT);
 const aimOf = (bits: number): number =>
   (((bits >> AIM_SHIFT) & (AIM_STEPS - 1)) / AIM_STEPS) * 2 * Math.PI - Math.PI;
 
@@ -268,8 +276,11 @@ export function step(match: Match, inputs: number[]): void {
       }
     }
     if (bits & Bit.Fire) match.charge[seat] += 1;
-    if (released & Bit.Fire && charging) {
-      const power = power01(match.charge[seat]);
+    const shoot = (pressed & SHOOT) !== 0 && !charging;
+    if ((released & Bit.Fire && charging) || shoot) {
+      const power = shoot
+        ? ((bits >> POWER_SHIFT) & POWER_STEPS) / POWER_STEPS
+        : power01(match.charge[seat]);
       const angle = match.angle[seat];
       if (player?.abilityArmed) {
         const direction = Math.cos(angle) >= 0 ? 1 : -1;

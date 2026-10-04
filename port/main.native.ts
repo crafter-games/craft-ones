@@ -77,7 +77,7 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
         heard = now;
         simulated += STEP;
       }
-      renderer.render(match, draw, controls.touched());
+      renderer.render(match, draw, controls.touched(), controls.preview());
     }
     draw.end({ r: 0, g: 0, b: 0 });
     return true;

@@ -1,8 +1,8 @@
 // Keyboard, mouse and touch turned into one encoded input word, shared by the web and native entries. Aim follows
 // the pointer only after it moves, so the keyboard keeps aiming when the mouse sits still. A press on the hotbar
 // picks a slot instead of charging a shot.
-import { type Input, Key } from "dotframe/src/input";
-import { aimBits, Bit, type Match, seatOf, slotBits } from "./match";
+import { type Input, Key, type Touch } from "dotframe/src/input";
+import { aimBits, Bit, type Match, seatOf, shootBits, slotBits } from "./match";
 import { hotbarSlots, screenToWorld, touchButtons } from "./render";
 
 const BINDINGS: [number, number[]][] = [
@@ -27,11 +27,17 @@ const SLOT_KEYS = [
   Key.Digit7,
 ];
 
+// Pull length, in logical pixels, below which a slingshot does nothing and beyond which it is at full power.
+const DEAD_ZONE = 18;
+const FULL_PULL = 220;
+
 export interface Controls {
   // The input for the seat with the turn.
   bits: (match: Match) => number;
   // True once a finger has touched the screen, so the renderer shows touch buttons.
   touched: () => boolean;
+  // The slingshot's pending power while a finger pulls, for the renderer's preview.
+  preview: () => number;
 }
 
 function inside(
@@ -50,6 +56,11 @@ export function createControls(input: Input, W: number, H: number): Controls {
   let lastY = -1;
   let charging = false;
   let touched = false;
+  let slingId = -1;
+  let slingX = 0;
+  let slingY = 0;
+  let slingAngle = 0;
+  let slingPower = 0;
   const slotAt = (px: number, py: number): number => {
     const slots = hotbarSlots(W, H);
     for (let i = 0; i < slots.length; i++) {
@@ -69,23 +80,47 @@ export function createControls(input: Input, W: number, H: number): Controls {
     let bits = 0;
     const fingers = input.touches();
     if (fingers.length > 0) touched = true;
-    let aimFinger = false;
+    let sling: Touch | null = null;
     for (const f of fingers) {
       const px = f.x * W;
       const py = f.y * H;
+      if (f.id === slingId) {
+        sling = f;
+        continue;
+      }
       let button = "";
-      for (const b of touchButtons(W, H))
+      for (const b of touchButtons(H))
         if (button === "" && inside(b.x, b.y, b.w, b.h, px, py)) button = b.id;
       const slot = slotAt(px, py);
       if (button === "left") bits |= Bit.Left;
       else if (button === "right") bits |= Bit.Right;
       else if (button === "jump") bits |= Bit.Jump;
-      else if (button === "fire") bits |= Bit.Fire;
       else if (slot > 0) bits |= slotBits(slot);
-      else if (!aimFinger) {
-        // Dragging on the field only aims; the fire button charges and releases.
-        aimFinger = true;
-        bits |= aimAt(px, py);
+      else if (slingId < 0) {
+        // A new finger on the field starts the slingshot.
+        slingId = f.id;
+        slingX = px;
+        slingY = py;
+        sling = f;
+      }
+    }
+    // Slingshot: pull back from where the finger landed; the shot flies the opposite way, and the pull length is
+    // the power. Lifting the finger shoots; lifting inside the dead zone cancels.
+    if (slingId >= 0) {
+      if (sling) {
+        const dx = slingX - sling.x * W;
+        const dy = slingY - sling.y * H;
+        const length = Math.hypot(dx, dy);
+        slingAngle = Math.atan2(dy, dx);
+        slingPower =
+          length < DEAD_ZONE
+            ? 0
+            : Math.min(1, (length - DEAD_ZONE) / FULL_PULL);
+        if (slingPower > 0) bits |= aimBits(slingAngle);
+      } else {
+        if (slingPower > 0) bits |= shootBits(slingAngle, slingPower);
+        slingId = -1;
+        slingPower = 0;
       }
     }
     if (fingers.length > 0) return bits;
@@ -117,5 +152,6 @@ export function createControls(input: Input, W: number, H: number): Controls {
       return bits | pointerBits(match);
     },
     touched: (): boolean => touched,
+    preview: (): number => slingPower,
   };
 }

@@ -8,6 +8,8 @@ import {
   randomInput,
   restore,
   save,
+  seatOf,
+  shootBits,
   slotBits,
   step,
   summary,
@@ -120,4 +122,15 @@ test("holding a direction walks without refusals", () => {
   for (let i = 0; i < 30; i++) step(match, [Bit.Right, 0]);
   expect(match.battle.state.players[0].x).toBeGreaterThan(start);
   expect(match.notice).toBe("");
+});
+
+test("a slingshot shot fires in one frame with its own angle and power", () => {
+  const match = createMatch(3);
+  for (let i = 0; i < KICKOFF_FRAMES + 2; i++) step(match, [0, 0]);
+  const seat = seatOf(match);
+  const inputs = [0, 0];
+  inputs[seat] = shootBits(-Math.PI / 3, 0.8);
+  step(match, inputs);
+  expect(match.battle.state.phase).toBe("flying");
+  expect(match.battle.state.projectile.vy).toBeLessThan(0);
 });

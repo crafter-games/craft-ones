@@ -143,7 +143,7 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
       simulated += STEP;
     }
     if (simulated < time - STEP * 5) simulated = time;
-    renderer.render(match, draw, controls.touched());
+    renderer.render(match, draw, controls.touched(), controls.preview());
     draw.end({ r: 0, g: 0, b: 0 });
     return true;
   };

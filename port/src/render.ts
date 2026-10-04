@@ -353,7 +353,13 @@ export function createRenderer(
   };
 
   // touch: draw the on-screen walk and jump buttons (a finger has touched the screen).
-  const render = (match: Match, d: Draw2D, touch = false): void => {
+  // preview: a touch slingshot's pending power (0-1), shown like a charge.
+  const render = (
+    match: Match,
+    d: Draw2D,
+    touch = false,
+    preview = 0,
+  ): void => {
     const W = window.width;
     const H = window.height;
     const state = view(match);
@@ -410,7 +416,7 @@ export function createRenderer(
     const aiming = state.phase === "aiming";
     state.players.forEach((player, i) => {
       const active = state.currentPlayer === player.sessionId;
-      const charge = active && aiming ? power01(match.charge[i]) : 0;
+      const charge = active && aiming ? preview || power01(match.charge[i]) : 0;
       const kind = player.abilityArmed
         ? abilityProjectile(player.species)
         : player.selectedWeapon;
@@ -695,7 +701,7 @@ export function createRenderer(
       d.setGlobalAlpha(1);
     }
     d.restore();
-    drawHud(d, match, state, W, window.height, touch);
+    drawHud(d, match, state, W, window.height, touch, preview);
   };
 
   return { render };
@@ -780,13 +786,9 @@ export function hotbarSlots(
   }));
 }
 
-// Touch buttons: walk left, walk right and jump on the left; fire on the right. Dragging on the field aims, so a
-// phone can set the angle without charging (there is no hover).
-export function touchButtons(
-  W: number,
-  H: number,
-): {
-  id: "left" | "right" | "jump" | "fire";
+// Touch buttons: walk left, walk right and jump. Dragging on the field is a slingshot (see controls.ts).
+export function touchButtons(H: number): {
+  id: "left" | "right" | "jump";
   x: number;
   y: number;
   w: number;
@@ -797,7 +799,6 @@ export function touchButtons(
     { id: "left", x: 12, y, w: 64, h: 64 },
     { id: "right", x: 84, y, w: 64, h: 64 },
     { id: "jump", x: 156, y, w: 100, h: 64 },
-    { id: "fire", x: W - 152, y: y - 40, w: 140, h: 104 },
   ];
 }
 
@@ -822,6 +823,7 @@ function drawHud(
   W: number,
   H: number,
   touch: boolean,
+  preview: number,
 ): void {
   d.setFillStyle(HUD.ink);
   d.fillRect(0, 0, W, HUD_HEIGHT);
@@ -1010,7 +1012,7 @@ function drawHud(
       );
     }
     // Power and walking range.
-    const charge = seat >= 0 ? power01(match.charge[seat]) : 0;
+    const charge = seat >= 0 ? preview || power01(match.charge[seat]) : 0;
     panel(d, W - 232, H - 68, 220, 54, HUD.ink);
     text(d, "POWER", W - 218, H - 52, "11px Archivo Black", HUD.dim);
     text(
@@ -1046,16 +1048,9 @@ function drawHud(
   }
 
   if (touch && current && state.phase === "aiming")
-    for (const b of touchButtons(W, H)) {
+    for (const b of touchButtons(H)) {
       panel(d, b.x, b.y, b.w, b.h, HUD.ink);
-      const label =
-        b.id === "left"
-          ? "<"
-          : b.id === "right"
-            ? ">"
-            : b.id === "jump"
-              ? "JUMP"
-              : "FIRE";
+      const label = b.id === "left" ? "<" : b.id === "right" ? ">" : "JUMP";
       text(
         d,
         label,

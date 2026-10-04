@@ -21,8 +21,9 @@ import { createRenderer, loadArtSync } from "../src/render";
 const STEP = 1 / 60;
 let match: Match | null = null;
 let draw: Draw2D | null = null;
-let render: ((match: Match, draw: Draw2D, touched: boolean) => void) | null =
-  null;
+let render:
+  | ((match: Match, draw: Draw2D, touched: boolean, preview: number) => void)
+  | null = null;
 let controls: Controls | null = null;
 let speakers: Speakers | null = null;
 let heard: BattleView | null = null;
@@ -38,8 +39,8 @@ export function init(base: string): void {
   ]);
   speakers = loadSpeakersSync(platform.audio, read, platform.sound, base);
   const renderer = createRenderer(platform.gpu, WINDOW);
-  render = (m: Match, dr: Draw2D, touched: boolean): void =>
-    renderer.render(m, dr, touched);
+  render = (m: Match, dr: Draw2D, touched: boolean, preview: number): void =>
+    renderer.render(m, dr, touched, preview);
   controls = createControls(platform.input, WINDOW.width, WINDOW.height);
   match = createMatch(
     Math.floor(Math.random() * 0x1_0000_0000),
@@ -74,7 +75,7 @@ export function frame(time: number): boolean {
   }
   if (simulated < time - STEP * 5) simulated = time;
   d.begin();
-  r(m, d, true);
+  r(m, d, true, c.preview());
   d.end({ r: 0, g: 0, b: 0 });
   return true;
 }
