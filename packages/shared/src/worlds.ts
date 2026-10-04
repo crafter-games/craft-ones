@@ -3,7 +3,18 @@ import { CELL, eraseCircle } from "./terrainGrid";
 
 export const WORLD_WIDTH = 2688;
 export const WORLD_HEIGHT = 1536;
-export const PLAYABLE_MAP_IDS = [
+export type PlayableMapId =
+  | "andes"
+  | "coast"
+  | "canopy"
+  | "caldera"
+  | "totora"
+  | "saltglass"
+  | "huaca"
+  | "frost"
+  | "loom"
+  | "harbor";
+export const PLAYABLE_MAP_IDS: PlayableMapId[] = [
   "andes",
   "coast",
   "canopy",
@@ -14,8 +25,7 @@ export const PLAYABLE_MAP_IDS = [
   "frost",
   "loom",
   "harbor",
-] as const;
-export type PlayableMapId = (typeof PLAYABLE_MAP_IDS)[number];
+];
 export const WORLD_MAPS = {
   andes: {
     name: "Cloudbreak Valley",

@@ -3,7 +3,15 @@ import { WEAPON_ART } from "../weapons/design";
 
 export type { Species } from "@craft-ones/shared";
 export const HEAD_SCALE = 0.94;
-export const joints = {
+type Joints = {
+  neck: number[];
+  hipBack: number[];
+  hipFront: number[];
+  earBack: number[];
+  earFront: number[];
+  ankle: number[];
+};
+export const joints: Record<Species, Joints> = {
   freddy: {
     neck: [0, -21],
     hipBack: [-11, 15],
@@ -76,7 +84,7 @@ export const joints = {
     earFront: [7, -22],
     ankle: [0, 7],
   },
-} satisfies Record<Species, Record<string, number[]>>;
+};
 
 /** The same ordered silhouettes and joint transforms drive SVG proofs and Phaser. */
 export const BODY_LAYERS = [

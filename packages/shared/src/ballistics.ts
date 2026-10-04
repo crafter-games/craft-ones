@@ -84,12 +84,7 @@ function boundaryHit(
 }
 
 // Intersect each crossed linear terrain segment, including high-speed shots.
-function groundHit(
-  rocket: Point,
-  dx: number,
-  dy: number,
-  terrain: number[],
-) {
+function groundHit(rocket: Point, dx: number, dy: number, terrain: number[]) {
   if (rocket.y >= terrainHeight(terrain, rocket.x)) return 0;
   const intervals = [0, 1];
   if (dx !== 0) {
