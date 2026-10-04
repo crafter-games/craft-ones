@@ -46,6 +46,22 @@ import {
 
 const MAX_CATCH_UP_STEPS = 6;
 
+function shotOf(projectile: Projectile): Shot {
+  return {
+    x: projectile.x,
+    y: projectile.y,
+    vx: projectile.vx,
+    vy: projectile.vy,
+    kind: projectile.kind,
+    elapsedMs: projectile.elapsedMs,
+    bounces: projectile.bounces,
+    stuck: projectile.stuck,
+    attachedPlayer: projectile.attachedPlayer,
+    offsetX: projectile.offsetX,
+    offsetY: projectile.offsetY,
+  };
+}
+
 function loadShot(projectile: Projectile, shot: Shot) {
   projectile.x = shot.x;
   projectile.y = shot.y;
@@ -539,7 +555,10 @@ export class Battle {
   private physicsStep(now: number) {
     this.bodyStep();
     const shot = this.state.projectile;
-    const impact = advanceShot(shot, this.state, this.state.players);
+    // advanceShot works on a plain Shot; scriptc copies a class instance passed as one, so copy back.
+    const flight = shotOf(shot);
+    const impact = advanceShot(flight, this.state, this.state.players);
+    loadShot(shot, flight);
     this.flightMs += ARENA.stepMs;
     if (impact === "anchor") {
       shot.active = false;

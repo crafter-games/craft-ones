@@ -92,10 +92,16 @@ export function advanceShot(
     }
     return shot.elapsedMs + 0.001 >= spec.fuse ? "blast" : "flying";
   }
-  if (!world.terrainRows.length && shot.kind === "rocket")
-    return advanceRocket(shot, bodies, world.terrain, wind)
-      ? "blast"
-      : "flying";
+  if (!world.terrainRows.length && shot.kind === "rocket") {
+    // A plain Rocket, not the Shot itself: scriptc copies a record passed as a narrower type.
+    const rocket = { x: shot.x, y: shot.y, vx: shot.vx, vy: shot.vy };
+    const hit = advanceRocket(rocket, bodies, world.terrain, wind);
+    shot.x = rocket.x;
+    shot.y = rocket.y;
+    shot.vx = rocket.vx;
+    shot.vy = rocket.vy;
+    return hit ? "blast" : "flying";
+  }
   const dx = shot.vx * dt + 0.5 * wind * dt ** 2,
     dy = shot.vy * dt + 0.5 * ARENA.gravity * spec.gravity * dt ** 2;
   const terrain = gridHit(world, shot.x, shot.y, dx, dy);
