@@ -15,8 +15,8 @@ import {
   type Species,
 } from "../packages/shared/src";
 import { loadSpeakers, type Speakers } from "./src/audio";
+import { createControls } from "./src/controls";
 import {
-  aimBits,
   Bit,
   createMatch,
   DEFAULT_OPTIONS,
@@ -24,19 +24,11 @@ import {
   type MatchOptions,
   power01,
   seatOf,
-  slotBits,
   step,
   view,
   WINDOW,
 } from "./src/match";
-import {
-  createRenderer,
-  hotbarSlots,
-  loadArt,
-  loadCritter,
-  screenToWorld,
-  touchButtons,
-} from "./src/render";
+import { createRenderer, loadArt, loadCritter } from "./src/render";
 import { createSetup, press, renderSetup, type SetupKey } from "./src/setup";
 
 const STEP = 1 / 60;
@@ -57,27 +49,6 @@ const fromUrl: MatchOptions = {
     coat: (params.get("coat2") ?? DEFAULT_OPTIONS.two.coat) as CoatId,
   },
 };
-const BINDINGS: [number, number[]][] = [
-  [Bit.Left, [Key.Left, Key.A]],
-  [Bit.Right, [Key.Right, Key.D]],
-  [Bit.Jump, [Key.Space, Key.W]],
-  [Bit.AimUp, [Key.Up, Key.Q]],
-  [Bit.AimDown, [Key.Down, Key.E]],
-  [Bit.Fire, [Key.F, Key.Enter]],
-  [Bit.Weapon, [Key.Tab, Key.X]],
-  [Bit.Ability, [Key.C]],
-  [Bit.Map, [Key.M]],
-  [Bit.Restart, [Key.R]],
-];
-const SLOT_KEYS = [
-  Key.Digit1,
-  Key.Digit2,
-  Key.Digit3,
-  Key.Digit4,
-  Key.Digit5,
-  Key.Digit6,
-  Key.Digit7,
-];
 const SETUP_KEYS: [SetupKey, number[]][] = [
   ["up", [Key.Up, Key.W]],
   ["down", [Key.Down, Key.S]],
@@ -120,70 +91,7 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
       else held.delete(k);
     return down && !was;
   };
-  // Pointer and touch, turned into the same encoded input as the keyboard. Aim follows the pointer only after
-  // it moves, so the keyboard keeps aiming when the mouse sits still. A press on the hotbar picks a slot
-  // instead of charging a shot.
-  let lastPointer = { x: -1, y: -1 };
-  let charging = false;
-  let touched = false;
-  const W = WINDOW.width;
-  const H = WINDOW.height;
-  const inside = (
-    r: { x: number; y: number; w: number; h: number },
-    px: number,
-    py: number,
-  ): boolean => px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
-  const slotAt = (px: number, py: number): number =>
-    hotbarSlots(W, H).findIndex((r) =>
-      inside({ ...r, w: r.size, h: r.size }, px, py),
-    ) + 1;
-  const pointerBits = (current: Match): number => {
-    const seat = seatOf(current);
-    const player = current.battle.state.players[seat];
-    if (!player) return 0;
-    const aimAt = (px: number, py: number): number => {
-      const world = screenToWorld(current, px, py);
-      return aimBits(Math.atan2(world.y - player.y, world.x - player.x));
-    };
-    let bits = 0;
-    const fingers = input.touches();
-    if (fingers.length > 0) touched = true;
-    let aimFinger = false;
-    for (const f of fingers) {
-      const px = f.x * W;
-      const py = f.y * H;
-      const button = touchButtons(H).find((b) => inside(b, px, py));
-      if (button)
-        bits |=
-          button.id === "left"
-            ? Bit.Left
-            : button.id === "right"
-              ? Bit.Right
-              : Bit.Jump;
-      else if (slotAt(px, py) > 0) bits |= slotBits(slotAt(px, py));
-      else if (!aimFinger) {
-        aimFinger = true;
-        bits |= aimAt(px, py) | Bit.Fire;
-      }
-    }
-    if (fingers.length > 0) return bits;
-    const p = input.pointer();
-    const px = p.x * W;
-    const py = p.y * H;
-    const held = (p.buttons & 1) !== 0;
-    if (!held) charging = false;
-    else if (!charging) {
-      const slot = slotAt(px, py);
-      if (slot > 0) return slotBits(slot);
-      charging = true;
-    }
-    const moved = px !== lastPointer.x || py !== lastPointer.y;
-    lastPointer = { x: px, y: py };
-    if (moved && px >= 0 && px <= W && py >= 0 && py <= H)
-      bits |= aimAt(px, py);
-    if (charging) bits |= Bit.Fire | aimAt(px, py);
-    return bits;
-  };
+  const controls = createControls(input, WINDOW.width, WINDOW.height);
   let simulated = -1;
   return (time: number): boolean => {
     draw.begin();
@@ -217,13 +125,7 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
     }
     if (simulated < 0) simulated = time;
     for (let n = 0; simulated + STEP <= time && n < 5; n++) {
-      let bits = 0;
-      for (const [bit, keys] of BINDINGS)
-        if (keys.some((k) => input.down(k))) bits |= bit;
-      SLOT_KEYS.forEach((k, i) => {
-        if (input.down(k)) bits |= slotBits(i + 1);
-      });
-      bits |= pointerBits(match);
+      const bits = controls.bits(match);
       const inputs = [0, 0];
       const seat = seatOf(match);
       if (seat >= 0) inputs[seat] = bits;
@@ -241,7 +143,7 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
       simulated += STEP;
     }
     if (simulated < time - STEP * 5) simulated = time;
-    renderer.render(match, draw, touched);
+    renderer.render(match, draw, controls.touched());
     draw.end({ r: 0, g: 0, b: 0 });
     return true;
   };

@@ -6,7 +6,10 @@
       "steps": [
         {
           "label": "web",
-          "argv": ["sh", "scripts/build-web.sh"]
+          "argv": [
+            "sh",
+            "scripts/build-web.sh"
+          ]
         }
       ],
       "out": "dist/web",
@@ -14,6 +17,12 @@
         "provider": "vercel",
         "project": "craft-ones-dotframe",
         "scope": "crafter-station"
+      }
+    },
+    "native": {
+      "native": {
+        "platform": "macos",
+        "entry": "main.native.ts"
       }
     }
   },

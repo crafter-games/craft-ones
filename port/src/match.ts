@@ -131,15 +131,29 @@ export function createMatch(
 ): Match {
   const merged = { ...DEFAULT_OPTIONS, ...options };
   const map = PLAYABLE_MAP_IDS.includes(merged.map) ? merged.map : "andes";
-  const match = {
+  const chosen = { ...merged, map };
+  // Placeholder fields, replaced by newBattle: the battle's clock has to read this match.
+  const battle = new Battle(() => 0, map, seed >>> 0, chosen.opening);
+  const state = battle.state.toJSON() as BattleView;
+  const match: Match = {
     seed,
-    options: { ...merged, map },
+    options: chosen,
     frame: 0,
+    elapsed: 0,
+    battle,
+    angle: [0, 0],
+    charge: [0, 0],
     previous: [0, 0],
     sequence: 0,
+    movedAt: 0,
+    kickoff: 0,
+    notice: "",
+    noticeUntil: 0,
     rematches: 0,
+    camera: createCamera(state, FRAME),
+    fx: createEffects(state),
     log: [],
-  } as unknown as Match;
+  };
   newBattle(match);
   return match;
 }
@@ -216,11 +230,12 @@ export function step(match: Match, inputs: number[]): void {
         match.elapsed - match.movedAt >= ARENA.moveIntervalMs
       ) {
         match.movedAt = match.elapsed;
+        match.sequence += 1;
         report(
           match,
           battle.move(id, {
             direction,
-            sequence: ++match.sequence,
+            sequence: match.sequence,
             turnNumber,
           }),
         );

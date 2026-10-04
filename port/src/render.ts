@@ -129,7 +129,11 @@ export function critterLoaded(species: string, coat: string): boolean {
 }
 
 function hexRgb(hex: string): number[] {
-  const n = Number.parseInt(hex.slice(1), 16);
+  let n = 0;
+  for (let i = 1; i < hex.length; i++) {
+    const c = hex.charCodeAt(i);
+    n = n * 16 + (c <= 57 ? c - 48 : (c | 32) - 87);
+  }
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 
@@ -465,12 +469,12 @@ export function createRenderer(
             d.closePath();
             d.fill();
           };
-          for (const [color, width] of [
-            ["rgba(41,39,51,0.92)", 9],
-            ["#ffdf82", 5],
-          ] as const) {
-            d.setStrokeStyle(color);
-            d.setLineWidth(width);
+          for (const stroke of [
+            { color: "rgba(41,39,51,0.92)", width: 9 },
+            { color: "#ffdf82", width: 5 },
+          ]) {
+            d.setStrokeStyle(stroke.color);
+            d.setLineWidth(stroke.width);
             d.beginPath();
             d.moveTo(sx, sy);
             d.lineTo(ex, ey);
@@ -506,12 +510,12 @@ export function createRenderer(
       owner &&
       ((shot.active && shot.kind === "grapple") || state.phase === "grappling")
     ) {
-      for (const [color, width] of [
-        ["#4c473b", 4],
-        ["#e9cf9f", 1],
-      ] as const) {
-        d.setStrokeStyle(color);
-        d.setLineWidth(width);
+      for (const stroke of [
+        { color: "#4c473b", width: 4 },
+        { color: "#e9cf9f", width: 1 },
+      ]) {
+        d.setStrokeStyle(stroke.color);
+        d.setLineWidth(stroke.width);
         d.beginPath();
         d.moveTo(owner.x, owner.y);
         d.lineTo(shot.x, shot.y);
