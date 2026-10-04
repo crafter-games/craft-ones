@@ -43,6 +43,7 @@ const BINDINGS: [number, number[]][] = [
   [Bit.Fire, [Key.F, Key.Enter]],
   [Bit.Weapon, [Key.Tab, Key.X]],
   [Bit.Ability, [Key.C]],
+  [Bit.Map, [Key.M]],
 ];
 
 await run(WINDOW, ({ gpu, input }: Platform): Frame => {

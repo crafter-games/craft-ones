@@ -12,6 +12,7 @@ import {
   WEAPONS,
   type WeaponId,
 } from "../../packages/shared/src";
+import { type Camera, createCamera, updateCamera } from "./camera";
 
 export const WINDOW = { width: 1280, height: 720, title: "Craft Ones" };
 export const PLAYERS = 2;
@@ -28,6 +29,13 @@ export const Bit = {
   Fire: 32,
   Weapon: 64,
   Ability: 128,
+  Map: 256,
+};
+// The screen area below the HUD bar, which the camera frames.
+export const HUD_HEIGHT = 64;
+export const FRAME = {
+  width: WINDOW.width,
+  height: WINDOW.height - HUD_HEIGHT,
 };
 
 export interface MatchOptions {
@@ -57,6 +65,7 @@ export interface Match {
   previous: number[];
   sequence: number;
   notice: string;
+  camera: Camera;
   // Every input since start: save/restore replays it, because Battle keeps private state a clone would miss.
   log: number[][];
 }
@@ -78,6 +87,7 @@ export function createMatch(
     previous: [0, 0],
     sequence: 0,
     notice: "",
+    camera: null as unknown as Camera,
     log: [],
   };
   match.battle = new Battle(
@@ -89,6 +99,7 @@ export function createMatch(
   match.battle.destructible = true;
   match.battle.addPlayer("p1", merged.one);
   match.battle.addPlayer("p2", merged.two);
+  match.camera = createCamera(view(match), FRAME);
   return match;
 }
 
@@ -176,9 +187,20 @@ export function step(match: Match, inputs: number[]): void {
       match.charge[seat] = 0;
     }
   } else match.charge = [0, 0];
+  // Either seat can toggle the overview, even while the other one plays.
+  for (let i = 0; i < PLAYERS; i++)
+    if ((inputs[i] ?? 0) & ~match.previous[i] & Bit.Map)
+      match.camera.map = !match.camera.map;
   match.previous = [inputs[0] ?? 0, inputs[1] ?? 0];
   match.elapsed += STEP_MS;
   battle.step(STEP_MS);
+  updateCamera(
+    match.camera,
+    view(match),
+    FRAME,
+    STEP_MS,
+    match.charge.some((c) => c > 0),
+  );
 }
 
 export function power01(frames: number): number {
@@ -257,7 +279,8 @@ export function encode(input: unknown): number {
     (i.aimDown ? Bit.AimDown : 0) |
     (i.fire ? Bit.Fire : 0) |
     (i.weapon ? Bit.Weapon : 0) |
-    (i.ability ? Bit.Ability : 0)
+    (i.ability ? Bit.Ability : 0) |
+    (i.map ? Bit.Map : 0)
   );
 }
 

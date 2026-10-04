@@ -22,11 +22,12 @@ import {
   PROJECTILES,
   type ProjectileKind,
   shotTrajectory,
+  terrainContours,
   WORLD_HEIGHT,
   WORLD_MAPS,
   WORLD_WIDTH,
 } from "../../packages/shared/src";
-import { type Match, power01, seatOf, view } from "./match";
+import { FRAME, HUD_HEIGHT, type Match, power01, seatOf, view } from "./match";
 
 const PARTS = [
   "body",
@@ -42,6 +43,7 @@ const PARTS = [
   "eyes",
   "tail",
 ];
+export const TEXEL = 4;
 const SEAT_COLORS = ["#f5c367", "#6ad1b7"];
 
 export interface Art {
@@ -125,7 +127,9 @@ export function createRenderer(
   gpu: RenderGpu,
   window: { width: number; height: number },
 ) {
-  // The terrain is baked to one texel per cell whenever a crater lands; linear filtering softens the edge.
+  // Baked once per crater at TEXEL world units per texel from the shared contour loops (the same ones the web
+  // client strokes), filled with nonzero winding: outer loops run clockwise and caves counterclockwise.
+  // Four sub-scanlines per texel row and fractional span ends give antialiased edges.
   let terrainKey = "";
   let terrain: Texture | null = null;
   const bakeTerrain = (state: BattleView): void => {
@@ -133,48 +137,58 @@ export function createRenderer(
     if (key === terrainKey) return;
     terrainKey = key;
     const rows = state.terrainRows;
-    const height = rows.length;
-    const width = height ? rows[0].length : 0;
-    if (!width) return;
+    const cellsY = rows.length;
+    const cellsX = cellsY ? rows[0].length : 0;
+    if (!cellsX) return;
     const id =
       PLAYABLE_MAP_IDS.find((m) => m === state.mapId) ?? PLAYABLE_MAP_IDS[0];
     const p = WORLD_MAPS[id].palette;
-    const [earth, shade, light, rim, outline] = [
+    const [earth, shade, light, rim, rimLight, outline] = [
       p.earth,
       p.shade,
       p.light,
       p.rim,
+      p.rimLight,
       p.outline,
     ].map(hexRgb);
+    const width = (cellsX * CELL) / TEXEL;
+    const height = (cellsY * CELL) / TEXEL;
+    const coverage = rasterizeLoops(terrainContours(rows), width, height);
+    const solid = (wx: number, wy: number): boolean => {
+      const x = Math.floor(wx / TEXEL);
+      const y = Math.floor(wy / TEXEL);
+      return (
+        x >= 0 &&
+        x < width &&
+        y >= 0 &&
+        y < height &&
+        coverage[y * width + x] >= 0.5
+      );
+    };
     const pixels = new Uint8Array(width * height * 4);
-    const solid = (x: number, y: number): boolean => rows[y]?.[x] === "1";
-    for (let y = 0; y < height; y++)
-      for (let x = 0; x < width; x++) {
-        if (!solid(x, y)) continue;
-        // Depth below the nearest open cell above picks the rim, the band, or the body color.
-        let depth = 0;
-        while (depth < 6 && solid(x, y - depth - 1)) depth++;
-        const edge = !solid(x - 1, y) || !solid(x + 1, y) || !solid(x, y + 1);
-        const band = Math.floor((y * CELL + 22 * Math.sin(x * 0.2)) / 96) % 3;
-        const color =
-          depth < 1
-            ? outline
-            : depth < 3
-              ? rim
-              : edge
-                ? outline
-                : band === 0
-                  ? shade
-                  : band === 1
-                    ? light
-                    : earth;
-        const i = (y * width + x) * 4;
+    for (let py = 0; py < height; py++)
+      for (let px = 0; px < width; px++) {
+        const alpha = coverage[py * width + px];
+        if (alpha <= 0) continue;
+        const wx = (px + 0.5) * TEXEL;
+        const wy = (py + 0.5) * TEXEL;
+        let color: number[];
+        if (!solid(wx, wy - 5)) color = outline;
+        else if (!solid(wx, wy - 9)) color = rimLight;
+        else if (!solid(wx, wy - 17)) color = rim;
+        else if (!solid(wx - 6, wy) || !solid(wx + 6, wy) || !solid(wx, wy + 6))
+          color = outline;
+        else {
+          const band = Math.floor((wy + 22 * Math.sin(wx / 128)) / 96) % 3;
+          color = band === 0 ? shade : band === 1 ? light : earth;
+        }
+        const i = (py * width + px) * 4;
         pixels[i] = color[0];
         pixels[i + 1] = color[1];
         pixels[i + 2] = color[2];
-        pixels[i + 3] = 255;
+        pixels[i + 3] = Math.round(Math.min(1, alpha) * 255);
       }
-    // dotframe has no texture update or destroy yet, so each crater allocates a new one (~260 KB).
+    // dotframe has no texture update or destroy yet, so each crater allocates a new one (~1 MB).
     terrain = gpu.createTexture(width, height, pixels, true);
   };
 
@@ -291,14 +305,27 @@ export function createRenderer(
     const palette = WORLD_MAPS[id].palette;
     d.setFillStyle(palette.sky);
     d.fillRect(0, 0, W, H);
-    // Fit the whole world: a 1v1 artillery duel reads best when both critters are on screen.
-    const s = Math.min(W / WORLD_WIDTH, (H - 64) / WORLD_HEIGHT);
-    const ox = (W - WORLD_WIDTH * s) / 2;
-    const oy = 64 + (H - 64 - WORLD_HEIGHT * s) / 2;
+    // World to screen through the sim's camera, centered in the area below the HUD bar.
+    const zoom = match.camera.zoom;
+    const left = match.camera.x - FRAME.width / 2 / zoom;
+    const top = match.camera.y - FRAME.height / 2 / zoom;
     d.save();
-    d.translate(ox, oy);
-    d.scale(s, s);
-    image(d, `map-${id}`, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    d.translate(0, HUD_HEIGHT);
+    d.scale(zoom, zoom);
+    d.translate(-left, -top);
+    // Stretch the scenery over whatever the camera sees, so pulling back past the world shows no seam.
+    const coverLeft = Math.min(0, left);
+    const coverTop = Math.min(0, top);
+    const coverRight = Math.max(WORLD_WIDTH, left + FRAME.width / zoom);
+    const coverBottom = Math.max(WORLD_HEIGHT, top + FRAME.height / zoom);
+    image(
+      d,
+      `map-${id}`,
+      coverLeft,
+      coverTop,
+      coverRight - coverLeft,
+      coverBottom - coverTop,
+    );
     bakeTerrain(state);
     if (terrain)
       d.drawImage(
@@ -309,8 +336,8 @@ export function createRenderer(
         terrain.height,
         0,
         0,
-        terrain.width * CELL,
-        terrain.height * CELL,
+        terrain.width * TEXEL,
+        terrain.height * TEXEL,
       );
 
     const seat = seatOf(match);
@@ -353,15 +380,20 @@ export function createRenderer(
         d.closePath();
         d.fill();
       }
-      d.setFont("bold 22px Archivo Black");
+      // Labels keep their screen size at any zoom.
+      d.save();
+      d.translate(player.x, player.y + 22 + 16 / zoom);
+      d.scale(1 / zoom, 1 / zoom);
+      d.setFont("11px Archivo Black");
       d.setTextAlign("center");
       d.setTextBaseline("middle");
       const label = `${CHARACTERS[player.species].name.toUpperCase()} · P${player.number}`;
-      const w = d.measureText(label).width + 20;
+      const w = d.measureText(label).width + 14;
       d.setFillStyle("#493d46");
-      d.fillRect(player.x - w / 2, player.y + 30, w, 32);
+      d.fillRect(-w / 2, -10, w, 20);
       d.setFillStyle("#fff2d3");
-      d.fillText(label, player.x, player.y + 47);
+      d.fillText(label, 0, 1);
+      d.restore();
 
       if (active && aiming && i === seat) {
         // Walking range, anchored where the turn began.
@@ -481,4 +513,68 @@ function drawHud(d: Draw2D, state: BattleView, W: number): void {
           : `<< WIND ${Math.abs(Math.round(state.wind))}`;
     d.fillText(`TURN ${state.turnNumber} · ${wind}`, W / 2, 48);
   }
+}
+
+type Point = { x: number; y: number };
+
+// Coverage (0..1) per texel of closed loops in world units, nonzero winding.
+export function rasterizeLoops(
+  loops: Point[][],
+  width: number,
+  height: number,
+): Float32Array {
+  const SUB = 4;
+  const coverage = new Float32Array(width * height);
+  const edges: {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+    dir: number;
+  }[] = [];
+  for (const loop of loops)
+    for (let i = 0; i < loop.length; i++) {
+      const a = loop[i];
+      const b = loop[(i + 1) % loop.length];
+      if (a.y === b.y) continue;
+      const dir = b.y > a.y ? 1 : -1;
+      const [lo, hi] = dir > 0 ? [a, b] : [b, a];
+      edges.push({
+        x0: lo.x / TEXEL,
+        y0: lo.y / TEXEL,
+        x1: hi.x / TEXEL,
+        y1: hi.y / TEXEL,
+        dir,
+      });
+    }
+  const crossings: { x: number; dir: number }[] = [];
+  for (let sy = 0; sy < height * SUB; sy++) {
+    const y = (sy + 0.5) / SUB;
+    crossings.length = 0;
+    for (const e of edges)
+      if (y >= e.y0 && y < e.y1)
+        crossings.push({
+          x: e.x0 + ((y - e.y0) / (e.y1 - e.y0)) * (e.x1 - e.x0),
+          dir: e.dir,
+        });
+    crossings.sort((m, n) => m.x - n.x);
+    const row = Math.floor(sy / SUB) * width;
+    let winding = 0;
+    for (let k = 0; k < crossings.length - 1; k++) {
+      winding += crossings[k].dir;
+      if (winding === 0) continue;
+      const from = Math.max(0, crossings[k].x);
+      const to = Math.min(width, crossings[k + 1].x);
+      if (to <= from) continue;
+      const first = Math.floor(from);
+      const last = Math.min(width - 1, Math.floor(to));
+      if (first === last) coverage[row + first] += (to - from) / SUB;
+      else {
+        coverage[row + first] += (first + 1 - from) / SUB;
+        for (let x = first + 1; x < last; x++) coverage[row + x] += 1 / SUB;
+        if (last < width) coverage[row + last] += (to - last) / SUB;
+      }
+    }
+  }
+  return coverage;
 }

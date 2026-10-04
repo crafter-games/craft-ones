@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "dotframe dev",
-    "test": "dotframe replay verify replays/*.json"
+    "test": "bun test tests && dotframe replay verify replays/*.json"
   },
   "dependencies": {
     "dotframe": "0.1.3"
