@@ -74,16 +74,18 @@ export function createControls(input: Input, W: number, H: number): Controls {
       const px = f.x * W;
       const py = f.y * H;
       let button = "";
-      for (const b of touchButtons(H))
+      for (const b of touchButtons(W, H))
         if (button === "" && inside(b.x, b.y, b.w, b.h, px, py)) button = b.id;
       const slot = slotAt(px, py);
       if (button === "left") bits |= Bit.Left;
       else if (button === "right") bits |= Bit.Right;
       else if (button === "jump") bits |= Bit.Jump;
+      else if (button === "fire") bits |= Bit.Fire;
       else if (slot > 0) bits |= slotBits(slot);
       else if (!aimFinger) {
+        // Dragging on the field only aims; the fire button charges and releases.
         aimFinger = true;
-        bits |= aimAt(px, py) | Bit.Fire;
+        bits |= aimAt(px, py);
       }
     }
     if (fingers.length > 0) return bits;

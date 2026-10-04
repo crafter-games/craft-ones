@@ -780,9 +780,13 @@ export function hotbarSlots(
   }));
 }
 
-// Touch buttons, as TouchControls places them: walk left, walk right, jump.
-export function touchButtons(H: number): {
-  id: "left" | "right" | "jump";
+// Touch buttons: walk left, walk right and jump on the left; fire on the right. Dragging on the field aims, so a
+// phone can set the angle without charging (there is no hover).
+export function touchButtons(
+  W: number,
+  H: number,
+): {
+  id: "left" | "right" | "jump" | "fire";
   x: number;
   y: number;
   w: number;
@@ -793,6 +797,7 @@ export function touchButtons(H: number): {
     { id: "left", x: 12, y, w: 64, h: 64 },
     { id: "right", x: 84, y, w: 64, h: 64 },
     { id: "jump", x: 156, y, w: 100, h: 64 },
+    { id: "fire", x: W - 152, y: y - 40, w: 140, h: 104 },
   ];
 }
 
@@ -1041,15 +1046,24 @@ function drawHud(
   }
 
   if (touch && current && state.phase === "aiming")
-    for (const b of touchButtons(H)) {
+    for (const b of touchButtons(W, H)) {
       panel(d, b.x, b.y, b.w, b.h, HUD.ink);
-      const label = b.id === "left" ? "<" : b.id === "right" ? ">" : "JUMP";
+      const label =
+        b.id === "left"
+          ? "<"
+          : b.id === "right"
+            ? ">"
+            : b.id === "jump"
+              ? "JUMP"
+              : "FIRE";
       text(
         d,
         label,
         b.x + b.w / 2,
         b.y + b.h / 2,
-        b.id === "jump" ? "16px Archivo Black" : "28px Archivo Black",
+        b.id === "left" || b.id === "right"
+          ? "28px Archivo Black"
+          : "16px Archivo Black",
         HUD.cream,
         "center",
       );
