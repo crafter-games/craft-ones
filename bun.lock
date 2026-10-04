@@ -51,9 +51,6 @@
     },
     "packages/shared": {
       "name": "@craft-ones/shared",
-      "dependencies": {
-        "@colyseus/schema": "3.0.76",
-      },
     },
   },
   "patchedDependencies": {
