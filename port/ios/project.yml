@@ -15,12 +15,14 @@ targets:
       - path: build/game
         type: folder
         buildPhase: resources
+      - path: build/Assets.xcassets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: run.crafter.craftones
         DEVELOPMENT_TEAM: PK4JFXUL2L
         CODE_SIGN_STYLE: Automatic
         INFOPLIST_FILE: host/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1,2"
         HEADER_SEARCH_PATHS:
           - $(SRCROOT)/vendor/SDL3-3.4.16/include
