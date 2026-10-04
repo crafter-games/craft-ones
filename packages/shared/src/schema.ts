@@ -214,10 +214,11 @@ export type BattleView = {
   phase: Phase;
   currentPlayer: string;
   turnNumber: number;
-  roundNumber: number;
+  // Same order as toJSON: scriptc's JSON.stringify follows the declared type, and checksums hash that text.
   remainingMs: number;
   waitingRemainingMs: number;
   winner: string;
   finishReason: string;
+  roundNumber: number;
   openingSeat: string;
 };

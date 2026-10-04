@@ -70,6 +70,9 @@ export function createControls(input: Input, W: number, H: number): Controls {
     return 0;
   };
   const pointerBits = (match: Match): number => {
+    // After the match, any tap asks for a rematch.
+    if (match.battle.state.phase === "finished")
+      return input.touches().length > 0 ? Bit.Restart : 0;
     const seat = seatOf(match);
     if (seat < 0 || seat >= match.battle.state.players.length) return 0;
     const player = match.battle.state.players[seat];
@@ -95,6 +98,7 @@ export function createControls(input: Input, W: number, H: number): Controls {
       if (button === "left") bits |= Bit.Left;
       else if (button === "right") bits |= Bit.Right;
       else if (button === "jump") bits |= Bit.Jump;
+      else if (button === "map") bits |= Bit.Map;
       else if (slot > 0) bits |= slotBits(slot);
       else if (slingId < 0) {
         // A new finger on the field starts the slingshot.

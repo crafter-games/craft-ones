@@ -9,6 +9,7 @@ import {
   Bit,
   createMatch,
   DEFAULT_OPTIONS,
+  fitAspect,
   type Match,
   power01,
   seatOf,
@@ -31,6 +32,7 @@ let simulated = -1;
 
 export function init(base: string): void {
   const platform = openLibraryPlatform(WINDOW);
+  fitAspect(platform.width / Math.max(platform.height, 1));
   const d = createDraw2D(platform.gpu, WINDOW.width, WINDOW.height);
   const read = (path: string): Uint8Array => platform.readFile(path);
   loadArtSync(d, read, (png: Uint8Array) => platform.image(png, true), base, [

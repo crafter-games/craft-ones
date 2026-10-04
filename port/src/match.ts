@@ -67,6 +67,14 @@ export const FRAME = {
   height: WINDOW.height - HUD_HEIGHT,
 };
 
+// Phones are wider than 16:9: keep the 720 logical height and widen the view to the screen's aspect, so nothing
+// stretches. Call before creating the renderer and the match.
+export function fitAspect(aspect: number): void {
+  const width = Math.max(WINDOW.height, Math.round(WINDOW.height * aspect));
+  WINDOW.width = width;
+  FRAME.width = width;
+}
+
 export interface MatchOptions {
   map: PlayableMapId;
   one: PlayerOptions;

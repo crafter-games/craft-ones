@@ -788,7 +788,7 @@ export function hotbarSlots(
 
 // Touch buttons: walk left, walk right and jump. Dragging on the field is a slingshot (see controls.ts).
 export function touchButtons(H: number): {
-  id: "left" | "right" | "jump";
+  id: "left" | "right" | "jump" | "map";
   x: number;
   y: number;
   w: number;
@@ -799,6 +799,7 @@ export function touchButtons(H: number): {
     { id: "left", x: 12, y, w: 64, h: 64 },
     { id: "right", x: 84, y, w: 64, h: 64 },
     { id: "jump", x: 156, y, w: 100, h: 64 },
+    { id: "map", x: 264, y, w: 80, h: 64 },
   ];
 }
 
@@ -1050,7 +1051,14 @@ function drawHud(
   if (touch && current && state.phase === "aiming")
     for (const b of touchButtons(H)) {
       panel(d, b.x, b.y, b.w, b.h, HUD.ink);
-      const label = b.id === "left" ? "<" : b.id === "right" ? ">" : "JUMP";
+      const label =
+        b.id === "left"
+          ? "<"
+          : b.id === "right"
+            ? ">"
+            : b.id === "jump"
+              ? "JUMP"
+              : "MAP";
       text(
         d,
         label,
@@ -1125,7 +1133,7 @@ function drawHud(
     );
     text(
       d,
-      "Press R for a rematch",
+      touch ? "Tap for a rematch" : "Press R for a rematch",
       W / 2,
       H / 2 + 88,
       "12px Archivo Black",
