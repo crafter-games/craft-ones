@@ -7,7 +7,7 @@
     "test": "bun test tests && dotframe replay verify replays/*.json"
   },
   "dependencies": {
-    "dotframe": "0.1.3"
+    "dotframe": "0.1.4"
   },
   "devDependencies": {
     "@webgpu/types": "^0.1.74"
