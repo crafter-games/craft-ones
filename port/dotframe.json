@@ -1,0 +1,11 @@
+{
+  "name": "craft-ones",
+  "sim": "sim.ts",
+  "targets": {
+    "web": {
+      "steps": [{ "label": "web", "argv": ["sh", "scripts/build-web.sh"] }],
+      "out": "dist/web"
+    }
+  },
+  "assets": { "localOnly": [] }
+}

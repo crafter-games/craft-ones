@@ -1,0 +1,15 @@
+{
+  "name": "@craft-ones/dotframe-port",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "dotframe dev",
+    "test": "dotframe replay verify replays/*.json"
+  },
+  "dependencies": {
+    "dotframe": "^0.1.0"
+  },
+  "devDependencies": {
+    "@webgpu/types": "^0.1.74"
+  }
+}

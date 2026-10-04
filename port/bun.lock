@@ -1,0 +1,20 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "port",
+      "dependencies": {
+        "dotframe": "^0.1.0",
+      },
+      "devDependencies": {
+        "@webgpu/types": "^0.1.74",
+      },
+    },
+  },
+  "packages": {
+    "@webgpu/types": ["@webgpu/types@0.1.74", "", {}, "sha512-lgiI4hbuLcI9unnm2cL/tvCaQU45dp0xcLWJh5uB/9MBGvIA4F8XIk7nSiBeg+K4xWGYwgZKn80LmERI5CxoTA=="],
+
+    "dotframe": ["dotframe@0.1.2", "", { "bin": { "dotframe": "cli/main.ts" } }, "sha512-JoHJ5nrZJ1DK4MHYLgs89o5r/e4Hd2jhwui84JIBxB+chqFsIsteJeDmBIUoXFqQ9gxRGwtetYCKWqGvAYRDIw=="],
+  }
+}
