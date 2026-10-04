@@ -4,8 +4,8 @@ import { terrainHeight } from "./terrain";
 
 /** Player gravity uses the same fixed step as rockets, including during flight. */
 export function settlePlayers(
-  players: Iterable<Player>,
-  terrain: ArrayLike<number>,
+  players: Player[],
+  terrain: number[],
 ) {
   const dt = ARENA.stepMs / 1000;
   for (const player of players) {

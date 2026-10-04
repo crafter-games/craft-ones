@@ -29,7 +29,7 @@ export function launch(
   player: Point,
   angle: number,
   power: number,
-  terrain: ArrayLike<number>,
+  terrain: number[],
 ): Rocket {
   const speed = ARENA.minSpeed + power * (ARENA.maxSpeed - ARENA.minSpeed);
   const x = clamp(
@@ -88,7 +88,7 @@ function groundHit(
   rocket: Point,
   dx: number,
   dy: number,
-  terrain: ArrayLike<number>,
+  terrain: number[],
 ) {
   if (rocket.y >= terrainHeight(terrain, rocket.x)) return 0;
   const intervals = [0, 1];
@@ -121,8 +121,8 @@ function groundHit(
 
 export function advanceRocket(
   rocket: Rocket,
-  players: Iterable<Pick<PlayerView, "x" | "y" | "hp">>,
-  terrain: ArrayLike<number>,
+  players: Pick<PlayerView, "x" | "y" | "hp">[],
+  terrain: number[],
   wind = 0,
 ) {
   const dt = ARENA.stepMs / 1000;

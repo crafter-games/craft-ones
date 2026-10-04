@@ -51,7 +51,7 @@ function bodyHit(
   y: number,
   dx: number,
   dy: number,
-  players: Iterable<Pick<PlayerView, "x" | "y" | "hp">>,
+  players: Pick<PlayerView, "x" | "y" | "hp">[],
 ) {
   let hit = Infinity;
   for (const p of players) {
@@ -77,7 +77,7 @@ function bodyHit(
 export function advanceShot(
   shot: Shot,
   world: Geometry,
-  players: Iterable<Pick<PlayerView, "x" | "y" | "hp">>,
+  players: Pick<PlayerView, "x" | "y" | "hp">[],
 ): Impact {
   const spec = PROJECTILES[shot.kind],
     dt = ARENA.stepMs / 1000,

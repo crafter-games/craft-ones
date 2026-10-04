@@ -20,8 +20,13 @@ import {
   resolveOpeningIndex,
 } from "./matchOptions";
 import { settlePlayers } from "./playerMotion";
-import { advanceShot, launchShot } from "./projectiles";
-import { BattleState, type FireAction, Player } from "./schema";
+import { advanceShot, launchShot, type Shot } from "./projectiles";
+import {
+  BattleState,
+  type FireAction,
+  Player,
+  type Projectile,
+} from "./schema";
 import { carveCrater, type MapId, makeTerrain, terrainHeight } from "./terrain";
 import { eraseCircle, grounded } from "./terrainGrid";
 import {
@@ -40,12 +45,29 @@ import {
 } from "./worlds";
 
 const MAX_CATCH_UP_STEPS = 6;
+
+function loadShot(projectile: Projectile, shot: Shot) {
+  projectile.x = shot.x;
+  projectile.y = shot.y;
+  projectile.vx = shot.vx;
+  projectile.vy = shot.vy;
+  projectile.kind = shot.kind;
+  projectile.elapsedMs = shot.elapsedMs;
+  projectile.bounces = shot.bounces;
+  projectile.stuck = shot.stuck;
+  projectile.attachedPlayer = shot.attachedPlayer;
+  projectile.offsetX = shot.offsetX;
+  projectile.offsetY = shot.offsetY;
+}
 const EPSILON = 1e-7;
 
 function isFireAction(value: unknown): value is FireAction {
   if (typeof value !== "object" || value === null || Array.isArray(value))
     return false;
-  const { angle, power, turnNumber } = value as Record<string, unknown>;
+  const fields = value as Record<string, unknown>;
+  const angle = fields.angle;
+  const power = fields.power;
+  const turnNumber = fields.turnNumber;
   return (
     typeof angle === "number" &&
     Number.isFinite(angle) &&
@@ -115,10 +137,10 @@ export class Battle {
     }
     if (!payload || typeof payload !== "object" || Array.isArray(payload))
       return "Invalid move";
-    const { direction, turnNumber, sequence } = payload as Record<
-      string,
-      unknown
-    >;
+    const fields = payload as Record<string, unknown>;
+    const direction = fields.direction;
+    const turnNumber = fields.turnNumber;
+    const sequence = fields.sequence;
     if (
       (direction !== -1 && direction !== 1) ||
       !Number.isSafeInteger(sequence) ||
@@ -252,9 +274,12 @@ export class Battle {
     player.number = this.state.players.length + 1;
     player.x = ARENA.width * (player.number === 1 ? 0.25 : 0.75);
     player.y = terrainHeight(this.state.terrain, player.x) - ARENA.playerRadius;
-    if (this.state.mapId !== "flat")
-      [player.x, player.y] =
-        WORLD_MAPS[this.state.mapId as PlayableMapId].spawns[player.number - 1];
+    if (this.state.mapId !== "flat") {
+      const spawns = WORLD_MAPS[this.state.mapId as PlayableMapId].spawns;
+      const spawn = player.number === 1 ? spawns[0] : spawns[1];
+      player.x = spawn[0];
+      player.y = spawn[1];
+    }
     setAppearance(player, defaultAppearance(player.number));
     if (options) setAppearance(player, options);
     resetMovement(player);
@@ -289,7 +314,7 @@ export class Battle {
     }
     const player = validateTurn(this.state, sessionId, payload);
     if (!player) return "Cannot select now";
-    const { selection } = payload as { selection?: unknown };
+    const selection = (payload as Record<string, unknown>).selection;
     if (selection === "ability") {
       if (
         !abilityNeedsAim(player.species) ||
@@ -336,24 +361,31 @@ export class Battle {
     player.selectedWeapon = kind;
     player.abilityArmed = false;
     if (this.state.terrainRows.length || kind !== "rocket")
-      Object.assign(
+      loadShot(
         projectile,
         launchShot(this.state, player, payload.angle, payload.power, kind),
       );
-    else
-      Object.assign(
-        projectile,
-        launch(player, payload.angle, payload.power, this.state.terrain),
-        {
-          kind,
-          elapsedMs: 0,
-          bounces: 0,
-          stuck: false,
-          attachedPlayer: 0,
-          offsetX: 0,
-          offsetY: 0,
-        },
+    else {
+      const rocket = launch(
+        player,
+        payload.angle,
+        payload.power,
+        this.state.terrain,
       );
+      loadShot(projectile, {
+        x: rocket.x,
+        y: rocket.y,
+        vx: rocket.vx,
+        vy: rocket.vy,
+        kind,
+        elapsedMs: 0,
+        bounces: 0,
+        stuck: false,
+        attachedPlayer: 0,
+        offsetX: 0,
+        offsetY: 0,
+      });
+    }
     this.state.lastAction = kind;
     projectile.active = true;
     this.state.phase = "flying";
@@ -637,11 +669,11 @@ export class Battle {
     const kind = abilityProjectile(player.species);
     if (!kind) return;
     this.controlledMotion.delete(player);
-    Object.assign(
+    loadShot(
       this.state.projectile,
       launchShot(this.state, player, angle, power, kind),
-      { active: true },
     );
+    this.state.projectile.active = true;
     this.state.lastAction = kind;
     this.state.phase = "flying";
     this.state.remainingMs = 0;

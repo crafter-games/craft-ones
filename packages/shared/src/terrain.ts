@@ -122,7 +122,7 @@ export function makeTerrain(mapId: MapId): number[] {
   });
 }
 
-export function terrainHeight(terrain: ArrayLike<number>, x: number): number {
+export function terrainHeight(terrain: number[], x: number): number {
   if (!terrain.length) return ARENA.groundY;
   const index = Math.max(
     0,
@@ -138,7 +138,7 @@ export function terrainHeight(terrain: ArrayLike<number>, x: number): number {
 
 /** A height field has solid ground below its surface; craters cannot create caves. */
 export function carveCrater(
-  terrain: { length: number; [index: number]: number },
+  terrain: number[],
   x: number,
   y: number,
   radius: number,

@@ -5,12 +5,11 @@ export const CELL = 8;
 export type Geometry = {
   worldWidth: number;
   worldHeight: number;
-  terrain: ArrayLike<number>;
-  terrainRows: ArrayLike<string>;
+  terrain: number[];
+  terrainRows: string[];
   /** Horizontal projectile acceleration in world units per second squared. */
   wind?: number;
 };
-type MutableRows = { length: number; [index: number]: string };
 
 /** Compact replicated occupancy rows support islands, caves and circular holes. */
 export function solidAt(world: Geometry, x: number, y: number): boolean {
@@ -48,7 +47,7 @@ export function bodyBlocked(
       Math.min(world.worldWidth / CELL - 1, Math.floor((x + radius) / CELL));
       col++
     ) {
-      if (world.terrainRows[row][col] !== "1") continue;
+      if (world.terrainRows[row].charAt(col) !== "1") continue;
       const nx = Math.max(col * CELL, Math.min((col + 1) * CELL, x));
       const ny = Math.max(row * CELL, Math.min((row + 1) * CELL, y));
       if ((nx - x) ** 2 + (ny - y) ** 2 < radius ** 2 - 0.001) return true;
@@ -62,7 +61,7 @@ export function grounded(world: Geometry, x: number, y: number) {
 }
 
 export function eraseCircle(
-  rows: MutableRows,
+  rows: string[],
   x: number,
   y: number,
   radius: number,

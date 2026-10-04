@@ -65,7 +65,7 @@ export function moveHorizontal(
 
 export function worldBodyStep(
   world: Geometry,
-  players: Iterable<Player>,
+  players: Player[],
   controlled?: ReadonlySet<Player>,
 ) {
   const dt = ARENA.stepMs / 1000;

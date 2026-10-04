@@ -36,7 +36,7 @@ function simplify(points: Point[], tolerance = CELL * 0.75): Point[] {
 }
 
 /** Clockwise outer loops and counterclockwise cave loops, solid on the right. */
-export function terrainContours(rows: ArrayLike<string>): Point[][] {
+export function terrainContours(rows: string[]): Point[][] {
   const edges: Edge[] = [];
   const outgoing = new Map<string, Edge[]>();
   const key = (p: Point) => `${p.x},${p.y}`;
@@ -61,11 +61,11 @@ export function terrainContours(rows: ArrayLike<string>): Point[][] {
   };
   for (let y = 0; y < rows.length; y++)
     for (let x = 0; x < rows[y].length; x++) {
-      if (rows[y][x] !== "1") continue;
+      if (rows[y].charAt(x) !== "1") continue;
       if (rows[y - 1]?.[x] !== "1") add(x, y, 1, 0, 0);
-      if (rows[y][x + 1] !== "1") add(x + 1, y, 0, 1, 1);
+      if (rows[y].charAt(x + 1) !== "1") add(x + 1, y, 0, 1, 1);
       if (rows[y + 1]?.[x] !== "1") add(x + 1, y + 1, -1, 0, 2);
-      if (rows[y][x - 1] !== "1") add(x, y + 1, 0, -1, 3);
+      if (rows[y].charAt(x - 1) !== "1") add(x, y + 1, 0, -1, 3);
     }
   const loops: Point[][] = [];
   for (const first of edges) {
