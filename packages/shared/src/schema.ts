@@ -138,6 +138,7 @@ export class BattleState {
   finishReason = "";
   openingSeat = "host";
 
+  // Same key order as the Schema definition, so JSON snapshots and checksums are unchanged.
   toJSON(): BattleView {
     return {
       worldWidth: this.worldWidth,
@@ -154,11 +155,11 @@ export class BattleState {
       phase: this.phase,
       currentPlayer: this.currentPlayer,
       turnNumber: this.turnNumber,
-      roundNumber: this.roundNumber,
       remainingMs: this.remainingMs,
       waitingRemainingMs: this.waitingRemainingMs,
       winner: this.winner,
       finishReason: this.finishReason,
+      roundNumber: this.roundNumber,
       openingSeat: this.openingSeat,
     };
   }
