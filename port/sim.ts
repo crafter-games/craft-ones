@@ -60,11 +60,7 @@ export default defineSim({
       restore: (saved: unknown): void => {
         match = restore(saved as Saved);
       },
-      inspect: (): unknown => ({
-        view: view(match),
-        angle: match.angle,
-        charge: match.charge,
-      }),
+      inspect: (): unknown => ({ view: view(match), angle: match.angle, charge: match.charge, camera: match.camera, fx: match.fx, kickoff: match.kickoff }),
       render: (d) => renderer.render(match, d),
     };
   },

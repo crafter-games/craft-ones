@@ -14,6 +14,7 @@ import {
   type WeaponId,
 } from "../../packages/shared/src";
 import { type Camera, createCamera, updateCamera } from "./camera";
+import { createEffects, type Effects, updateEffects } from "./effects";
 
 export const WINDOW = { width: 1280, height: 720, title: "Craft Ones" };
 export const PLAYERS = 2;
@@ -91,6 +92,7 @@ export interface Match {
   noticeUntil: number;
   rematches: number;
   camera: Camera;
+  fx: Effects;
   // Every input since start: save/restore replays it, because Battle keeps private state a clone would miss.
   log: number[][];
 }
@@ -114,6 +116,7 @@ function newBattle(match: Match): void {
   match.notice = "";
   match.noticeUntil = 0;
   match.camera = createCamera(view(match), FRAME);
+  match.fx = createEffects(view(match));
 }
 
 export function createMatch(
@@ -260,9 +263,11 @@ export function step(match: Match, inputs: number[]): void {
   match.previous = [inputs[0] ?? 0, inputs[1] ?? 0];
   match.elapsed += STEP_MS;
   battle.step(STEP_MS);
+  const after = view(match);
+  updateEffects(match.fx, after, match.frame);
   updateCamera(
     match.camera,
-    view(match),
+    after,
     FRAME,
     STEP_MS,
     match.charge.some((c) => c > 0),
@@ -303,6 +308,7 @@ export function summary(match: Match): unknown {
     terrainRevision: s.terrainRevision,
     winner: s.winner,
     rematches: match.rematches,
+    effects: { trail: match.fx.trail.length, bursts: match.fx.bursts.length, popups: match.fx.popups.map((t) => t.amount) },
     notice: match.frame < match.noticeUntil ? match.notice : "",
     players: s.players.map((p, i) => ({
       id: p.sessionId,

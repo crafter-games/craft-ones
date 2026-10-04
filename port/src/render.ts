@@ -28,6 +28,7 @@ import {
   WORLD_MAPS,
   WORLD_WIDTH,
 } from "../../packages/shared/src";
+import { POPUP_LIFE } from "./effects";
 import {
   FRAME,
   HUD_HEIGHT,
@@ -323,6 +324,15 @@ export function createRenderer(
     d.translate(0, HUD_HEIGHT);
     d.scale(zoom, zoom);
     d.translate(-left, -top);
+    const newest = match.fx.bursts.at(-1);
+    const shakeAge = newest ? (match.frame - newest.frame) * (1000 / 60) : 1000;
+    if (shakeAge < 140) {
+      const amount = (0.003 * FRAME.width) / zoom;
+      d.translate(
+        Math.sin(match.frame * 2.1) * amount,
+        Math.cos(match.frame * 1.7) * amount,
+      );
+    }
     // Stretch the scenery over whatever the camera sees, so pulling back past the world shows no seam.
     const coverLeft = Math.min(0, left);
     const coverTop = Math.min(0, top);
@@ -489,33 +499,154 @@ export function createRenderer(
     });
 
     const shot = state.projectile;
+    const owner = state.players.find(
+      (p) => p.sessionId === state.currentPlayer,
+    );
+    if (
+      owner &&
+      ((shot.active && shot.kind === "grapple") || state.phase === "grappling")
+    ) {
+      for (const [color, width] of [
+        ["#4c473b", 4],
+        ["#e9cf9f", 1],
+      ] as const) {
+        d.setStrokeStyle(color);
+        d.setLineWidth(width);
+        d.beginPath();
+        d.moveTo(owner.x, owner.y);
+        d.lineTo(shot.x, shot.y);
+        d.stroke();
+      }
+    }
+    const trailColor =
+      shot.kind === "rift"
+        ? "183,155,209"
+        : shot.kind === "meow"
+          ? "204,235,220"
+          : shot.kind === "shuriken"
+            ? "196,194,210"
+            : "255,245,216";
+    const trail = match.fx.trail;
+    trail.forEach((point, n) => {
+      d.setFillStyle(
+        `rgba(${trailColor},${((n / trail.length) * 0.6).toFixed(3)})`,
+      );
+      d.beginPath();
+      d.arc(
+        point.x,
+        point.y,
+        2 + (1 - n / trail.length) * 5,
+        0,
+        Math.PI * 2,
+        false,
+      );
+      d.fill();
+    });
     if (shot.active) {
       const size = WEAPON_ART[shot.kind as ProjectileKind]?.shotSize ?? [
         28, 22,
       ];
+      const timed =
+        shot.kind === "grenade" ||
+        shot.kind === "dynamite" ||
+        shot.kind === "sticky";
+      const spin =
+        shot.kind === "shuriken" || shot.kind === "rift"
+          ? shot.elapsedMs / (shot.kind === "shuriken" ? 70 : 400)
+          : timed
+            ? shot.stuck
+              ? 0
+              : shot.elapsedMs / 180
+            : Math.atan2(shot.vy, shot.vx);
       d.save();
       d.translate(shot.x, shot.y);
-      d.rotate(Math.atan2(shot.vy, shot.vx));
+      d.rotate(spin);
       image(
         d,
         `projectile-${shot.kind}`,
-        -size[0],
-        -size[1],
-        size[0] * 2,
-        size[1] * 2,
+        -size[0] / 2,
+        -size[1] / 2,
+        size[0],
+        size[1],
       );
       d.restore();
+      if (timed) {
+        const fuse = Math.max(
+          0,
+          (PROJECTILES[shot.kind as ProjectileKind].fuse - shot.elapsedMs) /
+            1000,
+        ).toFixed(1);
+        d.setFont("16px Archivo Black");
+        d.setTextAlign("center");
+        d.setTextBaseline("middle");
+        d.setStrokeStyle("#45332d");
+        d.setLineWidth(4);
+        d.strokeText(`${fuse}s`, shot.x, shot.y - 29);
+        d.setFillStyle("#fff4c8");
+        d.fillText(`${fuse}s`, shot.x, shot.y - 29);
+      }
     }
-    if (state.phase === "exploding" && state.explosion.radius > 0) {
-      const e = state.explosion;
-      d.setFillStyle("rgba(255,214,120,0.55)");
-      d.beginPath();
-      d.arc(e.x, e.y, e.radius, 0, Math.PI * 2, false);
-      d.fill();
-      d.setFillStyle("rgba(255,250,230,0.8)");
-      d.beginPath();
-      d.arc(e.x, e.y, e.radius * 0.45, 0, Math.PI * 2, false);
-      d.fill();
+    // Bursts: an expanding ring and twenty sparks per explosion, as the web arena tweens them.
+    for (const b of match.fx.bursts) {
+      const age = (match.frame - b.frame) * (1000 / 60);
+      const palette =
+        b.kind === "rift"
+          ? ["#8555aa", "#d1a3f0", "#f3dcff"]
+          : b.kind === "meow"
+            ? ["#6faea6", "#b3efd7", "#fffbdd"]
+            : b.kind === "shuriken"
+              ? ["#484954", "#b2b5cc", "#f0edf8"]
+              : ["#786362", "#ffb35f", "#ffedac"];
+      const ease = (t: number): number => 1 - (1 - Math.min(1, t)) ** 3;
+      if (age < 420) {
+        const t = ease(age / 420);
+        d.setGlobalAlpha(0.7 * (1 - t));
+        d.setFillStyle(palette[2]);
+        d.beginPath();
+        d.arc(b.x, b.y, 10 + (b.radius - 10) * t, 0, Math.PI * 2, false);
+        d.fill();
+        d.setGlobalAlpha(1 - t);
+        d.setStrokeStyle("#fff6d1");
+        d.setLineWidth(3);
+        d.stroke();
+        d.setGlobalAlpha(1);
+      }
+      for (let n = 0; n < 20; n++) {
+        const life = 380 + (n % 5) * 100;
+        if (age >= life) continue;
+        const t = ease(age / life);
+        const angle = n * 2.399;
+        const distance = 24 + (n % 5) * 17;
+        d.setGlobalAlpha(1 - t);
+        d.setFillStyle(palette[n % 3]);
+        d.beginPath();
+        d.arc(
+          b.x + Math.cos(angle) * distance * t,
+          b.y + (Math.sin(angle) * distance - 18) * t,
+          (3 + (n % 5)) * (1 - 0.85 * t),
+          0,
+          Math.PI * 2,
+          false,
+        );
+        d.fill();
+      }
+      d.setGlobalAlpha(1);
+    }
+    // Damage and healing numbers float up and fade.
+    for (const t of match.fx.popups) {
+      const k = Math.min(1, (match.frame - t.frame) / POPUP_LIFE);
+      const rise = 1 - (1 - k) ** 3;
+      const label = t.amount > 0 ? `-${t.amount}` : `+${-t.amount}`;
+      d.setGlobalAlpha(1 - rise);
+      d.setFont("25px Archivo Black");
+      d.setTextAlign("center");
+      d.setTextBaseline("middle");
+      d.setStrokeStyle(t.amount > 0 ? "#713e49" : "#3c805e");
+      d.setLineWidth(5);
+      d.strokeText(label, t.x, t.y - 45 * rise);
+      d.setFillStyle("#fff9db");
+      d.fillText(label, t.x, t.y - 45 * rise);
+      d.setGlobalAlpha(1);
     }
     d.restore();
     drawHud(d, match, state, W, window.height, touch);
