@@ -45,7 +45,8 @@ export default defineSim({
               ),
             ),
           ]);
-    const renderer = draw ? createRenderer(platform.gpu, WINDOW) : null;
+    // Always built: desync renders through a stub Draw2D to prove rendering never changes the match.
+    const renderer = createRenderer(platform.gpu, WINDOW);
     return {
       ready: art ? art.then((): void => undefined) : Promise.resolve(),
       start: (seed: number, options: Record<string, unknown>): void => {
@@ -64,7 +65,7 @@ export default defineSim({
         angle: match.angle,
         charge: match.charge,
       }),
-      render: (d) => renderer?.render(match, d),
+      render: (d) => renderer.render(match, d),
     };
   },
 });

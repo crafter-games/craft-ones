@@ -3,9 +3,21 @@
   "sim": "sim.ts",
   "targets": {
     "web": {
-      "steps": [{ "label": "web", "argv": ["sh", "scripts/build-web.sh"] }],
-      "out": "dist/web"
+      "steps": [
+        {
+          "label": "web",
+          "argv": ["sh", "scripts/build-web.sh"]
+        }
+      ],
+      "out": "dist/web",
+      "deploy": {
+        "provider": "vercel",
+        "project": "craft-ones-dotframe",
+        "scope": "crafter-station"
+      }
     }
   },
-  "assets": { "localOnly": [] }
+  "assets": {
+    "localOnly": []
+  }
 }
