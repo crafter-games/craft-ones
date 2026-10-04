@@ -1,6 +1,7 @@
 // Deterministic wrapper over the shared Battle engine (packages/shared), the same one the Colyseus server runs.
 // A frame is one fixed 60 Hz step: the current seat's input becomes Battle intentions, then the clock advances.
-// Aim and charge live here, not in the renderer, so dotframe sim, replays and netplay see every shot.
+// Aim, charge, the camera, the kickoff pause and notices live here, not in the renderer, so dotframe sim,
+// replays and netplay see everything that decides a shot.
 import {
   ARENA,
   abilityNeedsAim,
@@ -18,7 +19,10 @@ export const WINDOW = { width: 1280, height: 720, title: "Craft Ones" };
 export const PLAYERS = 2;
 export const STEP_MS = 1000 / 60;
 const AIM_SPEED = 0.035;
-const WEAPON_IDS = Object.keys(WEAPONS) as WeaponId[];
+export const WEAPON_IDS = Object.keys(WEAPONS) as WeaponId[];
+// The web HUD holds its kickoff banner for 1.6 s and the playground clock waits for it.
+export const KICKOFF_FRAMES = 96;
+const NOTICE_FRAMES = 150;
 
 export const Bit = {
   Left: 1,
@@ -30,7 +34,13 @@ export const Bit = {
   Weapon: 64,
   Ability: 128,
   Map: 256,
+  Restart: 512,
 };
+// Bits 10-12 carry a hotbar slot: 1-6 the weapons in order, 7 the ability, 0 none.
+const SLOT_SHIFT = 10;
+export const slotBits = (slot: number): number => (slot & 7) << SLOT_SHIFT;
+const slotOf = (bits: number): number => (bits >> SLOT_SHIFT) & 7;
+
 // The screen area below the HUD bar, which the camera frames.
 export const HUD_HEIGHT = 64;
 export const FRAME = {
@@ -64,10 +74,34 @@ export interface Match {
   charge: number[];
   previous: number[];
   sequence: number;
+  // Frames left on the kickoff banner; the battle clock waits for it.
+  kickoff: number;
   notice: string;
+  noticeUntil: number;
+  rematches: number;
   camera: Camera;
   // Every input since start: save/restore replays it, because Battle keeps private state a clone would miss.
   log: number[][];
+}
+
+function newBattle(match: Match): void {
+  const { options } = match;
+  match.elapsed = 0;
+  match.battle = new Battle(
+    () => match.elapsed,
+    options.map,
+    (match.seed + match.rematches) >>> 0,
+    options.opening,
+  );
+  match.battle.destructible = true;
+  match.battle.addPlayer("p1", options.one);
+  match.battle.addPlayer("p2", options.two);
+  match.angle = [-Math.PI / 4, (-3 * Math.PI) / 4];
+  match.charge = [0, 0];
+  match.kickoff = KICKOFF_FRAMES;
+  match.notice = "";
+  match.noticeUntil = 0;
+  match.camera = createCamera(view(match), FRAME);
 }
 
 export function createMatch(
@@ -76,30 +110,16 @@ export function createMatch(
 ): Match {
   const merged = { ...DEFAULT_OPTIONS, ...options };
   const map = PLAYABLE_MAP_IDS.includes(merged.map) ? merged.map : "andes";
-  const match: Match = {
+  const match = {
     seed,
     options: { ...merged, map },
     frame: 0,
-    elapsed: 0,
-    battle: null as unknown as Battle,
-    angle: [-Math.PI / 4, (-3 * Math.PI) / 4],
-    charge: [0, 0],
     previous: [0, 0],
     sequence: 0,
-    notice: "",
-    camera: null as unknown as Camera,
+    rematches: 0,
     log: [],
-  };
-  match.battle = new Battle(
-    () => match.elapsed,
-    map,
-    seed >>> 0,
-    merged.opening,
-  );
-  match.battle.destructible = true;
-  match.battle.addPlayer("p1", merged.one);
-  match.battle.addPlayer("p2", merged.two);
-  match.camera = createCamera(view(match), FRAME);
+  } as unknown as Match;
+  newBattle(match);
   return match;
 }
 
@@ -109,19 +129,40 @@ export function seatOf(match: Match): number {
 }
 
 function report(match: Match, error: string | null): void {
-  if (error) match.notice = error;
+  if (!error) return;
+  match.notice = error;
+  match.noticeUntil = match.frame + NOTICE_FRAMES;
 }
 
 export function step(match: Match, inputs: number[]): void {
   match.log.push([inputs[0] ?? 0, inputs[1] ?? 0]);
   match.frame += 1;
+  const pressedBy = (i: number): number =>
+    (inputs[i] ?? 0) & ~match.previous[i];
+  // Either seat can toggle the overview, even while the other one plays.
+  for (let i = 0; i < PLAYERS; i++)
+    if (pressedBy(i) & Bit.Map) match.camera.map = !match.camera.map;
+  if (match.battle.state.phase === "finished") {
+    if ([0, 1].some((i) => pressedBy(i) & Bit.Restart)) {
+      match.rematches += 1;
+      newBattle(match);
+    }
+    match.previous = [inputs[0] ?? 0, inputs[1] ?? 0];
+    return;
+  }
+  if (match.kickoff > 0) {
+    match.kickoff -= 1;
+    match.previous = [inputs[0] ?? 0, inputs[1] ?? 0];
+    updateCamera(match.camera, view(match), FRAME, STEP_MS, false);
+    return;
+  }
   const battle = match.battle;
   const state = battle.state;
   const seat = seatOf(match);
   if (seat >= 0 && state.phase === "aiming") {
     const id = seat === 0 ? "p1" : "p2";
     const bits = inputs[seat] ?? 0;
-    const pressed = bits & ~match.previous[seat];
+    const pressed = pressedBy(seat);
     const released = match.previous[seat] & ~bits;
     const turnNumber = state.turnNumber;
     const player = state.players.find((p) => p.sessionId === id);
@@ -134,7 +175,7 @@ export function step(match: Match, inputs: number[]): void {
       Math.cos(match.angle[seat]),
     );
     const charging = match.charge[seat] > 0;
-    if (!charging) {
+    if (!charging && player) {
       const direction = bits & Bit.Left ? -1 : bits & Bit.Right ? 1 : 0;
       // Walking turns the critter: point the barrel the way it moves, keeping the elevation.
       if (
@@ -156,21 +197,31 @@ export function step(match: Match, inputs: number[]): void {
             turnNumber,
           }),
         );
-      if (pressed & Bit.Weapon && player) {
+      const slot =
+        slotOf(bits) !== slotOf(match.previous[seat]) ? slotOf(bits) : 0;
+      if (pressed & Bit.Weapon) {
         const next =
           WEAPON_IDS[
             (WEAPON_IDS.indexOf(player.selectedWeapon) + 1) % WEAPON_IDS.length
           ];
         report(match, battle.select(id, { selection: next, turnNumber }));
-      }
-      if (pressed & Bit.Ability && player) {
-        const direction = Math.cos(match.angle[seat]) >= 0 ? 1 : -1;
+      } else if (slot >= 1 && slot <= WEAPON_IDS.length)
+        report(
+          match,
+          battle.select(id, { selection: WEAPON_IDS[slot - 1], turnNumber }),
+        );
+      if (pressed & Bit.Ability || slot === 7) {
+        const aimDirection = Math.cos(match.angle[seat]) >= 0 ? 1 : -1;
         if (abilityNeedsAim(player.species)) {
           const selection = player.abilityArmed
             ? player.selectedWeapon
             : "ability";
           report(match, battle.select(id, { selection, turnNumber }));
-        } else report(match, battle.ability(id, { turnNumber, direction }));
+        } else
+          report(
+            match,
+            battle.ability(id, { turnNumber, direction: aimDirection }),
+          );
       }
     }
     if (bits & Bit.Fire) match.charge[seat] += 1;
@@ -187,10 +238,6 @@ export function step(match: Match, inputs: number[]): void {
       match.charge[seat] = 0;
     }
   } else match.charge = [0, 0];
-  // Either seat can toggle the overview, even while the other one plays.
-  for (let i = 0; i < PLAYERS; i++)
-    if ((inputs[i] ?? 0) & ~match.previous[i] & Bit.Map)
-      match.camera.map = !match.camera.map;
   match.previous = [inputs[0] ?? 0, inputs[1] ?? 0];
   match.elapsed += STEP_MS;
   battle.step(STEP_MS);
@@ -213,7 +260,11 @@ export function view(match: Match): BattleView {
 
 export function checksum(match: Match): number {
   const text =
-    JSON.stringify(view(match)) + match.angle.join() + match.charge.join();
+    JSON.stringify(view(match)) +
+    match.angle.join() +
+    match.charge.join() +
+    match.kickoff +
+    match.rematches;
   let h = 2166136261;
   for (let i = 0; i < text.length; i++)
     h = Math.imul(h ^ text.charCodeAt(i), 16777619);
@@ -225,21 +276,23 @@ export function summary(match: Match): unknown {
   return {
     frame: match.frame,
     map: s.mapId,
-    phase: s.phase,
+    phase: match.kickoff > 0 && s.phase !== "finished" ? "kickoff" : s.phase,
     turn: s.turnNumber,
     current: s.currentPlayer,
     remainingMs: Math.round(s.remainingMs),
     wind: s.wind,
     terrainRevision: s.terrainRevision,
     winner: s.winner,
-    notice: match.notice,
+    rematches: match.rematches,
+    notice: match.frame < match.noticeUntil ? match.notice : "",
     players: s.players.map((p, i) => ({
       id: p.sessionId,
       species: p.species,
       hp: p.hp,
       x: Math.round(p.x),
       y: Math.round(p.y),
-      weapon: p.selectedWeapon,
+      weapon: p.abilityArmed ? "ability" : p.selectedWeapon,
+      abilityReadyTurn: p.abilityReadyTurn,
       angle: Number(match.angle[i].toFixed(3)),
     })),
   };
@@ -270,7 +323,7 @@ export function restore(saved: Saved): Match {
 }
 
 export function encode(input: unknown): number {
-  const i = input as Record<string, boolean | undefined>;
+  const i = input as Record<string, boolean | number | undefined>;
   return (
     (i.left ? Bit.Left : 0) |
     (i.right ? Bit.Right : 0) |
@@ -280,11 +333,13 @@ export function encode(input: unknown): number {
     (i.fire ? Bit.Fire : 0) |
     (i.weapon ? Bit.Weapon : 0) |
     (i.ability ? Bit.Ability : 0) |
-    (i.map ? Bit.Map : 0)
+    (i.map ? Bit.Map : 0) |
+    (i.restart ? Bit.Restart : 0) |
+    slotBits(typeof i.slot === "number" ? i.slot : 0)
   );
 }
 
-// Mashing that still plays: mostly charge-and-release with some walking and aiming.
+// Mashing that still plays: mostly charge-and-release with some walking, aiming and tool picks.
 export function randomInput(next: () => number): number {
   let bits = 0;
   if (next() < 0.55) bits |= Bit.Fire;
@@ -293,6 +348,7 @@ export function randomInput(next: () => number): number {
   else if (r < 0.3) bits |= Bit.Right;
   if (next() < 0.25) bits |= next() < 0.5 ? Bit.AimUp : Bit.AimDown;
   if (next() < 0.03) bits |= Bit.Jump;
-  if (next() < 0.03) bits |= Bit.Weapon;
+  if (next() < 0.04) bits |= slotBits(1 + Math.floor(next() * 7));
+  if (next() < 0.02) bits |= Bit.Restart;
   return bits;
 }

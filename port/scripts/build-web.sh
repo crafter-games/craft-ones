@@ -6,6 +6,7 @@ out=dist/web
 rm -rf "$out"
 mkdir -p "$out/node_modules/dotframe/assets"
 [ -d assets/art ] || bun tools/rasterize.ts
+[ -d assets/sfx ] || bun tools/synth-sounds.ts
 bun build main.web.ts --outfile "$out/main.js" --target browser --minify
 hash=$(shasum -a 256 "$out/main.js" | cut -c1-10)
 mv "$out/main.js" "$out/main.$hash.js"

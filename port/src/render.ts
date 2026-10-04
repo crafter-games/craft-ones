@@ -11,6 +11,7 @@ import {
 } from "../../apps/web/src/game/characters/pose";
 import { WEAPON_ART } from "../../apps/web/src/game/weapons/design";
 import {
+  ABILITIES,
   ARENA,
   abilityProjectile,
   type BattleView,
@@ -27,7 +28,15 @@ import {
   WORLD_MAPS,
   WORLD_WIDTH,
 } from "../../packages/shared/src";
-import { FRAME, HUD_HEIGHT, type Match, power01, seatOf, view } from "./match";
+import {
+  FRAME,
+  HUD_HEIGHT,
+  type Match,
+  power01,
+  seatOf,
+  view,
+  WEAPON_IDS,
+} from "./match";
 
 const PARTS = [
   "body",
@@ -419,6 +428,47 @@ export function createRenderer(
             d.arc(p.x, p.y, n % 2 === 0 ? 6 : 4.5, 0, Math.PI * 2, false);
             d.fill();
           });
+        } else {
+          // Where a leap, pounce or dash will carry the critter, as the web arena draws it.
+          const species = player.species;
+          const direction = Math.cos(match.angle[i]) >= 0 ? 1 : -1;
+          const lift = species === "zorro" ? 0 : species === "puma" ? 72 : 118;
+          const distance =
+            species === "zorro" ? 185 : species === "puma" ? 155 : 125;
+          const sx = player.x + direction * 38;
+          const sy = player.y - 28;
+          const ex = player.x + direction * distance;
+          const ey = player.y - 28 - lift;
+          const a = Math.atan2(ey - sy, ex - sx);
+          const head = (wing: number, tip: number): void => {
+            d.beginPath();
+            d.moveTo(ex + Math.cos(a) * tip, ey + Math.sin(a) * tip);
+            d.lineTo(
+              ex - Math.cos(a - 0.62) * wing,
+              ey - Math.sin(a - 0.62) * wing,
+            );
+            d.lineTo(
+              ex - Math.cos(a + 0.62) * wing,
+              ey - Math.sin(a + 0.62) * wing,
+            );
+            d.closePath();
+            d.fill();
+          };
+          for (const [color, width] of [
+            ["rgba(41,39,51,0.92)", 9],
+            ["#ffdf82", 5],
+          ] as const) {
+            d.setStrokeStyle(color);
+            d.setLineWidth(width);
+            d.beginPath();
+            d.moveTo(sx, sy);
+            d.lineTo(ex, ey);
+            d.stroke();
+          }
+          d.setFillStyle("#292733");
+          head(23, 4);
+          d.setFillStyle("#ffdf82");
+          head(18, 0);
         }
         if (charge > 0) {
           d.setStrokeStyle("#ffef9f");
@@ -467,54 +517,372 @@ export function createRenderer(
       d.fill();
     }
     d.restore();
-    drawHud(d, state, W);
+    drawHud(d, match, state, W, window.height);
   };
 
   return { render };
 }
 
-function drawHud(d: Draw2D, state: BattleView, W: number): void {
-  d.setFillStyle("#2b2330");
-  d.fillRect(0, 0, W, 64);
-  d.setTextBaseline("middle");
-  state.players.forEach((p, i) => {
-    const left = i === 0;
-    const x = left ? 24 : W - 24 - 300;
-    d.setFillStyle("#493d46");
-    d.fillRect(x, 34, 300, 16);
-    d.setFillStyle(SEAT_COLORS[i]);
-    const w = (300 * Math.max(0, p.hp)) / 100;
-    d.fillRect(left ? x : x + 300 - w, 34, w, 16);
-    d.setFont("18px Archivo Black");
-    d.setTextAlign(left ? "left" : "right");
-    d.setFillStyle("#fff2d3");
-    const weapon = p.abilityArmed ? "ABILITY" : p.selectedWeapon.toUpperCase();
-    d.fillText(
-      `P${p.number} ${CHARACTERS[p.species].name.toUpperCase()}  ${Math.max(0, p.hp)} HP  ·  ${weapon}`,
-      left ? x : x + 300,
-      18,
-    );
-  });
-  d.setTextAlign("center");
-  d.setFillStyle("#fff2d3");
-  if (state.phase === "finished") {
-    const winner = state.players.find((p) => p.sessionId === state.winner);
-    d.setFont("34px Bangers");
-    d.fillText(winner ? `P${winner.number} WINS` : "DRAW", W / 2, 32);
-  } else {
-    d.setFont("30px Bangers");
-    d.fillText(`${Math.ceil(state.remainingMs / 1000)}s`, W / 2, 22);
-    d.setFont("14px Archivo Black");
-    const wind =
-      state.wind === 0
-        ? "NO WIND"
-        : state.wind > 0
-          ? `WIND ${Math.round(state.wind)} >>`
-          : `<< WIND ${Math.abs(Math.round(state.wind))}`;
-    d.fillText(`TURN ${state.turnNumber} · ${wind}`, W / 2, 48);
-  }
+const HUD = {
+  ink: "#2b2330",
+  panel: "#3a2f3c",
+  cream: "#fff2d3",
+  dim: "#a99aa6",
+  gold: "#ffdf82",
+};
+
+function panel(
+  d: Draw2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  fill = HUD.panel,
+): void {
+  d.setFillStyle("rgba(20,16,24,0.35)");
+  d.fillRect(x + 2, y + 3, w, h);
+  d.setFillStyle(fill);
+  d.fillRect(x, y, w, h);
 }
 
+function text(
+  d: Draw2D,
+  value: string,
+  x: number,
+  y: number,
+  font: string,
+  color: string,
+  align = "left",
+): void {
+  d.setFont(font);
+  d.setTextAlign(align);
+  d.setTextBaseline("middle");
+  d.setFillStyle(color);
+  d.fillText(value, x, y);
+}
+
+function portrait(
+  d: Draw2D,
+  p: PlayerView,
+  x: number,
+  y: number,
+  size: number,
+): void {
+  const head = art.textures.get(`${p.species}-${p.coat}-head`);
+  const eyes = art.textures.get(`${p.species}-${p.coat}-eyes`);
+  for (const t of [head, eyes])
+    if (t)
+      d.drawImage(
+        t,
+        0,
+        0,
+        t.width,
+        t.height,
+        x - size * 0.4,
+        y - size * 0.55,
+        size * 0.8,
+        size,
+      );
+}
+
+// The web HUD's information on canvas: cards, clock, turn line, hotbar, meters, kickoff and results.
+function drawHud(
+  d: Draw2D,
+  match: Match,
+  state: BattleView,
+  W: number,
+  H: number,
+): void {
+  d.setFillStyle(HUD.ink);
+  d.fillRect(0, 0, W, HUD_HEIGHT);
+  const seat = seatOf(match);
+  state.players.forEach((p, i) => {
+    const left = i === 0;
+    const x = left ? 12 : W - 12 - 330;
+    const active =
+      state.currentPlayer === p.sessionId && state.phase !== "finished";
+    panel(d, x, 6, 330, 52, active ? "#4a3c4a" : HUD.panel);
+    portrait(d, p, left ? x + 28 : x + 302, 32, 46);
+    const tx = left ? x + 58 : x + 272;
+    const align = left ? "left" : "right";
+    text(
+      d,
+      CHARACTERS[p.species].name.toUpperCase(),
+      tx,
+      20,
+      "15px Archivo Black",
+      SEAT_COLORS[i],
+      align,
+    );
+    text(
+      d,
+      `P${p.number}`,
+      left ? x + 318 : x + 12,
+      20,
+      "11px Archivo Black",
+      HUD.dim,
+      left ? "right" : "left",
+    );
+    const bar = 190;
+    const bx = left ? tx : tx - bar;
+    d.setFillStyle("#241d27");
+    d.fillRect(bx, 37, bar, 10);
+    const hp = Math.max(0, p.hp);
+    d.setFillStyle(SEAT_COLORS[i]);
+    const w = (bar * hp) / 100;
+    d.fillRect(left ? bx : bx + bar - w, 37, w, 10);
+    text(
+      d,
+      String(hp),
+      left ? bx + bar + 34 : bx - 34,
+      42,
+      "18px Archivo Black",
+      HUD.cream,
+      "center",
+    );
+    if (p.shield > 0)
+      text(
+        d,
+        `+${p.shield}`,
+        left ? bx + bar + 34 : bx - 34,
+        24,
+        "10px Archivo Black",
+        "#b4d9d2",
+        "center",
+      );
+  });
+  const id =
+    PLAYABLE_MAP_IDS.find((m) => m === state.mapId) ?? PLAYABLE_MAP_IDS[0];
+  panel(d, W / 2 - 110, 6, 220, 52);
+  if (state.phase === "finished")
+    text(d, "MATCH OVER", W / 2, 25, "24px Bangers", HUD.cream, "center");
+  else {
+    const seconds = Math.ceil(state.remainingMs / 1000);
+    text(
+      d,
+      `${seconds}`,
+      W / 2 - 6,
+      26,
+      "30px Bangers",
+      seconds <= 5 && state.phase === "aiming" ? "#ef6f6c" : HUD.cream,
+      "right",
+    );
+    text(d, "SEC", W / 2, 30, "11px Archivo Black", HUD.dim);
+  }
+  text(
+    d,
+    `ROUND ${state.roundNumber} · ${WORLD_MAPS[id].name}`,
+    W / 2,
+    47,
+    "10px Archivo Black",
+    HUD.dim,
+    "center",
+  );
+
+  // Turn line, or the latest refusal from the engine.
+  const current = state.players.find(
+    (p) => p.sessionId === state.currentPlayer,
+  );
+  const notice = match.frame < match.noticeUntil ? match.notice : "";
+  const line =
+    state.phase === "finished"
+      ? ""
+      : notice ||
+        (state.phase === "aiming" && current
+          ? `${CHARACTERS[current.species].name}'s turn. Let it fly!`
+          : state.phase === "flying"
+            ? ""
+            : "");
+  if (line) {
+    d.setFont("13px Archivo Black");
+    const w = d.measureText(line).width + 32;
+    panel(d, W / 2 - w / 2, 66, w, 28, notice ? "#5a3238" : HUD.panel);
+    text(
+      d,
+      line,
+      W / 2,
+      80,
+      "13px Archivo Black",
+      notice ? "#ffc9c4" : "#c8f08f",
+      "center",
+    );
+  }
+  const wind = Math.round(state.wind);
+  text(
+    d,
+    wind === 0 ? "NO WIND" : wind > 0 ? `WIND ${wind} >>` : `<< WIND ${-wind}`,
+    W / 2,
+    104,
+    "11px Archivo Black",
+    HUD.ink,
+    "center",
+  );
+
+  // Hotbar: the six tools, then the critter's ability with its cooldown.
+  if (current && state.phase !== "finished") {
+    const size = 54;
+    const gap = 8;
+    const count = WEAPON_IDS.length + 1;
+    const total = count * size + (count - 1) * gap + 14;
+    let x = W / 2 - total / 2;
+    const y = H - size - 14;
+    panel(d, x - 10, y - 8, total + 20, size + 16, HUD.ink);
+    const cooldown = Math.max(0, current.abilityReadyTurn - state.turnNumber);
+    for (let n = 0; n < count; n++) {
+      const ability = n === WEAPON_IDS.length;
+      if (ability) x += 14;
+      const kind = ability ? null : WEAPON_IDS[n];
+      const selected = ability
+        ? current.abilityArmed
+        : !current.abilityArmed && current.selectedWeapon === kind;
+      const hasAbility = ABILITIES[current.species] !== null;
+      panel(d, x, y, size, size, selected ? "#f1c56a" : "#3f4a45");
+      if (kind) {
+        const t = art.textures.get(`weapon-${kind}`);
+        if (t)
+          d.drawImage(
+            t,
+            0,
+            0,
+            t.width,
+            t.height,
+            x + 5,
+            y + 9,
+            size - 10,
+            (size - 10) * 0.75,
+          );
+      } else if (hasAbility) {
+        if (cooldown > 0) d.setGlobalAlpha(0.35);
+        portrait(d, current, x + size / 2, y + size / 2 + 2, 38);
+        d.setGlobalAlpha(1);
+        if (cooldown > 0)
+          text(
+            d,
+            String(cooldown),
+            x + size / 2,
+            y + size / 2,
+            "26px Bangers",
+            HUD.cream,
+            "center",
+          );
+      }
+      text(
+        d,
+        String(n + 1),
+        x + 6,
+        y + 9,
+        "10px Archivo Black",
+        selected ? HUD.ink : HUD.dim,
+      );
+      x += size + gap;
+    }
+    // Power and walking range.
+    const charge = seat >= 0 ? power01(match.charge[seat]) : 0;
+    panel(d, W - 232, H - 68, 220, 54, HUD.ink);
+    text(d, "POWER", W - 218, H - 52, "11px Archivo Black", HUD.dim);
+    text(
+      d,
+      `${Math.round(charge * 100)}%`,
+      W - 26,
+      H - 52,
+      "16px Archivo Black",
+      HUD.cream,
+      "right",
+    );
+    d.setFillStyle("#241d27");
+    d.fillRect(W - 218, H - 36, 192, 10);
+    d.setFillStyle(HUD.gold);
+    d.fillRect(W - 218, H - 36, 192 * charge, 10);
+    const used = Math.abs(current.x - current.originX);
+    const range = Math.max(0, Math.round(ARENA.moveBudget - used));
+    panel(d, 12, H - 68, 220, 54, HUD.ink);
+    text(d, "RANGE", 26, H - 52, "11px Archivo Black", HUD.dim);
+    text(
+      d,
+      `${range} / ${ARENA.moveBudget}`,
+      218,
+      H - 52,
+      "13px Archivo Black",
+      HUD.cream,
+      "right",
+    );
+    d.setFillStyle("#241d27");
+    d.fillRect(26, H - 36, 192, 10);
+    d.setFillStyle("#c8f08f");
+    d.fillRect(26, H - 36, (192 * range) / ARENA.moveBudget, 10);
+  }
+
+  // Kickoff banner while the clock waits, then the results card.
+  if (match.kickoff > 0 && current && state.phase !== "finished") {
+    d.setFillStyle("rgba(24,18,28,0.55)");
+    d.fillRect(0, 0, W, H);
+    panel(d, W / 2 - 200, H / 2 - 70, 400, 140);
+    text(
+      d,
+      "KICKOFF",
+      W / 2,
+      H / 2 - 36,
+      "13px Archivo Black",
+      HUD.dim,
+      "center",
+    );
+    text(
+      d,
+      `Player ${current.number} starts`,
+      W / 2,
+      H / 2 + 8,
+      "40px Bangers",
+      SEAT_COLORS[seat],
+      "center",
+    );
+    text(
+      d,
+      `${ARENA.turnMs / 1000}s turns · 100 HP`,
+      W / 2,
+      H / 2 + 44,
+      "12px Archivo Black",
+      HUD.cream,
+      "center",
+    );
+  }
+  if (state.phase === "finished") {
+    const winner = state.players.find((p) => p.sessionId === state.winner);
+    d.setFillStyle("rgba(24,18,28,0.6)");
+    d.fillRect(0, 0, W, H);
+    panel(d, W / 2 - 220, H / 2 - 110, 440, 220);
+    if (winner) portrait(d, winner, W / 2, H / 2 - 50, 80);
+    const index = winner ? state.players.indexOf(winner) : 0;
+    text(
+      d,
+      winner ? `Player ${winner.number} wins!` : "Draw",
+      W / 2,
+      H / 2 + 22,
+      "44px Bangers",
+      winner ? SEAT_COLORS[index] : HUD.cream,
+      "center",
+    );
+    text(
+      d,
+      winner
+        ? `${CHARACTERS[winner.species].name} takes the duel`
+        : state.finishReason,
+      W / 2,
+      H / 2 + 58,
+      "13px Archivo Black",
+      HUD.cream,
+      "center",
+    );
+    text(
+      d,
+      "Press R for a rematch",
+      W / 2,
+      H / 2 + 88,
+      "12px Archivo Black",
+      HUD.gold,
+      "center",
+    );
+  }
+}
 type Point = { x: number; y: number };
 
 // Coverage (0..1) per texel of closed loops in world units, nonzero winding.

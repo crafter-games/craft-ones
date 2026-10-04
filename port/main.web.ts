@@ -1,29 +1,40 @@
-// Local hot-seat match on the web: one keyboard drives whichever seat has the turn, like /playground.
-// ?map=coast&species=puma&coat=sage&species2=zorro&coat2=slate picks the match.
+// Craft Ones on the web: setup screen, then a local hot-seat match where one keyboard drives whichever seat
+// has the turn, like /playground. ?map=coast&species=puma&coat=sage&species2=zorro&coat2=slate skips setup.
 import { createDraw2D } from "dotframe/src/draw2d";
 import type { Frame } from "dotframe/src/gpu";
 import { Key } from "dotframe/src/input";
 import type { Platform } from "dotframe/src/platform";
 import { loadBytes, run } from "dotframe/src/web/run";
-import type { CoatId, PlayableMapId, Species } from "../packages/shared/src";
+import {
+  type BattleView,
+  COATS,
+  type CoatId,
+  type PlayableMapId,
+  SPECIES,
+  type Species,
+} from "../packages/shared/src";
+import { loadSpeakers, type Speakers } from "./src/audio";
 import {
   Bit,
   createMatch,
   DEFAULT_OPTIONS,
+  type Match,
+  type MatchOptions,
+  power01,
   seatOf,
+  slotBits,
   step,
+  view,
   WINDOW,
 } from "./src/match";
-import {
-  createRenderer,
-  critterLoaded,
-  loadArt,
-  loadCritter,
-} from "./src/render";
+import { createRenderer, loadArt, loadCritter } from "./src/render";
+import { createSetup, press, renderSetup, type SetupKey } from "./src/setup";
 
 const STEP = 1 / 60;
 const params = new URLSearchParams(location.search);
-const options = {
+const direct = params.has("map") || params.has("species");
+const fromUrl: MatchOptions = {
+  ...DEFAULT_OPTIONS,
   map: (params.get("map") ?? DEFAULT_OPTIONS.map) as PlayableMapId,
   one: {
     species: (params.get("species") ?? DEFAULT_OPTIONS.one.species) as Species,
@@ -44,22 +55,59 @@ const BINDINGS: [number, number[]][] = [
   [Bit.Weapon, [Key.Tab, Key.X]],
   [Bit.Ability, [Key.C]],
   [Bit.Map, [Key.M]],
+  [Bit.Restart, [Key.R]],
+];
+const SLOT_KEYS = [
+  Key.Digit1,
+  Key.Digit2,
+  Key.Digit3,
+  Key.Digit4,
+  Key.Digit5,
+  Key.Digit6,
+  Key.Digit7,
+];
+const SETUP_KEYS: [SetupKey, number[]][] = [
+  ["up", [Key.Up, Key.W]],
+  ["down", [Key.Down, Key.S]],
+  ["left", [Key.Left, Key.A]],
+  ["right", [Key.Right, Key.D]],
+  ["confirm", [Key.Enter, Key.Space, Key.F]],
 ];
 
-await run(WINDOW, ({ gpu, input }: Platform): Frame => {
+await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
   const draw = createDraw2D(gpu, WINDOW.width, WINDOW.height);
   const renderer = createRenderer(gpu, WINDOW);
-  let match = createMatch(Math.floor(Math.random() * 0x1_0000_0000), options);
+  const setup = createSetup(fromUrl);
+  let match: Match | null = direct
+    ? createMatch(Math.floor(Math.random() * 0x1_0000_0000), fromUrl)
+    : null;
+  let speakers: Speakers | null = null;
+  let heard: BattleView | null = null;
   let ready = false;
+  // Every critter loads up front (about 4 MB) so the setup screen can preview any pick.
   Promise.all([
     loadArt(gpu, draw, loadBytes, "."),
-    loadCritter(gpu, loadBytes, ".", options.one.species, options.one.coat),
-    loadCritter(gpu, loadBytes, ".", options.two.species, options.two.coat),
+    ...SPECIES.flatMap((species) =>
+      Object.keys(COATS).map((coat) =>
+        loadCritter(gpu, loadBytes, ".", species, coat),
+      ),
+    ),
   ]).then((): void => {
-    ready =
-      critterLoaded(options.one.species, options.one.coat) &&
-      critterLoaded(options.two.species, options.two.coat);
+    ready = true;
   });
+  loadSpeakers(audio, loadBytes, ".").then((s: Speakers): void => {
+    speakers = s;
+  });
+  const held = new Set<number>();
+  // Edge-triggered keys for the setup screen, which is not part of the simulation.
+  const tapped = (keys: number[]): boolean => {
+    const down = keys.some((k) => input.down(k));
+    const was = keys.some((k) => held.has(k));
+    for (const k of keys)
+      if (input.down(k)) held.add(k);
+      else held.delete(k);
+    return down && !was;
+  };
   let simulated = -1;
   return (time: number): boolean => {
     draw.begin();
@@ -69,17 +117,50 @@ await run(WINDOW, ({ gpu, input }: Platform): Frame => {
       draw.end({ r: 0, g: 0, b: 0 });
       return true;
     }
+    if (!match) {
+      for (const [key, keys] of SETUP_KEYS)
+        if (tapped(keys)) {
+          const options = press(setup, key);
+          if (options)
+            match = createMatch(
+              Math.floor(Math.random() * 0x1_0000_0000),
+              options,
+            );
+        }
+      renderSetup(setup, draw, WINDOW.width, WINDOW.height);
+      draw.end({ r: 0, g: 0, b: 0 });
+      simulated = -1;
+      return true;
+    }
+    // Escape from a finished match goes back to setup.
+    if (tapped([Key.Escape]) && match.battle.state.phase === "finished") {
+      match = null;
+      heard = null;
+      draw.end({ r: 0, g: 0, b: 0 });
+      return true;
+    }
     if (simulated < 0) simulated = time;
     for (let n = 0; simulated + STEP <= time && n < 5; n++) {
       let bits = 0;
       for (const [bit, keys] of BINDINGS)
         if (keys.some((k) => input.down(k))) bits |= bit;
-      if (match.battle.state.phase === "finished" && input.down(Key.R))
-        match = createMatch(match.seed + 1, options);
+      SLOT_KEYS.forEach((k, i) => {
+        if (input.down(k)) bits |= slotBits(i + 1);
+      });
       const inputs = [0, 0];
       const seat = seatOf(match);
       if (seat >= 0) inputs[seat] = bits;
+      // R and M work for both seats; the rest only for the seat with the turn.
+      inputs[1 - Math.max(0, seat)] |= bits & (Bit.Restart | Bit.Map);
+      const listener = match.battle.state.currentPlayer;
       step(match, inputs);
+      const now = view(match);
+      speakers?.hear(heard, now, listener);
+      speakers?.charge(
+        seat >= 0 ? power01(match.charge[seat]) : 0,
+        match.frame,
+      );
+      heard = now;
       simulated += STEP;
     }
     if (simulated < time - STEP * 5) simulated = time;
