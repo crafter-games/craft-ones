@@ -1,3 +1,4 @@
+import { sq } from "./detmath";
 import type { MapId } from "./terrain";
 import { CELL, eraseCircle } from "./terrainGrid";
 
@@ -384,8 +385,8 @@ export function makeWorld(mapId: MapId): string[] {
     for (let row = 0; row < height; row++)
       for (let col = 0; col < width; col++)
         if (
-          (((col + 0.5) * CELL - cx) / rx) ** 2 +
-            (((row + 0.5) * CELL - cy) / ry) ** 2 <
+          sq(((col + 0.5) * CELL - cx) / rx) +
+            sq(((row + 0.5) * CELL - cy) / ry) <
           1
         )
           cells[row][col] = value;

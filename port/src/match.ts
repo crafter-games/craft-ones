@@ -1,4 +1,4 @@
-// Deterministic wrapper over the shared Battle engine (packages/shared), the same one the Colyseus server runs.
+// Deterministic wrapper over the shared Battle engine (packages/shared).
 // A frame is one fixed 60 Hz step: the current seat's input becomes Battle intentions, then the clock advances.
 // Aim, charge, the camera, the kickoff pause and notices live here, not in the renderer, so dotframe sim,
 // replays and netplay see everything that decides a shot.
@@ -7,11 +7,13 @@ import {
   abilityNeedsAim,
   Battle,
   type BattleView,
+  dcos,
   PLAYABLE_MAP_IDS,
   type PlayableMapId,
   type PlayerOptions,
   WEAPONS,
   type WeaponId,
+  wrapAngle,
 } from "../../packages/shared/src";
 import { type Camera, createCamera, updateCamera } from "./camera";
 import { createEffects, type Effects, updateEffects } from "./effects";
@@ -220,26 +222,17 @@ export function step(match: Match, inputs: number[]): void {
     const turnNumber = state.turnNumber;
     const player = state.players.find((p) => p.sessionId === id);
     // Up raises the barrel on whichever side the critter faces.
-    const facing = Math.cos(match.angle[seat]) >= 0 ? 1 : -1;
+    const facing = dcos(match.angle[seat]) >= 0 ? 1 : -1;
     if (bits & AIM_SET) match.angle[seat] = aimOf(bits);
     if (bits & Bit.AimUp) match.angle[seat] -= AIM_SPEED * facing;
     if (bits & Bit.AimDown) match.angle[seat] += AIM_SPEED * facing;
-    match.angle[seat] = Math.atan2(
-      Math.sin(match.angle[seat]),
-      Math.cos(match.angle[seat]),
-    );
+    match.angle[seat] = wrapAngle(match.angle[seat]);
     const charging = match.charge[seat] > 0;
     if (!charging && player) {
       const direction = bits & Bit.Left ? -1 : bits & Bit.Right ? 1 : 0;
       // Walking turns the critter: point the barrel the way it moves, keeping the elevation.
-      if (
-        direction !== 0 &&
-        Math.sign(Math.cos(match.angle[seat])) !== direction
-      )
-        match.angle[seat] = Math.atan2(
-          Math.sin(match.angle[seat]),
-          -Math.cos(match.angle[seat]),
-        );
+      if (direction !== 0 && Math.sign(dcos(match.angle[seat])) !== direction)
+        match.angle[seat] = wrapAngle(Math.PI - match.angle[seat]);
       if (pressed & Bit.Jump)
         report(match, battle.jump(id, { turnNumber, direction }));
       // Battle takes one step per moveIntervalMs; asking every frame would only collect refusals.
@@ -272,7 +265,7 @@ export function step(match: Match, inputs: number[]): void {
           battle.select(id, { selection: WEAPON_IDS[slot - 1], turnNumber }),
         );
       if (pressed & Bit.Ability || slot === 7) {
-        const aimDirection = Math.cos(match.angle[seat]) >= 0 ? 1 : -1;
+        const aimDirection = dcos(match.angle[seat]) >= 0 ? 1 : -1;
         if (abilityNeedsAim(player.species)) {
           const selection = player.abilityArmed
             ? player.selectedWeapon
@@ -293,7 +286,7 @@ export function step(match: Match, inputs: number[]): void {
         : power01(match.charge[seat]);
       const angle = match.angle[seat];
       if (player?.abilityArmed) {
-        const direction = Math.cos(angle) >= 0 ? 1 : -1;
+        const direction = dcos(angle) >= 0 ? 1 : -1;
         report(
           match,
           battle.ability(id, { turnNumber, direction, angle, power }),

@@ -1,6 +1,7 @@
 import { PROJECTILES, type ProjectileKind } from "./arsenal";
 import { advanceRocket, clamp } from "./ballistics";
 import { ARENA } from "./config";
+import { dcos, dhypot, dsin, sq } from "./detmath";
 import type { PlayerView } from "./schema";
 import { type Geometry, gridHit, solidAt } from "./terrainGrid";
 
@@ -29,13 +30,13 @@ export function launchShot(
   const spec = PROJECTILES[kind];
   const speed = spec.minSpeed + power * (spec.maxSpeed - spec.minSpeed);
   const reach = ARENA.playerRadius + 4;
-  const x = clamp(player.x + Math.cos(angle) * reach, 1, world.worldWidth - 1);
-  const y = player.y + Math.sin(angle) * reach;
+  const x = clamp(player.x + dcos(angle) * reach, 1, world.worldWidth - 1);
+  const y = player.y + dsin(angle) * reach;
   return {
     x,
     y,
-    vx: Math.cos(angle) * speed,
-    vy: Math.sin(angle) * speed,
+    vx: dcos(angle) * speed,
+    vy: dsin(angle) * speed,
     kind,
     elapsedMs: 0,
     bounces: 0,
@@ -58,7 +59,7 @@ function bodyHit(
     if (p.hp <= 0) continue;
     const ox = x - p.x,
       oy = y - p.y,
-      c = ox * ox + oy * oy - ARENA.playerRadius ** 2;
+      c = ox * ox + oy * oy - sq(ARENA.playerRadius);
     if (c <= 0) {
       hit = 0;
       continue;
@@ -102,8 +103,8 @@ export function advanceShot(
     shot.vy = rocket.vy;
     return hit ? "blast" : "flying";
   }
-  const dx = shot.vx * dt + 0.5 * wind * dt ** 2,
-    dy = shot.vy * dt + 0.5 * ARENA.gravity * spec.gravity * dt ** 2;
+  const dx = shot.vx * dt + 0.5 * wind * sq(dt),
+    dy = shot.vy * dt + 0.5 * ARENA.gravity * spec.gravity * sq(dt);
   const terrain = gridHit(world, shot.x, shot.y, dx, dy);
   const player =
     shot.kind === "grapple" || spec.bounce
@@ -125,7 +126,7 @@ export function advanceShot(
         const index = bodies.findIndex(
           (p) =>
             p.hp > 0 &&
-            Math.hypot(p.x - shot.x, p.y - shot.y) <= ARENA.playerRadius + 1,
+            dhypot(p.x - shot.x, p.y - shot.y) <= ARENA.playerRadius + 1,
         );
         if (index >= 0) {
           shot.attachedPlayer = index + 1;

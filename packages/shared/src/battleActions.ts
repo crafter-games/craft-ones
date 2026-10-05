@@ -1,5 +1,6 @@
 import { type PlayerOptions, validPlayerOptions } from "./arsenal";
 import { ARENA } from "./config";
+import { dhypot } from "./detmath";
 import type { BattleState, Player } from "./schema";
 import { bodyBlocked, grounded } from "./terrainGrid";
 import { moveHorizontal } from "./worldMotion";
@@ -55,7 +56,7 @@ export function worldMove(
       (p) =>
         p !== player &&
         p.hp > 0 &&
-        Math.hypot(p.x - player.x, p.y - player.y) < ARENA.playerRadius * 2,
+        dhypot(p.x - player.x, p.y - player.y) < ARENA.playerRadius * 2,
     )
   ) {
     player.x = before.x;
@@ -68,7 +69,7 @@ export function worldMove(
 export function pullTowardAnchor(state: BattleState, player: Player) {
   const dx = state.projectile.x - player.x,
     dy = state.projectile.y - player.y;
-  const distance = Math.hypot(dx, dy);
+  const distance = dhypot(dx, dy);
   if (distance < 28) return false;
   const travel = Math.min(7, distance - 25);
   for (let i = 0; i < 4; i++) {
@@ -80,7 +81,7 @@ export function pullTowardAnchor(state: BattleState, player: Player) {
         (p) =>
           p !== player &&
           p.hp > 0 &&
-          Math.hypot(p.x - x, p.y - y) < ARENA.playerRadius * 2,
+          dhypot(p.x - x, p.y - y) < ARENA.playerRadius * 2,
       )
     )
       return false;

@@ -14,6 +14,7 @@ import {
   worldMove,
 } from "./battleActions";
 import { ARENA } from "./config";
+import { dcos, dhypot } from "./detmath";
 import {
   isOpeningSeat,
   type OpeningSeat,
@@ -530,7 +531,7 @@ export class Battle {
     if (payload.weapon === undefined && player.abilityArmed)
       return this.ability(sessionId, {
         ...payload,
-        direction: Math.cos(payload.angle) >= 0 ? 1 : -1,
+        direction: dcos(payload.angle) >= 0 ? 1 : -1,
       });
     const projectile = this.state.projectile;
     const kind = payload.weapon ?? player.selectedWeapon;
@@ -897,10 +898,7 @@ export class Battle {
       this.state.terrainRevision++;
     }
     for (const player of this.state.players) {
-      const distance = Math.hypot(
-        player.x - explosion.x,
-        player.y - explosion.y,
-      );
+      const distance = dhypot(player.x - explosion.x, player.y - explosion.y);
       if (distance >= weapon.radius) continue;
       this.controlledMotion.delete(player);
       const strength = 1 - distance / weapon.radius;

@@ -1,6 +1,6 @@
 // Port of apps/web/src/game/ArenaCamera.ts. It advances once per simulation step, never per drawn frame,
 // so every peer frames the same view no matter its refresh rate, and render only reads it.
-import type { BattleView } from "../../packages/shared/src";
+import { type BattleView, dexp } from "../../packages/shared/src";
 
 const CHARACTER_HEIGHT = 100;
 const MIN_CHARACTER_PIXELS = 36;
@@ -84,7 +84,7 @@ export function updateCamera(
         : { x: active.x, y: active.y - 65 };
   const x = fit(target.x, frame.width / zoom, 0, state.worldWidth);
   const y = fit(target.y, frame.height / zoom, top, state.worldHeight);
-  const factor = 1 - Math.exp(-dt / (close || flight ? 230 : 400));
+  const factor = 1 - dexp(-dt / (close || flight ? 230 : 400));
   camera.x += (x - camera.x) * factor;
   camera.y += (y - camera.y) * factor;
   camera.zoom += (zoom - camera.zoom) * factor;

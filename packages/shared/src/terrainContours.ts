@@ -1,3 +1,4 @@
+import { dhypot, sq } from "./detmath";
 import { CELL } from "./terrainGrid";
 
 type Point = { x: number; y: number };
@@ -22,7 +23,7 @@ function simplify(points: Point[], tolerance = CELL * 0.75): Point[] {
         ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1),
       ),
     );
-    const distance = (p.x - a.x - dx * t) ** 2 + (p.y - a.y - dy * t) ** 2;
+    const distance = sq(p.x - a.x - dx * t) + sq(p.y - a.y - dy * t);
     if (distance > furthest) {
       furthest = distance;
       split = i;
@@ -90,8 +91,8 @@ export function terrainContours(rows: string[]): Point[][] {
     let split = 1;
     for (let i = 2; i < points.length; i++)
       if (
-        Math.hypot(points[i].x - points[0].x, points[i].y - points[0].y) >
-        Math.hypot(points[split].x - points[0].x, points[split].y - points[0].y)
+        dhypot(points[i].x - points[0].x, points[i].y - points[0].y) >
+        dhypot(points[split].x - points[0].x, points[split].y - points[0].y)
       )
         split = i;
     const simplified = [
@@ -117,8 +118,8 @@ export function contourPaths(contours: Point[][]): {
     const joins = points.map((p, i) => {
       const prev = points[(i + points.length - 1) % points.length];
       const next = points[(i + 1) % points.length];
-      const before = Math.hypot(prev.x - p.x, prev.y - p.y);
-      const after = Math.hypot(next.x - p.x, next.y - p.y);
+      const before = dhypot(prev.x - p.x, prev.y - p.y);
+      const after = dhypot(next.x - p.x, next.y - p.y);
       const radius = Math.min(CELL, before / 3, after / 3);
       return {
         entry: {

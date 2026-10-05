@@ -1,4 +1,5 @@
 import { ARENA } from "./config";
+import { sq } from "./detmath";
 import type { Player } from "./schema";
 import { terrainHeight } from "./terrain";
 
@@ -12,7 +13,7 @@ export function settlePlayers(players: Player[], terrain: number[]) {
       player.vy = 0;
       continue;
     }
-    player.y += player.vy * dt + 0.5 * ARENA.gravity * dt ** 2;
+    player.y += player.vy * dt + 0.5 * ARENA.gravity * sq(dt);
     player.vy += ARENA.gravity * dt;
     if (player.y >= ground) {
       player.y = ground;

@@ -1,4 +1,5 @@
 import { ARENA } from "./config";
+import { dcos, dsin, sq } from "./detmath";
 import type { BattleView, PlayerView } from "./schema";
 import { terrainHeight } from "./terrain";
 
@@ -33,19 +34,19 @@ export function launch(
 ): Rocket {
   const speed = ARENA.minSpeed + power * (ARENA.maxSpeed - ARENA.minSpeed);
   const x = clamp(
-    player.x + Math.cos(angle) * (ARENA.playerRadius + 2),
+    player.x + dcos(angle) * (ARENA.playerRadius + 2),
     0,
     ARENA.width,
   );
   return {
     x,
     y: clamp(
-      player.y + Math.sin(angle) * (ARENA.playerRadius + 2),
+      player.y + dsin(angle) * (ARENA.playerRadius + 2),
       -ARENA.height,
       terrainHeight(terrain, x),
     ),
-    vx: Math.cos(angle) * speed,
-    vy: Math.sin(angle) * speed,
+    vx: dcos(angle) * speed,
+    vy: dsin(angle) * speed,
   };
 }
 
@@ -58,7 +59,7 @@ function circleHit(
 ) {
   const ox = x - player.x,
     oy = y - player.y;
-  const c = ox * ox + oy * oy - ARENA.playerRadius ** 2;
+  const c = ox * ox + oy * oy - sq(ARENA.playerRadius);
   if (c <= 0) return 0;
   const a = dx * dx + dy * dy;
   if (!a) return Infinity;
@@ -121,8 +122,8 @@ export function advanceRocket(
   wind = 0,
 ) {
   const dt = ARENA.stepMs / 1000;
-  const dx = rocket.vx * dt + 0.5 * wind * dt ** 2;
-  const dy = rocket.vy * dt + 0.5 * ARENA.gravity * dt ** 2;
+  const dx = rocket.vx * dt + 0.5 * wind * sq(dt);
+  const dy = rocket.vy * dt + 0.5 * ARENA.gravity * sq(dt);
   let hit = Math.min(
     boundaryHit(rocket.x, dx, 0, ARENA.width),
     boundaryHit(rocket.y, dy, -ARENA.height, ARENA.height),

@@ -1,4 +1,5 @@
 import { ARENA } from "./config";
+import { dhypot, sq } from "./detmath";
 import { terrainHeight } from "./terrain";
 
 export const CELL = 8;
@@ -50,7 +51,7 @@ export function bodyBlocked(
       if (world.terrainRows[row].charAt(col) !== "1") continue;
       const nx = Math.max(col * CELL, Math.min((col + 1) * CELL, x));
       const ny = Math.max(row * CELL, Math.min((row + 1) * CELL, y));
-      if ((nx - x) ** 2 + (ny - y) ** 2 < radius ** 2 - 0.001) return true;
+      if (sq(nx - x) + sq(ny - y) < sq(radius) - 0.001) return true;
     }
   }
   return false;
@@ -79,7 +80,7 @@ export function eraseCircle(
       col++
     ) {
       if (
-        Math.hypot((col + 0.5) * CELL - x, (row + 0.5) * CELL - y) <= radius &&
+        dhypot((col + 0.5) * CELL - x, (row + 0.5) * CELL - y) <= radius &&
         cells[col] === "1"
       ) {
         cells[col] = "0";
@@ -98,7 +99,7 @@ export function gridHit(
   dx: number,
   dy: number,
 ) {
-  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 2));
+  const steps = Math.max(1, Math.ceil(dhypot(dx, dy) / 2));
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     if (solidAt(world, x + dx * t, y + dy * t)) {
