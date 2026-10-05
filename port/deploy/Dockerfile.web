@@ -1,5 +1,7 @@
 # Static web build of the dotframe port, served by nginx.
 FROM oven/bun:1.3.11 AS build
+# ffmpeg encodes the synthesized sounds to mp3 (tools/synth-sounds.ts).
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY packages/shared ./packages/shared
 COPY assets/brand ./assets/brand
