@@ -1,5 +1,6 @@
 // Craft Ones on the web: setup screen, then a local hot-seat match where one keyboard drives whichever seat
-// has the turn, like /playground. ?map=coast&species=puma&coat=sage&species2=zorro&coat2=slate skips setup;
+// has the turn, like /playground. ?online opens a room and shows its link; ?room=<code> joins it, and the two
+// browsers play over the relay with rollback netplay (the host picks the match). ?map=coast&species=puma&coat=sage&species2=zorro&coat2=slate skips setup;
 // &infiniteHp=1 and &destructible=0 are the lab toggles.
 import { createDraw2D } from "dotframe/src/draw2d";
 import type { Frame } from "dotframe/src/gpu";
@@ -18,18 +19,29 @@ import { loadSpeakers, type Speakers } from "./src/audio";
 import { createControls } from "./src/controls";
 import {
   Bit,
+  checksum,
   createMatch,
   DEFAULT_OPTIONS,
   type Match,
   type MatchOptions,
   power01,
+  ROLLBACK_WINDOW,
   seatOf,
   step,
   view,
   WINDOW,
 } from "./src/match";
-import { createRenderer, loadArt, loadCritter } from "./src/render";
+import { createRollback, type Rollback } from "./src/netplay";
+import { connectOnline, DEFAULT_RELAY, type OnlineLink } from "./src/online";
+import {
+  createRenderer,
+  drawBanner,
+  drawNetStats,
+  loadArt,
+  loadCritter,
+} from "./src/render";
 import { createSetup, press, renderSetup, type SetupKey } from "./src/setup";
+import { restoreMatch, snapshotMatch } from "./src/snapshot";
 
 const STEP = 1 / 60;
 const params = new URLSearchParams(location.search);
@@ -49,6 +61,18 @@ const fromUrl: MatchOptions = {
     coat: (params.get("coat2") ?? DEFAULT_OPTIONS.two.coat) as CoatId,
   },
 };
+// Online: ?online creates a room, ?room=<code> joins one. ?relay= overrides the relay (ws://localhost:8787 locally).
+const INPUT_DELAY = 10;
+let room = params.get("room");
+if (params.has("online") && !room) {
+  room = Math.random().toString(36).slice(2, 8);
+  params.set("room", room);
+  params.delete("online");
+  history.replaceState(null, "", `${location.pathname}?${params}`);
+}
+const link: OnlineLink | null = room
+  ? connectOnline(params.get("relay") ?? DEFAULT_RELAY, room)
+  : null;
 const SETUP_KEYS: [SetupKey, number[]][] = [
   ["up", [Key.Up, Key.W]],
   ["down", [Key.Down, Key.S]],
@@ -93,6 +117,28 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
   };
   const controls = createControls(input, WINDOW.width, WINDOW.height);
   let simulated = -1;
+  // Online host: the options picked in setup, sent once the guest arrives.
+  let pending: MatchOptions | null = null;
+  let rollback: Rollback | null = null;
+  const startOnline = (seed: number, options: MatchOptions): void => {
+    if (!link) return;
+    const m = createMatch(seed, options);
+    match = m;
+    rollback = createRollback({
+      game: {
+        step: (inputs: number[]): void => step(m, inputs),
+        save: () => snapshotMatch(m),
+        restore: (snap) => restoreMatch(m, snap),
+        checksum: (): number => checksum(m),
+      },
+      transport: link.transport,
+      localSeat: link.slot(),
+      inputDelay: INPUT_DELAY,
+      maxRollback: ROLLBACK_WINDOW,
+    });
+  };
+  const share = (): string =>
+    `${location.origin}${location.pathname}?room=${link?.room ?? ""}`;
   return (time: number): boolean => {
     draw.begin();
     if (!ready) {
@@ -101,11 +147,53 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
       draw.end({ r: 0, g: 0, b: 0 });
       return true;
     }
+    const W = WINDOW.width;
+    const H = WINDOW.height;
+    if (link && !rollback) {
+      // Guest: wait for the host's match. Host: pick in setup, then wait for the guest and send it.
+      const status = link.status();
+      const start = link.start();
+      if (link.slot() === 1 && start) startOnline(start.seed, start.options);
+      else if (
+        link.slot() === 1 ||
+        status === "connecting" ||
+        status === "closed"
+      ) {
+        drawBanner(
+          draw,
+          W,
+          H,
+          status === "closed" ? "Relay closed" : "Online",
+          [
+            status === "connecting"
+              ? "Connecting to the relay..."
+              : status === "closed"
+                ? "Reload to try again"
+                : "Waiting for the host to start the match",
+            `Room ${link.room}`,
+          ],
+        );
+        draw.end({ r: 0, g: 0, b: 0 });
+        return true;
+      } else if (pending && status === "paired") {
+        const seed = Math.floor(Math.random() * 0x1_0000_0000);
+        link.sendStart({ t: "start", seed, options: pending });
+        startOnline(seed, pending);
+      } else if (pending) {
+        drawBanner(draw, W, H, "Waiting for a rival", [
+          "Send this link to the other player:",
+          share(),
+        ]);
+        draw.end({ r: 0, g: 0, b: 0 });
+        return true;
+      }
+    }
     if (!match) {
       for (const [key, keys] of SETUP_KEYS)
         if (tapped(keys)) {
           const options = press(setup, key);
-          if (options)
+          if (options && link) pending = options;
+          else if (options)
             match = createMatch(
               Math.floor(Math.random() * 0x1_0000_0000),
               options,
@@ -116,8 +204,12 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
       simulated = -1;
       return true;
     }
-    // Escape from a finished match goes back to setup.
-    if (tapped([Key.Escape]) && match.battle.state.phase === "finished") {
+    // Escape from a finished match goes back to setup (local play only; online, R asks for a rematch).
+    if (
+      !link &&
+      tapped([Key.Escape]) &&
+      match.battle.state.phase === "finished"
+    ) {
       match = null;
       heard = null;
       draw.end({ r: 0, g: 0, b: 0 });
@@ -126,13 +218,16 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
     if (simulated < 0) simulated = time;
     for (let n = 0; simulated + STEP <= time && n < 5; n++) {
       const bits = controls.bits(match);
-      const inputs = [0, 0];
       const seat = seatOf(match);
-      if (seat >= 0) inputs[seat] = bits;
-      // R and M work for both seats; the rest only for the seat with the turn.
-      inputs[1 - Math.max(0, seat)] |= bits & (Bit.Restart | Bit.Map);
       const listener = match.battle.state.currentPlayer;
-      step(match, inputs);
+      if (rollback) rollback.tick(bits);
+      else {
+        const inputs = [0, 0];
+        if (seat >= 0) inputs[seat] = bits;
+        // R and M work for both seats; the rest only for the seat with the turn.
+        inputs[1 - Math.max(0, seat)] |= bits & (Bit.Restart | Bit.Map);
+        step(match, inputs);
+      }
       const now = view(match);
       speakers?.hear(heard, now, listener);
       speakers?.charge(
@@ -144,6 +239,21 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
     }
     if (simulated < time - STEP * 5) simulated = time;
     renderer.render(match, draw, controls.touched(), controls.preview());
+    if (link && rollback) {
+      const stats = rollback.stats();
+      if (link.status() !== "paired")
+        drawBanner(draw, W, H, "Rival left", ["The other player disconnected"]);
+      else if (stats.desync >= 0)
+        drawBanner(draw, W, H, "Desync", [
+          `Frame ${stats.desync}: reload both pages`,
+        ]);
+      drawNetStats(
+        draw,
+        W,
+        H,
+        `you are P${link.slot() + 1} · ping ${Math.round((stats.rtt * 1000) / 60)} ms · rollbacks ${stats.rollbacks}`,
+      );
+    }
     draw.end({ r: 0, g: 0, b: 0 });
     return true;
   };

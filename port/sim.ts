@@ -11,22 +11,27 @@ import {
   type MatchOptions,
   over,
   PLAYERS,
+  ROLLBACK_WINDOW,
   randomInput,
-  restore,
-  type Saved,
-  save,
   step,
   summary,
   view,
   WINDOW,
 } from "./src/match";
 import { createRenderer, loadArt, loadCritter } from "./src/render";
+import {
+  type MatchSnapshot,
+  restoreMatch,
+  snapshotMatch,
+} from "./src/snapshot";
 
 export default defineSim({
   players: PLAYERS,
   window: WINDOW,
   options: DEFAULT_OPTIONS as unknown as Record<string, unknown>,
   neutral: 0,
+  // Matches the rollback engine's limit in src/netplay.ts.
+  rollbackWindow: ROLLBACK_WINDOW,
   encode,
   random: randomInput,
   create: (platform: SimPlatform): SimRun => {
@@ -56,9 +61,9 @@ export default defineSim({
       checksum: (): number => checksum(match),
       state: (): unknown => summary(match),
       over: (): boolean => over(match),
-      save: (): unknown => save(match),
+      save: (): unknown => snapshotMatch(match),
       restore: (saved: unknown): void => {
-        match = restore(saved as Saved);
+        restoreMatch(match, saved as MatchSnapshot);
       },
       inspect: (): unknown => ({ view: view(match), angle: match.angle, charge: match.charge, camera: match.camera, fx: match.fx, kickoff: match.kickoff }),
       render: (d) => renderer.render(match, d),

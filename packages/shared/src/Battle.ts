@@ -23,8 +23,10 @@ import { settlePlayers } from "./playerMotion";
 import { advanceShot, launchShot, type Shot } from "./projectiles";
 import {
   BattleState,
+  type BattleView,
   type FireAction,
   Player,
+  type PlayerView,
   type Projectile,
 } from "./schema";
 import { carveCrater, type MapId, makeTerrain, terrainHeight } from "./terrain";
@@ -99,6 +101,56 @@ function isFireAction(value: unknown): value is FireAction {
   );
 }
 
+// Everything a Battle needs to resume exactly where it was, for rollback netplay. The clock is not part of it:
+// it belongs to whoever owns the Battle.
+export type BattleSnapshot = {
+  state: BattleView;
+  volley: {
+    sessionId: string;
+    angle: number;
+    power: number;
+    remaining: number;
+  } | null;
+  accumulator: number;
+  bodyAccumulator: number;
+  lastNow: number;
+  turnDeadline: number;
+  flightDeadline: number;
+  flightMs: number;
+  explosionDeadline: number;
+  // Indexes into state.players, in insertion order (Set iteration order is part of the simulation).
+  controlled: number[];
+  moveSequence: number;
+  moveAt: number;
+  infiniteHp: boolean;
+  destructible: boolean;
+  resolveDeadline: number;
+  openingSeat: OpeningSeat;
+  openingIndex: number;
+  matchOriginTurn: number;
+  windSeed: number;
+};
+
+function loadPlayer(player: Player, view: PlayerView) {
+  player.selectedWeapon = view.selectedWeapon;
+  player.abilityArmed = view.abilityArmed;
+  player.species = view.species;
+  player.coat = view.coat;
+  player.abilityReadyTurn = view.abilityReadyTurn;
+  player.shield = view.shield;
+  player.vx = view.vx;
+  player.sessionId = view.sessionId;
+  player.number = view.number;
+  player.x = view.x;
+  player.y = view.y;
+  player.hp = view.hp;
+  player.connected = view.connected;
+  player.movementLeft = view.movementLeft;
+  player.originX = view.originX;
+  player.jumps = view.jumps;
+  player.vy = view.vy;
+}
+
 export class Battle {
   readonly state = new BattleState();
   private volley: {
@@ -125,6 +177,114 @@ export class Battle {
   private openingSeat: OpeningSeat = "host";
   private openingIndex = 0;
   private matchOriginTurn = 0;
+
+  snapshot(): BattleSnapshot {
+    const controlled: number[] = [];
+    for (const player of this.controlledMotion)
+      controlled.push(this.state.players.indexOf(player));
+    const volley = this.volley;
+    return {
+      state: this.state.toJSON(),
+      volley: volley
+        ? {
+            sessionId: volley.sessionId,
+            angle: volley.angle,
+            power: volley.power,
+            remaining: volley.remaining,
+          }
+        : null,
+      accumulator: this.accumulator,
+      bodyAccumulator: this.bodyAccumulator,
+      lastNow: this.lastNow,
+      turnDeadline: this.turnDeadline,
+      flightDeadline: this.flightDeadline,
+      flightMs: this.flightMs,
+      explosionDeadline: this.explosionDeadline,
+      controlled,
+      moveSequence: this.moveSequence,
+      moveAt: this.moveAt,
+      infiniteHp: this.infiniteHp,
+      destructible: this.destructible,
+      resolveDeadline: this.resolveDeadline,
+      openingSeat: this.openingSeat,
+      openingIndex: this.openingIndex,
+      matchOriginTurn: this.matchOriginTurn,
+      windSeed: this.windSeed,
+    };
+  }
+
+  restore(snap: BattleSnapshot) {
+    const view = snap.state;
+    const state = this.state;
+    state.worldWidth = view.worldWidth;
+    state.worldHeight = view.worldHeight;
+    state.terrainRows = view.terrainRows.slice();
+    state.terrainRevision = view.terrainRevision;
+    state.lastAction = view.lastAction;
+    state.wind = view.wind;
+    state.mapId = view.mapId;
+    state.terrain = view.terrain.slice();
+    while (state.players.length > view.players.length) state.players.pop();
+    while (state.players.length < view.players.length)
+      state.players.push(new Player());
+    for (let i = 0; i < view.players.length; i++)
+      loadPlayer(state.players[i], view.players[i]);
+    const p = state.projectile;
+    const shot = view.projectile;
+    p.kind = shot.kind;
+    p.elapsedMs = shot.elapsedMs;
+    p.bounces = shot.bounces;
+    p.stuck = shot.stuck;
+    p.attachedPlayer = shot.attachedPlayer;
+    p.offsetX = shot.offsetX;
+    p.offsetY = shot.offsetY;
+    p.active = shot.active;
+    p.x = shot.x;
+    p.y = shot.y;
+    p.vx = shot.vx;
+    p.vy = shot.vy;
+    state.explosion.radius = view.explosion.radius;
+    state.explosion.id = view.explosion.id;
+    state.explosion.x = view.explosion.x;
+    state.explosion.y = view.explosion.y;
+    state.phase = view.phase;
+    state.currentPlayer = view.currentPlayer;
+    state.turnNumber = view.turnNumber;
+    state.roundNumber = view.roundNumber;
+    state.remainingMs = view.remainingMs;
+    state.waitingRemainingMs = view.waitingRemainingMs;
+    state.winner = view.winner;
+    state.finishReason = view.finishReason;
+    state.openingSeat = view.openingSeat;
+    const volley = snap.volley;
+    this.volley = volley
+      ? {
+          sessionId: volley.sessionId,
+          angle: volley.angle,
+          power: volley.power,
+          remaining: volley.remaining,
+        }
+      : null;
+    this.accumulator = snap.accumulator;
+    this.bodyAccumulator = snap.bodyAccumulator;
+    this.lastNow = snap.lastNow;
+    this.turnDeadline = snap.turnDeadline;
+    this.flightDeadline = snap.flightDeadline;
+    this.flightMs = snap.flightMs;
+    this.explosionDeadline = snap.explosionDeadline;
+    this.controlledMotion.clear();
+    for (const index of snap.controlled)
+      this.controlledMotion.add(state.players[index]);
+    this.moveSequence = snap.moveSequence;
+    this.moveAt = snap.moveAt;
+    this.infiniteHp = snap.infiniteHp;
+    this.destructible = snap.destructible;
+    this.resolveDeadline = snap.resolveDeadline;
+    this.openingSeat = snap.openingSeat;
+    this.openingIndex = snap.openingIndex;
+    this.matchOriginTurn = snap.matchOriginTurn;
+    this.windSeed = snap.windSeed;
+  }
 
   constructor(
     private readonly now: () => number = () => performance.now(),

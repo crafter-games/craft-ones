@@ -1205,3 +1205,47 @@ export function rasterizeLoops(
   }
   return coverage;
 }
+
+// A centered card with a title and lines, for online status (waiting for a peer, room link, disconnects).
+export function drawBanner(
+  d: Draw2D,
+  W: number,
+  H: number,
+  title: string,
+  lines: string[],
+): void {
+  d.setFillStyle("rgba(24,18,28,0.6)");
+  d.fillRect(0, 0, W, H);
+  const h = 90 + lines.length * 26;
+  panel(d, W / 2 - 300, H / 2 - h / 2, 600, h);
+  text(
+    d,
+    title,
+    W / 2,
+    H / 2 - h / 2 + 40,
+    "34px Bangers",
+    HUD.cream,
+    "center",
+  );
+  lines.forEach((line, i) => {
+    text(
+      d,
+      line,
+      W / 2,
+      H / 2 - h / 2 + 80 + i * 26,
+      "13px Archivo Black",
+      HUD.dim,
+      "center",
+    );
+  });
+}
+
+// Ping and rollback numbers in a corner during online play.
+export function drawNetStats(
+  d: Draw2D,
+  W: number,
+  H: number,
+  line: string,
+): void {
+  text(d, line, W - 12, H - 10, "11px Archivo Black", HUD.dim, "right");
+}
