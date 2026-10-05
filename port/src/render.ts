@@ -143,10 +143,10 @@ export function loadArtSync(
   read: (path: string) => Uint8Array,
   image: (png: Uint8Array) => Texture,
   root: string,
+  fonts: string,
   critters: { species: string; coat: string }[],
 ): void {
   const decoder = new TextDecoder();
-  const fonts = `${root}/node_modules/dotframe/assets/fonts`;
   for (const font of FONTS)
     draw.addFont(
       font.names,
@@ -235,7 +235,7 @@ export function createRenderer(
         else if (!solid(wx - 6, wy) || !solid(wx + 6, wy) || !solid(wx, wy + 6))
           color = outline;
         else {
-          const band = Math.floor((wy + 22 * Math.sin(wx / 128)) / 96) % 3;
+          const band = Math.floor((wy + 22 * Math.sin(wx / 128)) / 96) % 3; // dotframe-allow-math
           color = band === 0 ? shade : band === 1 ? light : earth;
         }
         const i = (py * width + px) * 4;
@@ -273,9 +273,9 @@ export function createRenderer(
     const key = (part: string): string => `${species}-${player.coat}-${part}`;
     const part = (name: string): void => image(d, key(name), -40, -50, 80, 100);
     const t = match.frame * (1000 / 60);
-    const idle = Math.sin(t / 320 + player.number);
-    const facing = Math.cos(angle) >= 0 ? 1 : -1;
-    const local = Math.atan2(Math.sin(angle), Math.abs(Math.cos(angle)));
+    const idle = Math.sin(t / 320 + player.number); // dotframe-allow-math
+    const facing = Math.cos(angle) >= 0 ? 1 : -1; // dotframe-allow-math
+    const local = Math.atan2(Math.sin(angle), Math.abs(Math.cos(angle))); // dotframe-allow-math
     const dead = player.hp <= 0;
     d.save();
     d.translate(player.x, player.y);
@@ -336,11 +336,11 @@ export function createRenderer(
           j.earFront,
           undefined,
           undefined,
-          Math.sin(t / 440) * 0.04,
+          Math.sin(t / 440) * 0.04, // dotframe-allow-math
         );
         part("head");
         if (!dead) {
-          const blink = Math.sin(t / 780 + player.number) > 0.998 ? 0.32 : 0.5;
+          const blink = Math.sin(t / 780 + player.number) > 0.998 ? 0.32 : 0.5; // dotframe-allow-math
           d.save();
           d.scale(1, blink * 2);
           part("eyes");
@@ -381,8 +381,8 @@ export function createRenderer(
     if (shakeAge < 140) {
       const amount = (0.003 * FRAME.width) / zoom;
       d.translate(
-        Math.sin(match.frame * 2.1) * amount,
-        Math.cos(match.frame * 1.7) * amount,
+        Math.sin(match.frame * 2.1) * amount, // dotframe-allow-math
+        Math.cos(match.frame * 1.7) * amount, // dotframe-allow-math
       );
     }
     // Stretch the scenery over whatever the camera sees, so pulling back past the world shows no seam.
@@ -443,7 +443,7 @@ export function createRenderer(
       }
       const headTop = player.y - (player.species === "cuy" ? 76 : 103);
       if (active && state.phase !== "finished") {
-        const y = headTop - 6 + Math.sin(match.frame / 11) * 2;
+        const y = headTop - 6 + Math.sin(match.frame / 11) * 2; // dotframe-allow-math
         d.setFillStyle(SEAT_COLORS[i]);
         d.beginPath();
         d.moveTo(player.x - 14, y - 16);
@@ -494,7 +494,7 @@ export function createRenderer(
         } else {
           // Where a leap, pounce or dash will carry the critter, as the web arena draws it.
           const species = player.species;
-          const direction = Math.cos(match.angle[i]) >= 0 ? 1 : -1;
+          const direction = Math.cos(match.angle[i]) >= 0 ? 1 : -1; // dotframe-allow-math
           const lift = species === "zorro" ? 0 : species === "puma" ? 72 : 118;
           const distance =
             species === "zorro" ? 185 : species === "puma" ? 155 : 125;
@@ -502,17 +502,17 @@ export function createRenderer(
           const sy = player.y - 28;
           const ex = player.x + direction * distance;
           const ey = player.y - 28 - lift;
-          const a = Math.atan2(ey - sy, ex - sx);
+          const a = Math.atan2(ey - sy, ex - sx); // dotframe-allow-math
           const head = (wing: number, tip: number): void => {
             d.beginPath();
-            d.moveTo(ex + Math.cos(a) * tip, ey + Math.sin(a) * tip);
+            d.moveTo(ex + Math.cos(a) * tip, ey + Math.sin(a) * tip); // dotframe-allow-math
             d.lineTo(
-              ex - Math.cos(a - 0.62) * wing,
-              ey - Math.sin(a - 0.62) * wing,
+              ex - Math.cos(a - 0.62) * wing, // dotframe-allow-math
+              ey - Math.sin(a - 0.62) * wing, // dotframe-allow-math
             );
             d.lineTo(
-              ex - Math.cos(a + 0.62) * wing,
-              ey - Math.sin(a + 0.62) * wing,
+              ex - Math.cos(a + 0.62) * wing, // dotframe-allow-math
+              ey - Math.sin(a + 0.62) * wing, // dotframe-allow-math
             );
             d.closePath();
             d.fill();
@@ -609,7 +609,7 @@ export function createRenderer(
             ? shot.stuck
               ? 0
               : shot.elapsedMs / 180
-            : Math.atan2(shot.vy, shot.vx);
+            : Math.atan2(shot.vy, shot.vx); // dotframe-allow-math
       d.save();
       d.translate(shot.x, shot.y);
       d.rotate(spin);
@@ -649,7 +649,7 @@ export function createRenderer(
             : b.kind === "shuriken"
               ? ["#484954", "#b2b5cc", "#f0edf8"]
               : ["#786362", "#ffb35f", "#ffedac"];
-      const ease = (t: number): number => 1 - (1 - Math.min(1, t)) ** 3;
+      const ease = (t: number): number => 1 - (1 - Math.min(1, t)) ** 3; // dotframe-allow-math
       if (age < 420) {
         const t = ease(age / 420);
         d.setGlobalAlpha(0.7 * (1 - t));
@@ -673,8 +673,8 @@ export function createRenderer(
         d.setFillStyle(palette[n % 3]);
         d.beginPath();
         d.arc(
-          b.x + Math.cos(angle) * distance * t,
-          b.y + (Math.sin(angle) * distance - 18) * t,
+          b.x + Math.cos(angle) * distance * t, // dotframe-allow-math
+          b.y + (Math.sin(angle) * distance - 18) * t, // dotframe-allow-math
           (3 + (n % 5)) * (1 - 0.85 * t),
           0,
           Math.PI * 2,
@@ -687,7 +687,7 @@ export function createRenderer(
     // Damage and healing numbers float up and fade.
     for (const t of match.fx.popups) {
       const k = Math.min(1, (match.frame - t.frame) / POPUP_LIFE);
-      const rise = 1 - (1 - k) ** 3;
+      const rise = 1 - (1 - k) ** 3; // dotframe-allow-math
       const label = t.amount > 0 ? `-${t.amount}` : `+${-t.amount}`;
       d.setGlobalAlpha(1 - rise);
       d.setFont("25px Archivo Black");

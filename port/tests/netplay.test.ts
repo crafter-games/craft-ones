@@ -6,7 +6,7 @@ import {
   ROLLBACK_WINDOW,
   step,
 } from "../src/match";
-import { createRollback, type NetMessage } from "../src/netplay";
+import { createRollback, type NetMessage } from "dotframe/src/netplay";
 import { restoreMatch, snapshotMatch } from "../src/snapshot";
 
 const rng = (seed: number): (() => number) => {
@@ -25,7 +25,7 @@ test("two rollback peers over a slow link end in the same state as a direct run"
   const peers = [0, 1].map((seat) => {
     const match = createMatch(9);
     const rollback = createRollback({
-      game: {
+      sim: {
         step: (inputs: number[]): void => step(match, inputs),
         save: () => snapshotMatch(match),
         restore: (s) => restoreMatch(match, s),
@@ -41,7 +41,8 @@ test("two rollback peers over a slow link end in the same state as a direct run"
           return ready.map((q) => q.message);
         },
       },
-      localSeat: seat,
+      localPort: seat,
+      neutral: 0,
       inputDelay: 10,
       maxRollback: ROLLBACK_WINDOW,
     });

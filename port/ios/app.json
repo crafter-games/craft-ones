@@ -1,8 +1,0 @@
-{
-  "name": "craftones",
-  "entry": "app.ts",
-  "exports": [
-    { "export": "init", "params": ["string"], "returns": "void" },
-    { "export": "frame", "params": ["f64"], "returns": "bool" }
-  ]
-}

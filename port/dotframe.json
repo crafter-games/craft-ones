@@ -14,9 +14,8 @@
       ],
       "out": "dist/web",
       "deploy": {
-        "provider": "vercel",
-        "project": "craft-ones-dotframe",
-        "scope": "crafter-station"
+        "provider": "dokploy",
+        "compose": "y46mbk95dGUI5vTPTjJkb"
       }
     },
     "native": {
@@ -26,16 +25,16 @@
       }
     },
     "ios": {
-      "steps": [
-        {
-          "label": "ios",
-          "argv": [
-            "sh",
-            "scripts/build-ios.sh"
-          ]
-        }
-      ],
-      "app": "ios/build/derived/Build/Products/Debug-iphoneos/CraftOnes.app",
+      "native": {
+        "platform": "ios",
+        "entry": "main.ios.ts",
+        "bundleId": "run.crafter.craftones",
+        "team": "PK4JFXUL2L",
+        "icon": "../assets/brand/icon-master.png",
+        "orientation": "landscape",
+        "assets": "assets",
+        "displayName": "Craft Ones"
+      },
       "device": "00008120-001A5D690A52201E"
     },
     "discord": {
@@ -50,13 +49,15 @@
       ],
       "out": "dist/web",
       "deploy": {
-        "provider": "vercel",
-        "project": "craft-ones-dotframe",
-        "scope": "crafter-station"
+        "provider": "dokploy",
+        "compose": "y46mbk95dGUI5vTPTjJkb"
       }
     }
   },
   "assets": {
     "localOnly": []
-  }
+  },
+  "requires": [
+    "ffmpeg"
+  ]
 }

@@ -2,6 +2,7 @@
 // A frame is one fixed 60 Hz step: the current seat's input becomes Battle intentions, then the clock advances.
 // Aim, charge, the camera, the kickoff pause and notices live here, not in the renderer, so dotframe sim,
 // replays and netplay see everything that decides a shot.
+import { createChecksum } from "dotframe/src/checksum";
 import {
   ARENA,
   abilityNeedsAim,
@@ -317,17 +318,58 @@ export function view(match: Match): BattleView {
   return match.battle.state.toJSON() as BattleView;
 }
 
+// Numbers in a fixed order (dotframe's checksum), so web, native and other browsers hash the same state. Terrain
+// rows enter through terrainRevision: they only change with a crater, which also moves the shot and players.
 export function checksum(match: Match): number {
-  const text =
-    JSON.stringify(view(match)) +
-    match.angle.join() +
-    match.charge.join() +
-    match.kickoff +
-    match.rematches;
-  let h = 2166136261;
-  for (let i = 0; i < text.length; i++)
-    h = Math.imul(h ^ text.charCodeAt(i), 16777619);
-  return h >>> 0;
+  const sum = createChecksum();
+  const text = (value: string): void => {
+    sum.add(value.length);
+    for (let i = 0; i < value.length; i++) sum.add(value.charCodeAt(i));
+  };
+  const state = match.battle.state;
+  sum
+    .add(state.terrainRevision)
+    .add(state.wind)
+    .add(state.turnNumber)
+    .add(state.roundNumber)
+    .add(state.remainingMs)
+    .add(state.waitingRemainingMs);
+  text(state.phase);
+  text(state.currentPlayer);
+  text(state.winner);
+  text(state.lastAction);
+  for (const h of state.terrain) sum.add(h);
+  for (const p of state.players) {
+    sum
+      .add(p.x)
+      .add(p.y)
+      .add(p.vx)
+      .add(p.vy)
+      .add(p.hp)
+      .add(p.shield)
+      .add(p.jumps)
+      .add(p.movementLeft)
+      .add(p.originX)
+      .add(p.abilityReadyTurn)
+      .add(p.abilityArmed ? 1 : 0);
+    text(p.selectedWeapon);
+  }
+  const shot = state.projectile;
+  sum
+    .add(shot.active ? 1 : 0)
+    .add(shot.x)
+    .add(shot.y)
+    .add(shot.vx)
+    .add(shot.vy)
+    .add(shot.elapsedMs)
+    .add(shot.bounces)
+    .add(shot.stuck ? 1 : 0)
+    .add(shot.attachedPlayer);
+  text(shot.kind);
+  sum.add(state.explosion.id).add(state.explosion.x).add(state.explosion.y);
+  for (const a of match.angle) sum.add(a);
+  for (const c of match.charge) sum.add(c);
+  return sum.add(match.kickoff).add(match.rematches).value();
 }
 
 export function summary(match: Match): unknown {

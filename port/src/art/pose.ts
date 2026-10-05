@@ -112,7 +112,7 @@ export function weaponPose(species: Species, angle = 0) {
     railly: 20,
   }[species];
   // Give a raised barrel just enough clearance to avoid the muzzle/face.
-  return { x: x + Math.abs(Math.sin(angle)) * 8, y: 3 };
+  return { x: x + Math.abs(Math.sin(angle)) * 8, y: 3 }; // dotframe-allow-math
 }
 export function handPose(
   species: Species,
@@ -135,8 +135,8 @@ export function handPose(
   const grip = WEAPON_ART[weapon].frontGrip;
   const origin = weaponPose(species, angle);
   return {
-    x: origin.x + Math.cos(angle) * grip[0] - Math.sin(angle) * grip[1],
-    y: origin.y + Math.sin(angle) * grip[0] + Math.cos(angle) * grip[1],
+    x: origin.x + Math.cos(angle) * grip[0] - Math.sin(angle) * grip[1], // dotframe-allow-math
+    y: origin.y + Math.sin(angle) * grip[0] + Math.cos(angle) * grip[1], // dotframe-allow-math
     angle,
   };
 }

@@ -1,10 +1,10 @@
-// iOS entry, compiled with scriptc in library mode. The host calls init once with the bundle's game folder, then
+// iOS entry (dotframe build ios), compiled with scriptc in library mode. The host calls init once with the bundle's game folder, then
 // frame every display refresh. Loading is synchronous: library mode has no promises.
 import { createDraw2D, type Draw2D } from "dotframe/src/draw2d";
 import { openLibraryPlatform } from "dotframe/src/native/library";
-import type { BattleView } from "../../packages/shared/src";
-import { loadSpeakersSync, type Speakers } from "../src/audio";
-import { type Controls, createControls } from "../src/controls";
+import type { BattleView } from "../packages/shared/src";
+import { loadSpeakersSync, type Speakers } from "./src/audio";
+import { type Controls, createControls } from "./src/controls";
 import {
   Bit,
   createMatch,
@@ -16,8 +16,8 @@ import {
   step,
   view,
   WINDOW,
-} from "../src/match";
-import { createRenderer, loadArtSync } from "../src/render";
+} from "./src/match";
+import { createRenderer, loadArtSync } from "./src/render";
 
 const STEP = 1 / 60;
 let match: Match | null = null;
@@ -35,10 +35,14 @@ export function init(base: string): void {
   fitAspect(platform.width / Math.max(platform.height, 1));
   const d = createDraw2D(platform.gpu, WINDOW.width, WINDOW.height);
   const read = (path: string): Uint8Array => platform.readFile(path);
-  loadArtSync(d, read, (png: Uint8Array) => platform.image(png, true), base, [
-    DEFAULT_OPTIONS.one,
-    DEFAULT_OPTIONS.two,
-  ]);
+  loadArtSync(
+    d,
+    read,
+    (png: Uint8Array) => platform.image(png, true),
+    base,
+    `${base}/dotframe/assets/fonts`,
+    [DEFAULT_OPTIONS.one, DEFAULT_OPTIONS.two],
+  );
   speakers = loadSpeakersSync(platform.audio, read, platform.sound, base);
   const renderer = createRenderer(platform.gpu, WINDOW);
   render = (m: Match, dr: Draw2D, touched: boolean, preview: number): void =>

@@ -78,7 +78,7 @@ export function createControls(input: Input, W: number, H: number): Controls {
     const player = match.battle.state.players[seat];
     const aimAt = (px: number, py: number): number => {
       const world = screenToWorld(match, px, py);
-      return aimBits(Math.atan2(world.y - player.y, world.x - player.x));
+      return aimBits(Math.atan2(world.y - player.y, world.x - player.x)); // dotframe-allow-math
     };
     let bits = 0;
     const fingers = input.touches();
@@ -114,8 +114,8 @@ export function createControls(input: Input, W: number, H: number): Controls {
       if (sling) {
         const dx = slingX - sling.x * W;
         const dy = slingY - sling.y * H;
-        const length = Math.hypot(dx, dy);
-        slingAngle = Math.atan2(dy, dx);
+        const length = Math.hypot(dx, dy); // dotframe-allow-math
+        slingAngle = Math.atan2(dy, dx); // dotframe-allow-math
         slingPower =
           length < DEAD_ZONE
             ? 0

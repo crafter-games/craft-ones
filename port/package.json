@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@discord/embedded-app-sdk": "2.5.0",
-    "dotframe": "0.1.4"
+    "dotframe": "0.1.7"
   },
   "devDependencies": {
     "@webgpu/types": "^0.1.74",

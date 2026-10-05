@@ -32,7 +32,7 @@ import {
   view,
   WINDOW,
 } from "./src/match";
-import { createRollback, type Rollback } from "./src/netplay";
+import { createRollback, type Rollback } from "dotframe/src/netplay";
 import { connectOnline, type OnlineLink } from "./src/online";
 import {
   createRenderer,
@@ -141,14 +141,15 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
     const m = createMatch(seed, options);
     match = m;
     rollback = createRollback({
-      game: {
+      sim: {
         step: (inputs: number[]): void => step(m, inputs),
         save: () => snapshotMatch(m),
         restore: (snap) => restoreMatch(m, snap),
         checksum: (): number => checksum(m),
       },
       transport: link.transport,
-      localSeat: link.slot(),
+      localPort: link.slot(),
+      neutral: 0,
       inputDelay: INPUT_DELAY,
       maxRollback: ROLLBACK_WINDOW,
     });
@@ -193,7 +194,7 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
         return true;
       } else if (pending && status === "paired") {
         const seed = Math.floor(Math.random() * 0x1_0000_0000);
-        link.sendStart({ t: "start", seed, options: pending });
+        link.send({ t: "start", seed, options: pending });
         startOnline(seed, pending);
       } else if (pending && tapped([Key.Escape])) {
         // Nobody came: play hot-seat on this screen instead.
