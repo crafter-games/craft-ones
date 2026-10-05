@@ -1,87 +1,22 @@
 # Craft Ones
 
-## Principles
-- Original, tiny 1v1 turn-based artillery prototype for Crafter Station. No copied code or assets.
-- Scope: two players, 100 HP, four 2688 × 1536 maps with platforms/caves, six default weapons/tools, turn-cost character abilities, gravity, splash damage, knockback, basic movement bounded by a shared turn budget and timer, 15-second turns, invite links, winner and rematch.
-- Browser invite play is anonymous. Discord Activities use server-verified OAuth identity and instance membership. No database, economy, AI opponents, public matchmaking, inventories or future-feature frameworks. Terrain destruction is enabled in both local and multiplayer matches; local lab controls can disable it.
-- Server alone decides physics, damage, positions, turns and winner. Multiplayer browsers send move/jump/fire/ability/restart intentions and render synchronized state. `/playground` runs the identical shared engine locally with alternating seats and no network dependency.
-- Load character art only for profiles present in the match. Load a late rival or changed coat incrementally without replacing the arena or stealing focus from an open dialog. Initial readiness and focus belong to the first frame with the selected character textures available. Movement and firing wait for all current character parts. Failed art loads show a keyboard-accessible retry dialog that reloads the arena while preserving the session. Arena mounts own a fresh canvas with readiness cleared before Phaser boots. Scene shutdown and destruction both release external keyboard listeners and synthesized audio.
-- Keep Phaser client-only and lazy-loaded. React owns the lobby and HUD; Phaser owns the canvas and pointer input. Use WebGL with hardware acceleration and Canvas 2D when WebGL is unavailable or reports a software renderer.
-- Use Spec Kit's specify → plan → tasks → implement → converge flow, with acceptance criteria verified in tests.
-- Keep agent configuration in `.devin/`. Never commit secrets.
+Original 1v1 turn-based artillery game by Crafter Station, built on dotframe. One codebase runs on the web, as a Discord Activity, natively on macOS, and on iOS.
 
-## Workspace
-- Bun workspaces: `apps/web`, `apps/game-server`, `packages/shared`.
-- Frontend: Next.js App Router, React, Tailwind CSS, Phaser 3. Server: Colyseus 0.16 and schema 3.
-- `@colyseus/core` is pinned to 0.16.24 with a checked-in Nano ID 3 import compatibility patch. The root override pins nanoid 3.3.18; frozen installs must apply the patch.
-- Install with `bun install --frozen-lockfile`.
-- `bun dev` runs frontend (3000) and multiplayer server (2567). Use `bun dev:web` / `bun dev:server` separately if needed.
-- Verification commands: `bun test`, `bun run typecheck`, `bun run lint`, `bun run build`, `bun run test:e2e`, `bun audit`, `bun run test:server:bundle`, `bun run test:e2e:dev`, and `bun run test:container`.
-- Install browser test runtime with `bunx playwright install chromium` before the first E2E run.
-- Bun tests are scoped to the server by `bunfig.toml`; Playwright owns browser tests. The typecheck command also checks browser tests and Playwright configuration.
-- Browser tests collect full traces on a diagnostic retry and fail on flaky tests. Use `test.info().outputPath()` for explicit screenshots so production, development, and container evidence remain separate. Browser verification must include Linux Chromium.
-- Touch E2E tests must activate the page and await canvas actionability before measuring CDP coordinates; focus/Phaser resizing can otherwise move the touch target.
-- Server restart discards rooms. No persistence or reconnection is part of this milestone.
-- Node 22+ runs Colyseus (via `tsx` in development and a bundle in production); Bun 1.3.11 is the package/build runtime. Node's `ws` implementation is the verified network boundary. Network tests spawn the real Node server rather than an in-process Bun server.
-- Schema classes use `declare` fields and constructor assignments: emitted native class fields overwrite Colyseus change-tracking accessors.
-- Server `PORT` defaults to 2567 (0 allocates an ephemeral test port); `WEB_ORIGIN` accepts comma-separated additional browser origins. Localhost:3000 and 127.0.0.1:3000 are allowed by default only in development. Production requires explicit WEB_ORIGIN.
-- Frontend derives the WebSocket host from the page hostname. Override with `NEXT_PUBLIC_GAME_SERVER_URL` in `apps/web/.env.local` when needed.
+## Layout
+- `packages/shared`: the battle engine (physics, turns, damage, terrain). Plain TypeScript that also compiles with scriptc, so avoid what scriptc cannot lower (see the dotframe macos skill). Tests in `packages/shared/tests`.
+- `port`: the dotframe game. `sim.ts` is the dotframe contract; `src/match.ts` wraps the engine in a deterministic per-frame step; `src/render.ts` draws; `src/controls.ts` maps keyboard, mouse and touch to the input word; `src/netplay.ts`, `src/online.ts` and `src/snapshot.ts` are rollback netplay over `server/relay.ts`.
+- `port/art`: SVG sources, rasterized into `port/assets/art` by `bun tools/rasterize.ts`.
+- `port/deploy`: nginx web image, relay image and the Dokploy compose.
 
-## Spec Kit
-- Upstream v1.0.0 is installed in `.devin/.specify`, with commands in `.devin/commands` and a local adapter in `.devin/skills/speckit/SKILL.md`.
-- The CLI is pinned: `uvx --from git+https://github.com/github/spec-kit.git@v1.0.0 specify`. Run it in `.devin`; `SPECIFY_INIT_DIR` can explicitly point there.
-- This is a lightweight workflow adaptation: this file is the project's governing specification, session tasks replace generated plan/task documents, and test evidence establishes convergence. Installed templates are not completed feature artifacts.
+## Rules
+- The simulation is deterministic: no Math.random, Date or rendering side effects in `step`. Checksums hash `JSON.stringify(view)`, so `BattleView` declares its keys in `toJSON` order (scriptc follows the type).
+- scriptc copies a class instance passed as a structural type; mutate through the class type or copy back.
+- Install with `bun install --frozen-lockfile`, root and `port/`.
 
-## Milestone acceptance
-- Creating a room from home retains Player 1's connection through navigation to `/game/[roomId]`.
-- Copying the invitation and opening it in another browser joins Player 2; a lone player waits and a third player is rejected.
-- Both browsers render the same authoritative projectiles, terrain, HP, positions, turn and winner.
-- Both players can aim, hold to charge, release to fire, and alternate turns; idle turns expire after 15 seconds.
-- Splash damage can remove all 100 HP through normal fire intentions, after which both browsers display the same winner.
-- Invalid inputs, stale or duplicate shots and out-of-turn actions never change gameplay outcomes.
+## Verify
+- `bun test` (engine), `bun run typecheck`, `cd port && bun run test` (tests plus golden replays).
+- `cd port && dotframe desync --latency 474ms --jitter 40ms --delay 10 --mash 3` before touching netplay or the step.
+- Builds: `dotframe build web`, `dotframe build native`, `dotframe build ios` then `dotframe device install ios --yes`.
 
-
-## First playable acceptance
-- Home exposes Local and Create Game, opening `/setup?mode=local` and `/setup?mode=create` respectively. Local setup starts `/local`, one canvas immediately, even with the game server unavailable. `/playground` is the unlinked, noindex variant of the same local match with the lab tools in the menu; the public `/local` route hides them.
-- Every critter is an original SVG cutout with independent joints; render code is split into rig, input, map, effects and camera modules. Floating hands sit close to each character’s body width; armed grips follow that same placement and keep raised barrels clear of the face.
-- Both maps support complete matches through normal pointer input, victory and restart. Restart clears projectiles, restores HP and positions, and does not leak canvases or timers.
-- Move is constrained by turn, sequence, rate, time, map walls and player separation. Rematch is host-only after a finished game, with both players connected; old fire intents stay stale.
-- Trajectory preview and authoritative rockets share the same launch and swept-collision code. Player gravity continues during flight.
-- Public matches show only a short launch guide without an impact marker. Seeded authoritative wind follows a new sequence per match, changes per round, stays identical for both seats in that round and affects previews and ballistic projectiles equally. The grapple remains a collision-checked straight line. Only `/playground` lab controls may expose the complete trajectory.
-- Touch aim/charge/release and movement work at portrait and landscape sizes. Pointer cancellation and blur cancel charging.
-- Lab tools: restart, infinite HP, trajectory, collision circles and ground destruction toggle. Local options are never registered as multiplayer messages.
-- Regenerate original character assets with `bun apps/web/scripts/character-art.ts`. Joint coordinates and source shapes live in `apps/web/src/game/characters/design.ts`.
-
-## Expanded arena acceptance
-- Original cartoon art uses flat colored shapes, contours and inset shadow planes. No realistic scenery, photographs or borrowed game assets. The three requested exclusive guest adaptations use hand-authored SVG cutouts and their signature outfits.
-- The roster is six critters — guinea pig, llama, fox, capybara, puma and alpaca — and any of them can occupy either seat with one of five validated coat palettes. The setup step visibly offers map/character selectors that carry into local play and room creation; invite guests choose their character before joining.
-- Three exclusive guests join the six base critters: Freddy, Michi and Railly Hugo, with fixed signature looks. Their abilities arm aim/charge/release, spend one turn and use the shared authoritative projectile collision and cooldown. Freddy fires a damaging dimensional orb; Michi fires a damaging cosmic meow; Railly fires three consecutive triangular shurikens with one aim and one turn. These are original game powers, not claims about series canon.
-- Maps have suspended islands, obstacles, enclosed caves and open voids. Explosions remove occupancy cells; bodies fall onto new surfaces or lose when falling out of the world.
-- Weapon selection belongs to each seat and is synchronized by the server before firing. Tools persist across turns and reset to Rocket on rematch; aimed abilities disarm on turn changes. Both clients render each player's own selection, and the HUD names the opponent's active selection separately from yours.
-- Rocket, grenade, sticky bomb, mortar, dynamite and grappling hook are available by default. Each shot/tool spends a turn; grenade/dynamite fuse and bounce are authoritative. Sticky bombs attach to terrain or characters and explode after a 3-second fuse. Hooks pull along a collision-checked line.
-- Basic walk/jump preserve the shot and share a 240 point range measured from where the turn began: walking or steering away spends it, walking back hands it straight back, and crossing the origin spends it again on the other side. Jumps are free and unlimited: the only limits are the turn clock and the range, which also clamps jump travel. The HUD shows the synchronized remaining range and keeps the control that leads home live at zero; the arena draws the anchor and both edges. Jumping rejects repeated airborne jumps. W jumps vertically, A/D+W jumps directionally; the touch Jump control is adjacent to movement. Llama leaps toward aim, fox dashes, capybara shields, puma pounces low and far, alpaca heals 25 HP, and the guinea pig has no ability. Abilities spend a turn and become available four global turn numbers later.
-- Turn camera briefly focuses the active character, pulls back to the map, and includes high projectiles. Manual focus is available; charging freezes camera movement.
-- Shared occupancy collision drives previews, damage craters and physical movement. Flat terrain remains an internal baseline for regression tests, not a player-facing map.
-- Regenerate original layered backgrounds/previews with `bun apps/web/scripts/map-art.ts`; character generation also creates all coat variants and portraits.
-
-## Sound acceptance
-- Every sound is synthesised at runtime from oscillators and noise. No audio files, no samples and no borrowed audio; Phaser stays on `noAudio`.
-- `soundCues` derives what to play from two consecutive authoritative snapshots, so both seats and the playground hear the same match and the client never invents an event. It is covered by server tests, not by listening.
-- Fire, bounce, stick, blast, damage, heal, shield, leap, dash, jump, footstep, turn change and the result each have their own cue. Blasts scale with radius, damage with its size, and the turn chime differs for your own turn.
-- Charging hums while the shot winds up and stops on release or cancel.
-- The HUD carries a sound toggle: it mutes immediately, is remembered across reloads, and a muted battle schedules no audio at all. Audio only starts once the player has interacted with the page.
-
-## Production acceptance
-- The local menu freezes simulation and turn time; online menus explicitly say the match continues.
-- Portrait and landscape touch controls have distinct hit targets. A selected exclusive power survives renderer initialization and fires its declared projectile.
-- Production browser tests use the built app, with a separate development lifecycle check. Occupied ports fail unless reuse is explicitly requested.
-- Room, connection, message and creation limits reject abuse, release capacity on disconnect and expire abandoned rooms. Metrics require a private token.
-- The container stack uses HTTPS, runs non-root application processes and publishes only its proxy. Follow docs/deployment.md for release verification and rollback.
-- Automatic releases run types, lint, a production build and a dependency audit. Full game, Playwright and container checks are manual through the Full verification workflow; do not restore them as automatic release gates without Hunter asking.
-
-## Discord Activity acceptance
-- `/` and `/discord` preserve Discord launch parameters and boot the Embedded App SDK. Ordinary browser play remains anonymous.
-- Server-only OAuth exchange and Activity membership verification reserve a private authoritative room shared by one Discord instance. Never trust client-provided user identity or accept anonymous joins into Discord rooms.
-- Two participants share one room even when joining concurrently; duplicate identities and third seats are rejected. Disconnect still forfeits; both connected players retain rematch.
-- Use `/game` for proxied HTTP and `/.proxy/game` for Colyseus WebSockets. Keep Discord secrets exclusively on the game server and follow `docs/discord.md` for application configuration.
-- Fixture-based SDK/browser tests supplement, but cannot replace, a live two-user Discord Activity check. Public verification and Discovery are separate release gates.
+## Deploy
+- Production is the `craft-ones` compose on the Crafter VPS (`vps`), from `main`: `/` serves the web build, `/relay` the relay. The Discord Activity maps `/` and `/relay` to the same host.
