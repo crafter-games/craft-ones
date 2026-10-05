@@ -17,6 +17,7 @@ import {
 } from "../packages/shared/src";
 import { loadSpeakers, type Speakers } from "./src/audio";
 import { createControls } from "./src/controls";
+import { isDiscordActivity, showMessage, startDiscord } from "./src/discord";
 import {
   Bit,
   checksum,
@@ -63,16 +64,29 @@ const fromUrl: MatchOptions = {
 };
 // Online: ?online creates a room, ?room=<code> joins one. ?relay= overrides the relay (ws://localhost:8787 locally).
 const INPUT_DELAY = 10;
+// In Discord the relay is reached through the Activity's /relay URL mapping (the proxy blocks outside hosts) and
+// the room is the Activity instance.
+const discord = isDiscordActivity();
 let room = params.get("room");
-if (params.has("online") && !room) {
+if (discord) {
+  try {
+    room = await startDiscord();
+  } catch (error) {
+    showMessage(
+      error instanceof Error ? error.message : "Discord failed to start.",
+    );
+    throw error;
+  }
+} else if (params.has("online") && !room) {
   room = Math.random().toString(36).slice(2, 8);
   params.set("room", room);
   params.delete("online");
   history.replaceState(null, "", `${location.pathname}?${params}`);
 }
-const link: OnlineLink | null = room
-  ? connectOnline(params.get("relay") ?? DEFAULT_RELAY, room)
-  : null;
+const relay =
+  params.get("relay") ??
+  (discord ? `wss://${location.host}/relay` : DEFAULT_RELAY);
+let link: OnlineLink | null = room ? connectOnline(relay, room) : null;
 const SETUP_KEYS: [SetupKey, number[]][] = [
   ["up", [Key.Up, Key.W]],
   ["down", [Key.Down, Key.S]],
@@ -179,10 +193,19 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
         const seed = Math.floor(Math.random() * 0x1_0000_0000);
         link.sendStart({ t: "start", seed, options: pending });
         startOnline(seed, pending);
+      } else if (pending && tapped([Key.Escape])) {
+        // Nobody came: play hot-seat on this screen instead.
+        link.close();
+        link = null;
+        match = createMatch(Math.floor(Math.random() * 0x1_0000_0000), pending);
+        pending = null;
       } else if (pending) {
         drawBanner(draw, W, H, "Waiting for a rival", [
-          "Send this link to the other player:",
-          share(),
+          discord
+            ? "Ask a friend to join this Activity"
+            : "Send this link to the other player:",
+          discord ? `Instance ${link.room}` : share(),
+          "Esc plays hot-seat on this screen",
         ]);
         draw.end({ r: 0, g: 0, b: 0 });
         return true;

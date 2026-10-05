@@ -37,6 +37,23 @@
       ],
       "app": "ios/build/derived/Build/Products/Debug-iphoneos/CraftOnes.app",
       "device": "00008120-001A5D690A52201E"
+    },
+    "discord": {
+      "steps": [
+        {
+          "label": "web",
+          "argv": [
+            "sh",
+            "scripts/build-web.sh"
+          ]
+        }
+      ],
+      "out": "dist/web",
+      "deploy": {
+        "provider": "vercel",
+        "project": "craft-ones-dotframe",
+        "scope": "crafter-station"
+      }
     }
   },
   "assets": {
