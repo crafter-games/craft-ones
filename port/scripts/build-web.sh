@@ -8,7 +8,9 @@ mkdir -p "$out/node_modules/dotframe/assets"
 [ -d assets/art ] || bun tools/rasterize.ts
 [ -d assets/sfx ] || bun tools/synth-sounds.ts
 bun build main.web.ts --outfile "$out/main.js" --target browser --minify
-hash=$(shasum -a 256 "$out/main.js" | cut -c1-10)
+# shasum on macOS, sha256sum in the Linux build image.
+hash=$( (command -v shasum >/dev/null && shasum -a 256 "$out/main.js" || sha256sum "$out/main.js") | cut -c1-10)
+[ -n "$hash" ] || { echo "no sha256 tool for the bundle hash" >&2; exit 1; }
 mv "$out/main.js" "$out/main.$hash.js"
 sed "s#./main.js#./main.$hash.js#" index.html > "$out/index.html"
 cp -R assets "$out/"
