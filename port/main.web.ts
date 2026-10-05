@@ -4,13 +4,12 @@
 // &infiniteHp=1 and &destructible=0 are the lab toggles.
 import { createDraw2D } from "dotframe/src/draw2d";
 import type { Frame } from "dotframe/src/gpu";
-import { Key } from "dotframe/src/input";
-import { createRollback, type Rollback } from "dotframe/src/netplay";
 import type { Platform } from "dotframe/src/platform";
 import { createMasher, createProbe } from "dotframe/src/probe";
+import { publishProbe } from "dotframe/src/probe-web";
+import { connectRelay } from "dotframe/src/relay-client";
 import { loadBytes, run } from "dotframe/src/web/run";
 import {
-  type BattleView,
   COATS,
   type CoatId,
   type PlayableMapId,
@@ -18,37 +17,18 @@ import {
   type Species,
 } from "../packages/shared/src";
 import { loadSpeakers, type Speakers } from "./src/audio";
-import { createControls } from "./src/controls";
 import { isDiscordActivity, showMessage, startDiscord } from "./src/discord";
 import {
-  Bit,
-  checksum,
-  createMatch,
   DEFAULT_OPTIONS,
   fitAspect,
-  type Match,
   type MatchOptions,
-  power01,
-  ROLLBACK_WINDOW,
   randomInput,
-  seatOf,
-  step,
-  view,
   WINDOW,
 } from "./src/match";
-import { connectOnline, type OnlineLink } from "./src/online";
-import {
-  createRenderer,
-  drawBanner,
-  drawNetStats,
-  loadArt,
-  loadCritter,
-} from "./src/render";
-import { createSetup, renderSetup } from "./src/setup";
-import { createSetupInput } from "./src/setupInput";
-import { restoreMatch, snapshotMatch } from "./src/snapshot";
+import { type OnlineLink, roomKey, wrapLink } from "./src/online";
+import { createRenderer, loadArt, loadCritter } from "./src/render";
+import { createSession } from "./src/session";
 
-const STEP = 1 / 60;
 const params = new URLSearchParams(location.search);
 const direct = params.has("map") || params.has("species");
 const fromUrl: MatchOptions = {
@@ -67,7 +47,6 @@ const fromUrl: MatchOptions = {
   },
 };
 // Online: ?online creates a room, ?room=<code> joins one. ?relay= overrides the relay.
-const INPUT_DELAY = 10;
 // In Discord the room is the Activity instance.
 const discord = isDiscordActivity();
 let room = params.get("room");
@@ -92,7 +71,9 @@ const local =
 const relay =
   params.get("relay") ??
   (local ? "ws://localhost:8787" : `wss://${location.host}/relay`);
-let link: OnlineLink | null = room ? connectOnline(relay, room) : null;
+const connect = (code: string): OnlineLink =>
+  wrapLink(connectRelay(relay, roomKey(code)), code);
+const link: OnlineLink | null = room ? connect(room) : null;
 // Fill the window: the logical view takes the screen's aspect (kept between 5:4 and 2.4:1), and CSS scales the
 // canvas to the largest size that fits.
 fitAspect(Math.min(2.4, Math.max(1.25, innerWidth / Math.max(innerHeight, 1))));
@@ -104,12 +85,7 @@ document.documentElement.style.setProperty(
 await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
   const draw = createDraw2D(gpu, WINDOW.width, WINDOW.height);
   const renderer = createRenderer(gpu, WINDOW);
-  const setup = createSetup(fromUrl, !discord);
-  let match: Match | null = direct
-    ? createMatch(Math.floor(Math.random() * 0x1_0000_0000), fromUrl)
-    : null;
   let speakers: Speakers | null = null;
-  let heard: BattleView | null = null;
   let ready = false;
   // Every critter loads up front (about 4 MB) so the setup screen can preview any pick.
   Promise.all([
@@ -125,190 +101,53 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
   loadSpeakers(audio, loadBytes, ".").then((s: Speakers): void => {
     speakers = s;
   });
-  const setupInput = createSetupInput(input);
-  const tapped = setupInput.tapped;
-  let copied = false;
-  let bannerDown = false;
-  const controls = createControls(input, WINDOW.width, WINDOW.height);
-  let simulated = -1;
-  // Online host: the options picked in setup, sent once the guest arrives.
-  let pending: MatchOptions | null = null;
   // ?mash=<seed> (dotframe play --online): skip setup and mash random input, and publish progress for the CLI.
   const mashSeed = params.get("mash");
-  const masher =
-    mashSeed === null ? null : createMasher(Number(mashSeed), randomInput);
   const probe = createProbe();
-  if (masher && link) pending = fromUrl;
-  let rollback: Rollback | null = null;
-  const startOnline = (seed: number, options: MatchOptions): void => {
-    if (!link) return;
-    const m = createMatch(seed, options);
-    match = m;
-    rollback = createRollback({
-      sim: {
-        step: (inputs: number[]): void => step(m, inputs),
-        save: () => snapshotMatch(m),
-        restore: (snap) => restoreMatch(m, snap),
-        checksum: (): number => checksum(m),
-      },
-      transport: link.transport,
-      localPort: link.slot(),
-      neutral: 0,
-      inputDelay: INPUT_DELAY,
-      maxRollback: ROLLBACK_WINDOW,
-    });
-  };
-  const share = (): string =>
-    `${location.origin}${location.pathname}?room=${link?.room ?? ""}`;
+  publishProbe(probe.state);
+  const session = createSession({
+    input,
+    draw,
+    render: renderer.render,
+    speakers: () => speakers,
+    online: true,
+    connect,
+    newRoom: (): string => {
+      const code = Math.random().toString(36).slice(2, 8);
+      params.set("room", code);
+      history.replaceState(null, "", `${location.pathname}?${params}`);
+      return code;
+    },
+    invite: (code: string): string =>
+      discord
+        ? `Instance ${code}`
+        : `${location.origin}${location.pathname}?room=${code}`,
+    share: (text: string, touching: boolean): string => {
+      const nav = navigator as Navigator & {
+        share?: (data: { url: string }) => Promise<void>;
+      };
+      if (touching && nav.share) {
+        nav.share({ url: text }).catch(() => undefined);
+        return "shared";
+      }
+      navigator.clipboard?.writeText(text).catch(() => undefined);
+      return "copied";
+    },
+    embedded: discord,
+    setupOptions: fromUrl,
+    link,
+    autoHost: mashSeed !== null && link ? fromUrl : null,
+    direct: direct ? fromUrl : null,
+    mashing: mashSeed !== null,
+    masher: createMasher(Number(mashSeed ?? 0), randomInput),
+    probe,
+    prepare: (): void => undefined,
+  });
   return (time: number): boolean => {
+    if (ready) return session(time);
     draw.begin();
-    if (!ready) {
-      draw.setFillStyle("#2b2330");
-      draw.fillRect(0, 0, WINDOW.width, WINDOW.height);
-      draw.end({ r: 0, g: 0, b: 0 });
-      return true;
-    }
-    const W = WINDOW.width;
-    const H = WINDOW.height;
-    if (link && !rollback) {
-      // Guest: wait for the host's match. Host: pick in setup, then wait for the guest and send it.
-      const status = link.status();
-      const start = link.start();
-      if (link.slot() === 1 && start) startOnline(start.seed, start.options);
-      else if (
-        link.slot() === 1 ||
-        status === "connecting" ||
-        status === "closed"
-      ) {
-        drawBanner(
-          draw,
-          W,
-          H,
-          status === "closed" ? "Relay closed" : "Online",
-          [
-            status === "connecting"
-              ? "Connecting to the relay..."
-              : status === "closed"
-                ? "Reload to try again"
-                : "Waiting for the host to start the match",
-            `Room ${link.room}`,
-          ],
-        );
-        draw.end({ r: 0, g: 0, b: 0 });
-        return true;
-      } else if (pending && status === "paired") {
-        const seed = Math.floor(Math.random() * 0x1_0000_0000);
-        link.send({ t: "start", seed, options: pending });
-        startOnline(seed, pending);
-      } else if (pending && tapped([Key.Escape])) {
-        // Nobody came: play hot-seat on this screen instead.
-        link.close();
-        link = null;
-        match = createMatch(Math.floor(Math.random() * 0x1_0000_0000), pending);
-        pending = null;
-      } else if (pending) {
-        // A tap shares the link: the share sheet on phones, the clipboard elsewhere.
-        const touching = input.touches().length > 0;
-        const down = touching || (input.pointer().buttons & 1) !== 0;
-        if (down && !bannerDown && !discord) {
-          copied = true;
-          const url = share();
-          const nav = navigator as Navigator & {
-            share?: (data: { url: string }) => Promise<void>;
-          };
-          if (touching && nav.share) nav.share({ url }).catch(() => undefined);
-          else navigator.clipboard?.writeText(url).catch(() => undefined);
-        }
-        bannerDown = down;
-        drawBanner(draw, W, H, "Waiting for a rival", [
-          discord
-            ? "Ask a friend to join this Activity"
-            : "Send this link to the other player:",
-          discord ? `Instance ${link.room}` : share(),
-          discord
-            ? "Esc plays hot-seat on this screen"
-            : copied
-              ? "Link copied"
-              : "Tap to copy the link · Esc plays hot-seat",
-        ]);
-        draw.end({ r: 0, g: 0, b: 0 });
-        return true;
-      }
-    }
-    if (!match) {
-      controls.disarm();
-      const choice = setupInput.poll(setup, W, H);
-      if (choice && (link || choice.mode === "online")) {
-        if (!link) {
-          // PLAY ONLINE: open a room and show its link.
-          const code = Math.random().toString(36).slice(2, 8);
-          params.set("room", code);
-          history.replaceState(null, "", `${location.pathname}?${params}`);
-          link = connectOnline(relay, code);
-          copied = false;
-        }
-        pending = choice.options;
-      } else if (choice)
-        match = createMatch(
-          Math.floor(Math.random() * 0x1_0000_0000),
-          choice.options,
-        );
-      renderSetup(setup, draw, W, H);
-      draw.end({ r: 0, g: 0, b: 0 });
-      simulated = -1;
-      return true;
-    }
-    // Escape or MENU on a finished match goes back to setup (local play only; online, rematches only).
-    if (
-      !link &&
-      match.battle.state.phase === "finished" &&
-      (tapped([Key.Escape]) || controls.menu())
-    ) {
-      match = null;
-      heard = null;
-      draw.end({ r: 0, g: 0, b: 0 });
-      return true;
-    }
-    if (simulated < 0) simulated = time;
-    for (let n = 0; simulated + STEP <= time && n < 5; n++) {
-      const bits = masher ? masher() : controls.bits(match);
-      const seat = seatOf(match);
-      const listener = match.battle.state.currentPlayer;
-      if (rollback) rollback.tick(bits);
-      else {
-        const inputs = [0, 0];
-        if (seat >= 0) inputs[seat] = bits;
-        // R and M work for both seats; the rest only for the seat with the turn.
-        inputs[1 - Math.max(0, seat)] |= bits & (Bit.Restart | Bit.Map);
-        step(match, inputs);
-      }
-      const now = view(match);
-      speakers?.hear(heard, now, listener);
-      speakers?.charge(
-        seat >= 0 ? power01(match.charge[seat]) : 0,
-        match.frame,
-      );
-      heard = now;
-      simulated += STEP;
-    }
-    if (simulated < time - STEP * 5) simulated = time;
-    renderer.render(match, draw, controls.touched(), controls.preview());
-    if (link && rollback) {
-      const stats = rollback.stats();
-      probe.update(rollback, link.status());
-      if (link.status() !== "paired")
-        drawBanner(draw, W, H, "Rival left", ["The other player disconnected"]);
-      else if (stats.desync >= 0)
-        drawBanner(draw, W, H, "Desync", [
-          `Frame ${stats.desync}: reload both pages`,
-        ]);
-      drawNetStats(
-        draw,
-        W,
-        H,
-        `you are P${link.slot() + 1} · ping ${Math.round((stats.rtt * 1000) / 60)} ms · rollbacks ${stats.rollbacks}`,
-      );
-    }
+    draw.setFillStyle("#2b2330");
+    draw.fillRect(0, 0, WINDOW.width, WINDOW.height);
     draw.end({ r: 0, g: 0, b: 0 });
     return true;
   };

@@ -1,39 +1,80 @@
 // Fast save and restore of a live match for rollback netplay: the Battle copies its own state, and the port's
-// per-step state (aim, charge, camera, effects) is plain data. Unlike save/restore in match.ts, which replays
-// the input log from frame 0, this costs the same at minute one and minute ten. JSON copies make it web-only.
+// per-step state (aim, charge, camera, effects) is copied field by field. Unlike save/restore in match.ts, which
+// replays the input log from frame 0, this costs the same at minute one and minute ten. Plain copies, so it also
+// compiles for native and iOS.
 import type { BattleSnapshot } from "../../packages/shared/src";
+import type { Camera } from "./camera";
+import type { Effects } from "./effects";
 import type { Match } from "./match";
 
 export interface MatchSnapshot {
   battle: BattleSnapshot;
-  // The fields of Match other than battle, options and seed, deep-copied.
-  rest: string;
+  frame: number;
+  elapsed: number;
+  angle: number[];
+  charge: number[];
+  previous: number[];
+  sequence: number;
+  movedAt: number;
+  kickoff: number;
+  notice: string;
+  noticeUntil: number;
+  camera: Camera;
+  fx: Effects;
   logLength: number;
   rematches: number;
 }
 
-const copied = (match: Match): object => ({
-  frame: match.frame,
-  elapsed: match.elapsed,
-  angle: match.angle,
-  charge: match.charge,
-  previous: match.previous,
-  sequence: match.sequence,
-  movedAt: match.movedAt,
-  kickoff: match.kickoff,
-  notice: match.notice,
-  noticeUntil: match.noticeUntil,
-  camera: match.camera,
-  fx: match.fx,
-});
+function copyCamera(c: Camera): Camera {
+  return {
+    x: c.x,
+    y: c.y,
+    zoom: c.zoom,
+    turn: c.turn,
+    intro: c.intro,
+    map: c.map,
+  };
+}
+
+function copyEffects(fx: Effects): Effects {
+  const trail: { x: number; y: number }[] = [];
+  for (const p of fx.trail) trail.push({ x: p.x, y: p.y });
+  const bursts: Effects["bursts"] = [];
+  for (const b of fx.bursts)
+    bursts.push({
+      x: b.x,
+      y: b.y,
+      radius: b.radius,
+      kind: b.kind,
+      frame: b.frame,
+    });
+  const popups: Effects["popups"] = [];
+  for (const p of fx.popups)
+    popups.push({ x: p.x, y: p.y, amount: p.amount, frame: p.frame });
+  return {
+    trail,
+    bursts,
+    popups,
+    explosionId: fx.explosionId,
+    hp: fx.hp.slice(),
+  };
+}
 
 export function snapshotMatch(match: Match): MatchSnapshot {
   return {
     battle: match.battle.snapshot(),
-    // -Infinity (movedAt before the first move) does not survive JSON.
-    rest: JSON.stringify(copied(match), (_k, v) =>
-      v === Number.NEGATIVE_INFINITY ? "-Infinity" : v,
-    ),
+    frame: match.frame,
+    elapsed: match.elapsed,
+    angle: match.angle.slice(),
+    charge: match.charge.slice(),
+    previous: match.previous.slice(),
+    sequence: match.sequence,
+    movedAt: match.movedAt,
+    kickoff: match.kickoff,
+    notice: match.notice,
+    noticeUntil: match.noticeUntil,
+    camera: copyCamera(match.camera),
+    fx: copyEffects(match.fx),
     logLength: match.log.length,
     rematches: match.rematches,
   };
@@ -41,21 +82,18 @@ export function snapshotMatch(match: Match): MatchSnapshot {
 
 export function restoreMatch(match: Match, snap: MatchSnapshot): void {
   match.battle.restore(snap.battle);
-  const rest = JSON.parse(snap.rest, (_k, v) =>
-    v === "-Infinity" ? Number.NEGATIVE_INFINITY : v,
-  ) as ReturnType<typeof copied> & Match;
-  match.frame = rest.frame;
-  match.elapsed = rest.elapsed;
-  match.angle = rest.angle;
-  match.charge = rest.charge;
-  match.previous = rest.previous;
-  match.sequence = rest.sequence;
-  match.movedAt = rest.movedAt;
-  match.kickoff = rest.kickoff;
-  match.notice = rest.notice;
-  match.noticeUntil = rest.noticeUntil;
-  match.camera = rest.camera;
-  match.fx = rest.fx;
+  match.frame = snap.frame;
+  match.elapsed = snap.elapsed;
+  match.angle = snap.angle.slice();
+  match.charge = snap.charge.slice();
+  match.previous = snap.previous.slice();
+  match.sequence = snap.sequence;
+  match.movedAt = snap.movedAt;
+  match.kickoff = snap.kickoff;
+  match.notice = snap.notice;
+  match.noticeUntil = snap.noticeUntil;
+  match.camera = copyCamera(snap.camera);
+  match.fx = copyEffects(snap.fx);
   match.log.length = snap.logLength;
   match.rematches = snap.rematches;
 }

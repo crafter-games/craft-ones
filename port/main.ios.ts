@@ -1,124 +1,85 @@
-// iOS entry (dotframe build ios), compiled with scriptc in library mode. The host calls init once with the bundle's game folder, then
-// frame every display refresh. Loading is synchronous: library mode has no promises.
-import { createDraw2D, type Draw2D } from "dotframe/src/draw2d";
+// iOS entry (dotframe build ios), compiled with scriptc in library mode. The host calls init once with the bundle's
+// game folder, then frame every display refresh. Loading is synchronous: library mode has no promises. Online play
+// goes through the production relay with the native WebSocket client; invites are web links, so a phone and a
+// browser can play each other.
+import { createDraw2D } from "dotframe/src/draw2d";
 import { openLibraryPlatform } from "dotframe/src/native/library";
-import {
-  type BattleView,
-  COATS,
-  SELECTABLE_SPECIES,
-} from "../packages/shared/src";
+import { connectRelayNative, shareText } from "dotframe/src/native/relay";
+import { COATS, SELECTABLE_SPECIES } from "../packages/shared/src";
 import { loadSpeakersSync, type Speakers } from "./src/audio";
-import { type Controls, createControls } from "./src/controls";
 import {
-  Bit,
-  createMatch,
   DEFAULT_OPTIONS,
   fitAspect,
   type Match,
   type MatchOptions,
-  power01,
-  seatOf,
-  step,
-  view,
   WINDOW,
 } from "./src/match";
+import { type OnlineLink, roomKey, wrapLink } from "./src/online";
 import {
   createRenderer,
   loadArtSync,
   loadCritterSync,
   loadPortraitSync,
 } from "./src/render";
-import { createSetup, renderSetup, type Setup } from "./src/setup";
-import { createSetupInput, type SetupInput } from "./src/setupInput";
+import { createSession } from "./src/session";
 
-const STEP = 1 / 60;
-let match: Match | null = null;
-let draw: Draw2D | null = null;
-let render:
-  | ((match: Match, draw: Draw2D, touched: boolean, preview: number) => void)
-  | null = null;
-let controls: Controls | null = null;
-let speakers: Speakers | null = null;
-let heard: BattleView | null = null;
-let simulated = -1;
-let setup: Setup | null = null;
-let startMatch: ((options: MatchOptions) => void) | null = null;
-let setupInput: SetupInput | null = null;
+const RELAY = "wss://craft-ones.crafter.run/relay";
+const SITE = "https://craft-ones.crafter.run/play/";
+let session: ((time: number) => boolean) | null = null;
 
 export function init(base: string): void {
   const platform = openLibraryPlatform(WINDOW);
   fitAspect(platform.width / Math.max(platform.height, 1));
-  const d = createDraw2D(platform.gpu, WINDOW.width, WINDOW.height);
+  const draw = createDraw2D(platform.gpu, WINDOW.width, WINDOW.height);
   const read = (path: string): Uint8Array => platform.readFile(path);
-  loadArtSync(
-    d,
-    read,
-    (png: Uint8Array) => platform.image(png, true),
-    base,
-    `${base}/dotframe/assets/fonts`,
-    [],
-  );
   const image = (png: Uint8Array) => platform.image(png, true);
+  loadArtSync(draw, read, image, base, `${base}/dotframe/assets/fonts`, []);
+  // Portraits for setup; a critter's parts load when it plays.
   for (const species of SELECTABLE_SPECIES)
     for (const coat of Object.keys(COATS))
       loadPortraitSync(read, image, base, species, coat);
-  startMatch = (options: MatchOptions): void => {
-    loadCritterSync(read, image, base, options.one.species, options.one.coat);
-    loadCritterSync(read, image, base, options.two.species, options.two.coat);
-    match = createMatch(Math.floor(Math.random() * 0x1_0000_0000), options);
-  };
-  speakers = loadSpeakersSync(platform.audio, read, platform.sound, base);
+  const speakers: Speakers = loadSpeakersSync(
+    platform.audio,
+    read,
+    platform.sound,
+    base,
+  );
   const renderer = createRenderer(platform.gpu, WINDOW);
-  render = (m: Match, dr: Draw2D, touched: boolean, preview: number): void =>
-    renderer.render(m, dr, touched, preview);
-  controls = createControls(platform.input, WINDOW.width, WINDOW.height);
-  setup = createSetup(DEFAULT_OPTIONS);
-  setupInput = createSetupInput(platform.input);
-  draw = d;
+  session = createSession({
+    input: platform.input,
+    draw,
+    render: (m: Match, d, touched: boolean, preview: number): void =>
+      renderer.render(m, d, touched, preview),
+    speakers: (): Speakers | null => speakers,
+    online: true,
+    connect: (code: string): OnlineLink =>
+      wrapLink(connectRelayNative(RELAY, roomKey(code)), code),
+    newRoom: (): string => Math.random().toString(36).slice(2, 8),
+    invite: (code: string): string => `${SITE}?room=${code}`,
+    share: (text: string): string => {
+      const result = shareText(text);
+      return result === "sheet"
+        ? "shared"
+        : result === "clipboard"
+          ? "copied"
+          : "failed";
+    },
+    embedded: false,
+    setupOptions: DEFAULT_OPTIONS,
+    link: null,
+    autoHost: null,
+    direct: null,
+    mashing: false,
+    masher: (): number => 0,
+    probe: null,
+    prepare: (options: MatchOptions): void => {
+      loadCritterSync(read, image, base, options.one.species, options.one.coat);
+      loadCritterSync(read, image, base, options.two.species, options.two.coat);
+    },
+  });
 }
 
 // Returns false to ask the host to quit.
 export function frame(time: number): boolean {
-  const d = draw;
-  const c = controls;
-  const r = render;
-  if (!d || !c || !r || !setup || !setupInput) return true;
-  if (!match) {
-    c.disarm();
-    const choice = setupInput.poll(setup, WINDOW.width, WINDOW.height);
-    if (choice && startMatch) startMatch(choice.options);
-    d.begin();
-    renderSetup(setup, d, WINDOW.width, WINDOW.height);
-    d.end({ r: 0, g: 0, b: 0 });
-    simulated = -1;
-    return true;
-  }
-  const m = match;
-  if (m.battle.state.phase === "finished" && c.menu()) {
-    match = null;
-    heard = null;
-    return true;
-  }
-  if (simulated < 0) simulated = time;
-  for (let n = 0; simulated + STEP <= time && n < 5; n++) {
-    const bits = c.bits(m);
-    const inputs = [0, 0];
-    const seat = seatOf(m);
-    if (seat >= 0) inputs[seat] = bits;
-    inputs[1 - Math.max(0, seat)] |= bits & (Bit.Restart | Bit.Map);
-    const listener = m.battle.state.currentPlayer;
-    step(m, inputs);
-    const now = view(m);
-    if (speakers) {
-      speakers.hear(heard, now, listener);
-      speakers.charge(seat >= 0 ? power01(m.charge[seat]) : 0, m.frame);
-    }
-    heard = now;
-    simulated += STEP;
-  }
-  if (simulated < time - STEP * 5) simulated = time;
-  d.begin();
-  r(m, d, true, c.preview());
-  d.end({ r: 0, g: 0, b: 0 });
-  return true;
+  return session ? session(time) : true;
 }
