@@ -5,6 +5,7 @@
 import { createDraw2D } from "dotframe/src/draw2d";
 import type { Frame } from "dotframe/src/gpu";
 import { Key } from "dotframe/src/input";
+import { createRollback, type Rollback } from "dotframe/src/netplay";
 import type { Platform } from "dotframe/src/platform";
 import { loadBytes, run } from "dotframe/src/web/run";
 import {
@@ -27,12 +28,12 @@ import {
   type MatchOptions,
   power01,
   ROLLBACK_WINDOW,
+  randomInput,
   seatOf,
   step,
   view,
   WINDOW,
 } from "./src/match";
-import { createRollback, type Rollback } from "dotframe/src/netplay";
 import { connectOnline, type OnlineLink } from "./src/online";
 import {
   createRenderer,
@@ -135,6 +136,23 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
   let simulated = -1;
   // Online host: the options picked in setup, sent once the guest arrives.
   let pending: MatchOptions | null = null;
+  // ?mash=<seed> (dotframe play --online): skip setup and mash random input, and publish progress for the CLI.
+  const mashSeed = params.get("mash");
+  let mashState = Number(mashSeed ?? 0) >>> 0;
+  let mashInput = 0;
+  let mashed = 0;
+  const nextRandom = (): number => {
+    mashState = (Math.imul(mashState, 1103515245) + 12345) >>> 0;
+    return mashState / 4294967296;
+  };
+  const probe = {
+    frame: 0,
+    confirmed: 0,
+    status: link ? "connecting" : "local",
+    sums: {} as Record<number, number>,
+  };
+  (globalThis as { __dotframe?: typeof probe }).__dotframe = probe;
+  if (mashSeed !== null && link) pending = fromUrl;
   let rollback: Rollback | null = null;
   const startOnline = (seed: number, options: MatchOptions): void => {
     if (!link) return;
@@ -243,7 +261,9 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
     }
     if (simulated < 0) simulated = time;
     for (let n = 0; simulated + STEP <= time && n < 5; n++) {
-      const bits = controls.bits(match);
+      if (mashSeed !== null && mashed++ % 6 === 0)
+        mashInput = randomInput(nextRandom);
+      const bits = mashSeed !== null ? mashInput : controls.bits(match);
       const seat = seatOf(match);
       const listener = match.battle.state.currentPlayer;
       if (rollback) rollback.tick(bits);
@@ -267,6 +287,11 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
     renderer.render(match, draw, controls.touched(), controls.preview());
     if (link && rollback) {
       const stats = rollback.stats();
+      probe.status = link.status();
+      probe.frame = stats.frame;
+      probe.confirmed = rollback.confirmedFrame();
+      for (let f = 30; f < probe.confirmed; f += 30)
+        if (probe.sums[f] === undefined) probe.sums[f] = rollback.sumAt(f) ?? 0;
       if (link.status() !== "paired")
         drawBanner(draw, W, H, "Rival left", ["The other player disconnected"]);
       else if (stats.desync >= 0)
