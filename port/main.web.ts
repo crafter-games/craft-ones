@@ -33,7 +33,7 @@ import {
   WINDOW,
 } from "./src/match";
 import { createRollback, type Rollback } from "./src/netplay";
-import { connectOnline, DEFAULT_RELAY, type OnlineLink } from "./src/online";
+import { connectOnline, type OnlineLink } from "./src/online";
 import {
   createRenderer,
   drawBanner,
@@ -62,10 +62,9 @@ const fromUrl: MatchOptions = {
     coat: (params.get("coat2") ?? DEFAULT_OPTIONS.two.coat) as CoatId,
   },
 };
-// Online: ?online creates a room, ?room=<code> joins one. ?relay= overrides the relay (ws://localhost:8787 locally).
+// Online: ?online creates a room, ?room=<code> joins one. ?relay= overrides the relay.
 const INPUT_DELAY = 10;
-// In Discord the relay is reached through the Activity's /relay URL mapping (the proxy blocks outside hosts) and
-// the room is the Activity instance.
+// In Discord the room is the Activity instance.
 const discord = isDiscordActivity();
 let room = params.get("room");
 if (discord) {
@@ -83,9 +82,12 @@ if (discord) {
   params.delete("online");
   history.replaceState(null, "", `${location.pathname}?${params}`);
 }
+// The relay sits next to the game at /relay (on the VPS, and through Discord's /relay URL mapping).
+const local =
+  location.hostname === "localhost" || location.hostname === "127.0.0.1";
 const relay =
   params.get("relay") ??
-  (discord ? `wss://${location.host}/relay` : DEFAULT_RELAY);
+  (local ? "ws://localhost:8787" : `wss://${location.host}/relay`);
 let link: OnlineLink | null = room ? connectOnline(relay, room) : null;
 const SETUP_KEYS: [SetupKey, number[]][] = [
   ["up", [Key.Up, Key.W]],

@@ -16,8 +16,8 @@ import {
   WORLD_HEIGHT,
   WORLD_MAPS,
   WORLD_WIDTH,
-} from "@craft-ones/shared";
-import * as worlds from "../../../packages/shared/src/worlds";
+} from "../src";
+import * as worlds from "../src/worlds";
 
 type NewMapId = Exclude<PlayableMapId, "andes" | "coast">;
 const NEW_MAP_IDS: NewMapId[] = [

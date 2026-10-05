@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { ARENA, Battle, WEAPONS, type WeaponId } from "@craft-ones/shared";
+import { ARENA, Battle, WEAPONS, type WeaponId } from "../src";
 
 function fixture(species = "railly") {
   let now = 0;

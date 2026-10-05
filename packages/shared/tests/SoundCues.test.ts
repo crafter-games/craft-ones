@@ -5,7 +5,7 @@ import {
   type BattleView,
   type SoundCue,
   soundCues,
-} from "@craft-ones/shared";
+} from "../src";
 
 function fixture() {
   let now = 0;

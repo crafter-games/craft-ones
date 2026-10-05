@@ -1,5 +1,5 @@
-// One WebSocket to the relay (the same one Crafter Smash uses; rooms are prefixed per game), split into lobby
-// messages and netplay messages. Web only.
+// One WebSocket to the relay (server/relay.ts; rooms are prefixed per game so a shared relay works too), split
+// into lobby messages and netplay messages. Web only.
 import type { MatchOptions } from "./match";
 import type { NetMessage, Transport } from "./netplay";
 
@@ -20,8 +20,6 @@ export interface OnlineLink {
   transport: Transport;
   close: () => void;
 }
-
-export const DEFAULT_RELAY = "wss://smash.crafter.run/relay";
 
 export function connectOnline(url: string, room: string): OnlineLink {
   const socket = new WebSocket(

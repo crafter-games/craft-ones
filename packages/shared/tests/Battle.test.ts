@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { ARENA, type BattleView } from "@craft-ones/shared";
-import { Battle } from "./Battle";
-import { BattleStateSchema, syncState } from "./schemaState";
+import { ARENA, type BattleView } from "../src";
+import { Battle } from "../src";
 
 function setup(start = true) {
   let time = 0;
@@ -42,45 +41,35 @@ function snapshot(battle: Battle): BattleView {
 }
 
 describe("players and lifecycle", () => {
-  test("server schema instances retain change-tracking accessors", () => {
-    const { battle } = setup();
-    const mirror = new BattleStateSchema();
-    syncState(mirror, battle.state);
-    for (const [instance, field] of [
-      [mirror, "phase"],
-      [mirror.projectile, "x"],
-      [mirror.explosion, "id"],
-      [mirror.players[0], "hp"],
-    ] as const) {
-      expect(
-        Object.getOwnPropertyDescriptor(instance, field)?.set,
-      ).toBeFunction();
-    }
-  });
-
-  test("the schema mirror matches the plain engine state through a match", () => {
+  test("snapshot and restore resume a match exactly, through craters and turns", () => {
     let time = 0;
     const battle = new Battle(() => time, "andes", 7);
     battle.addPlayer("one");
     battle.addPlayer("two");
-    const mirror = new BattleStateSchema();
-    for (let i = 0; i < 900; i++) {
-      // Point-blank shots into the ground, so craters rewrite terrain rows in place.
-      if (battle.state.phase === "aiming")
-        battle.fire(battle.state.currentPlayer, {
-          angle: Math.PI / 2.2,
-          power: 0.3,
-          turnNumber: battle.state.turnNumber,
-        });
-      time += 1000 / 60;
-      battle.step(1000 / 60);
-      syncState(mirror, battle.state);
-      expect(mirror.toJSON()).toEqual(battle.state.toJSON());
-    }
+    const play = (frames: number) => {
+      const views: unknown[] = [];
+      for (let i = 0; i < frames; i++) {
+        // Point-blank shots into the ground, so craters rewrite terrain rows.
+        if (battle.state.phase === "aiming")
+          battle.fire(battle.state.currentPlayer, {
+            angle: Math.PI / 2.2,
+            power: 0.3,
+            turnNumber: battle.state.turnNumber,
+          });
+        time += 1000 / 60;
+        battle.step(1000 / 60);
+        views.push(battle.state.toJSON());
+      }
+      return views;
+    };
+    play(300);
+    const saved = battle.snapshot();
+    const savedTime = time;
+    const first = play(600);
+    battle.restore(saved);
+    time = savedTime;
+    expect(play(600)).toEqual(first);
     expect(battle.state.terrainRevision).toBeGreaterThan(0);
-    battle.removePlayer(battle.state.players[0].sessionId);
-    syncState(mirror, battle.state);
-    expect(mirror.toJSON()).toEqual(battle.state.toJSON());
   });
 
   test("waits for two players, starts once and rejects extra or duplicate players", () => {

@@ -4,7 +4,7 @@ import { mkdir, readdir } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import sharp from "sharp";
 
-const source = join(import.meta.dir, "../../apps/web/public/art");
+const source = join(import.meta.dir, "../art");
 const out = join(import.meta.dir, "../assets/art");
 
 // Pixel width per folder; maps only need to cover the fitted camera, parts and weapons draw small.

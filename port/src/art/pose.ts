@@ -1,7 +1,7 @@
-import type { ProjectileKind, Species } from "@craft-ones/shared";
-import { WEAPON_ART } from "../weapons/design";
+import type { ProjectileKind, Species } from "../../../packages/shared/src";
+import { WEAPON_ART } from "./weapons";
 
-export type { Species } from "@craft-ones/shared";
+export type { Species } from "../../../packages/shared/src";
 export const HEAD_SCALE = 0.94;
 type Joints = {
   neck: number[];

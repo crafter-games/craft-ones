@@ -29,14 +29,6 @@ const copies: [string, string][] = [
     join(repo, "packages", "shared", "src"),
     join(tree, "packages", "shared", "src"),
   ],
-  [
-    join(repo, "apps", "web", "src", "game", "characters"),
-    join(tree, "apps", "web", "src", "game", "characters"),
-  ],
-  [
-    join(repo, "apps", "web", "src", "game", "weapons"),
-    join(tree, "apps", "web", "src", "game", "weapons"),
-  ],
 ];
 for (const [from, to] of copies) cpSync(from, to, { recursive: true });
 

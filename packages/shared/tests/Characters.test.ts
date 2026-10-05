@@ -8,7 +8,7 @@ import {
   type CoatId,
   grounded,
   SPECIES,
-} from "@craft-ones/shared";
+} from "../src";
 
 function fixture(species: "zorro" | "ronsoco" | "puma" | "alpaca") {
   let now = 0;

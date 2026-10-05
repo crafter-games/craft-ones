@@ -6,7 +6,7 @@ import {
   syncMovement,
   WEAPONS,
   WORLD_MAPS,
-} from "@craft-ones/shared";
+} from "../src";
 
 function fixture(map: PlayableMapId = "andes") {
   let now = 0;

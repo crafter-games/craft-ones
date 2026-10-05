@@ -10,7 +10,7 @@ import {
   soundCues,
   validPlayerOptions,
   WEAPONS,
-} from "@craft-ones/shared";
+} from "../src";
 
 const guests = ["freddy", "michi", "railly"] as const;
 function fixture(species: (typeof guests)[number]) {

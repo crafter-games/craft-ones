@@ -3,14 +3,6 @@
 import type { Draw2D } from "dotframe/src/draw2d";
 import type { Gpu, RenderGpu, Texture } from "dotframe/src/gpu";
 import {
-  BODY_LAYERS,
-  HEAD_SCALE,
-  handPose,
-  joints,
-  weaponPose,
-} from "../../apps/web/src/game/characters/pose";
-import { WEAPON_ART } from "../../apps/web/src/game/weapons/design";
-import {
   ABILITIES,
   ARENA,
   abilityProjectile,
@@ -28,6 +20,14 @@ import {
   WORLD_MAPS,
   WORLD_WIDTH,
 } from "../../packages/shared/src";
+import {
+  BODY_LAYERS,
+  HEAD_SCALE,
+  handPose,
+  joints,
+  weaponPose,
+} from "./art/pose";
+import { WEAPON_ART } from "./art/weapons";
 import { POPUP_LIFE } from "./effects";
 import {
   FRAME,

@@ -10,7 +10,7 @@ import {
   solidAt,
   WEAPONS,
   WORLD_MAPS,
-} from "@craft-ones/shared";
+} from "../src";
 
 function fixture(map: "andes" | "coast" = "andes") {
   let now = 0;

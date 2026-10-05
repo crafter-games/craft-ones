@@ -8,7 +8,7 @@ import {
   shotTrajectory,
   solidAt,
   WORLD_MAPS,
-} from "@craft-ones/shared";
+} from "../src";
 
 function fixture(mapId: "flat" | "andes" | "coast" = "andes") {
   let now = 0;

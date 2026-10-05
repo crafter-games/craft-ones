@@ -1,0 +1,18 @@
+# Craft Ones on the VPS (Dokploy): the static game at / and the netplay relay at /relay on the same host.
+services:
+  web:
+    build:
+      context: ../..
+      dockerfile: port/deploy/Dockerfile.web
+    restart: unless-stopped
+    expose:
+      - "80"
+  relay:
+    build:
+      context: ../..
+      dockerfile: port/deploy/Dockerfile.relay
+    restart: unless-stopped
+    environment:
+      PORT: "8787"
+    expose:
+      - "8787"

@@ -6,11 +6,11 @@ import {
   PLAYABLE_MAP_IDS,
   WORLD_HEIGHT,
   WORLD_WIDTH,
-} from "@craft-ones/shared";
+} from "../src";
 import {
   contourPaths,
   terrainContours,
-} from "../../../packages/shared/src/terrainContours";
+} from "../src/terrainContours";
 
 test("arenas have 2.25 times the original area with unchanged collision precision", () => {
   expect(WORLD_WIDTH).toBe(2688);

@@ -1,4 +1,4 @@
-import type { ProjectileKind } from "@craft-ones/shared";
+import type { ProjectileKind } from "../../../packages/shared/src";
 
 const INK = "#34333e";
 export const WEAPON_ART = {

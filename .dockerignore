@@ -1,8 +1,11 @@
 .git
 **/node_modules
-**/.next
 **/.env*
-**/test-results
-playwright-report
 dist
+port/dist
+port/.dotframe
+port/ios/build
+port/ios/vendor
+port/assets/art
+port/assets/sfx
 .devin
