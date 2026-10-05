@@ -137,6 +137,51 @@ export function loadCritter(
   ).then((): void => undefined);
 }
 
+// Native builds hold at most 256 textures and never free one (dotframe's df_native), so native and iOS load
+// portraits for setup and a critter's parts only when it plays, and stop loading short of the cap.
+const NATIVE_TEXTURE_BUDGET = 240;
+function loadOnce(
+  key: string,
+  path: string,
+  read: (path: string) => Uint8Array,
+  image: (png: Uint8Array) => Texture,
+): void {
+  if (art.textures.has(key) || art.textures.size >= NATIVE_TEXTURE_BUDGET)
+    return;
+  art.textures.set(key, image(read(path)));
+}
+
+export function loadPortraitSync(
+  read: (path: string) => Uint8Array,
+  image: (png: Uint8Array) => Texture,
+  root: string,
+  species: string,
+  coat: string,
+): void {
+  loadOnce(
+    `${species}-${coat}-portrait`,
+    `${root}/assets/art/${species}/${coat}/portrait.png`,
+    read,
+    image,
+  );
+}
+
+export function loadCritterSync(
+  read: (path: string) => Uint8Array,
+  image: (png: Uint8Array) => Texture,
+  root: string,
+  species: string,
+  coat: string,
+): void {
+  for (const part of PARTS)
+    loadOnce(
+      `${species}-${coat}-${part}`,
+      `${root}/assets/art/${species}/${coat}/${part}.png`,
+      read,
+      image,
+    );
+}
+
 // The same loading, synchronous, for hosts without promises (scriptc library mode on iOS).
 export function loadArtSync(
   draw: Draw2D,
@@ -159,11 +204,25 @@ export function loadArtSync(
       image(read(`${root}/assets/art/${img.path}.png`)),
     );
   for (const c of critters)
-    for (const part of PARTS)
-      art.textures.set(
-        `${c.species}-${c.coat}-${part}`,
-        image(read(`${root}/assets/art/${c.species}/${c.coat}/${part}.png`)),
-      );
+    loadCritterSync(read, image, root, c.species, c.coat);
+}
+
+export async function loadPortrait(
+  gpu: Gpu,
+  load: LoadBytes,
+  root: string,
+  species: string,
+  coat: string,
+): Promise<void> {
+  const key = `${species}-${coat}-portrait`;
+  if (art.textures.has(key)) return;
+  art.textures.set(
+    key,
+    await gpu.createImage(
+      await load(`${root}/assets/art/${species}/${coat}/portrait.png`),
+      true,
+    ),
+  );
 }
 
 export function critterLoaded(species: string, coat: string): boolean {

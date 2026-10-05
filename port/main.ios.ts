@@ -2,7 +2,11 @@
 // frame every display refresh. Loading is synchronous: library mode has no promises.
 import { createDraw2D, type Draw2D } from "dotframe/src/draw2d";
 import { openLibraryPlatform } from "dotframe/src/native/library";
-import { type BattleView, COATS, SPECIES } from "../packages/shared/src";
+import {
+  type BattleView,
+  COATS,
+  SELECTABLE_SPECIES,
+} from "../packages/shared/src";
 import { loadSpeakersSync, type Speakers } from "./src/audio";
 import { type Controls, createControls } from "./src/controls";
 import {
@@ -11,13 +15,19 @@ import {
   DEFAULT_OPTIONS,
   fitAspect,
   type Match,
+  type MatchOptions,
   power01,
   seatOf,
   step,
   view,
   WINDOW,
 } from "./src/match";
-import { createRenderer, loadArtSync } from "./src/render";
+import {
+  createRenderer,
+  loadArtSync,
+  loadCritterSync,
+  loadPortraitSync,
+} from "./src/render";
 import { createSetup, renderSetup, type Setup } from "./src/setup";
 import { createSetupInput, type SetupInput } from "./src/setupInput";
 
@@ -32,6 +42,7 @@ let speakers: Speakers | null = null;
 let heard: BattleView | null = null;
 let simulated = -1;
 let setup: Setup | null = null;
+let startMatch: ((options: MatchOptions) => void) | null = null;
 let setupInput: SetupInput | null = null;
 
 export function init(base: string): void {
@@ -45,11 +56,17 @@ export function init(base: string): void {
     (png: Uint8Array) => platform.image(png, true),
     base,
     `${base}/dotframe/assets/fonts`,
-    // Every critter, so setup can preview any pick.
-    SPECIES.flatMap((species) =>
-      Object.keys(COATS).map((coat) => ({ species, coat })),
-    ),
+    [],
   );
+  const image = (png: Uint8Array) => platform.image(png, true);
+  for (const species of SELECTABLE_SPECIES)
+    for (const coat of Object.keys(COATS))
+      loadPortraitSync(read, image, base, species, coat);
+  startMatch = (options: MatchOptions): void => {
+    loadCritterSync(read, image, base, options.one.species, options.one.coat);
+    loadCritterSync(read, image, base, options.two.species, options.two.coat);
+    match = createMatch(Math.floor(Math.random() * 0x1_0000_0000), options);
+  };
   speakers = loadSpeakersSync(platform.audio, read, platform.sound, base);
   const renderer = createRenderer(platform.gpu, WINDOW);
   render = (m: Match, dr: Draw2D, touched: boolean, preview: number): void =>
@@ -69,11 +86,7 @@ export function frame(time: number): boolean {
   if (!match) {
     c.disarm();
     const choice = setupInput.poll(setup, WINDOW.width, WINDOW.height);
-    if (choice)
-      match = createMatch(
-        Math.floor(Math.random() * 0x1_0000_0000),
-        choice.options,
-      );
+    if (choice && startMatch) startMatch(choice.options);
     d.begin();
     renderSetup(setup, d, WINDOW.width, WINDOW.height);
     d.end({ r: 0, g: 0, b: 0 });

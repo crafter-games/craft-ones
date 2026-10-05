@@ -180,6 +180,23 @@ function critter(
   d.save();
   d.translate(x, y);
   d.scale(flip ? -1 : 1, 1);
+  // Native builds load only portraits for setup (see the texture budget in render.ts).
+  const face = art.textures.get(`${species}-${coat}-portrait`);
+  if (face && !art.textures.has(`${species}-${coat}-body`)) {
+    d.drawImage(
+      face,
+      0,
+      0,
+      face.width,
+      face.height,
+      -size * 0.45,
+      -size * 0.45,
+      size * 0.9,
+      size * 0.9,
+    );
+    d.restore();
+    return;
+  }
   for (const part of [
     "tail",
     "legBack",

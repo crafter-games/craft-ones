@@ -5,7 +5,11 @@ import type { Frame } from "dotframe/src/gpu";
 import { Key } from "dotframe/src/input";
 import { loadBytes, run } from "dotframe/src/native/run";
 import type { Platform } from "dotframe/src/platform";
-import { type BattleView, COATS, SPECIES } from "../packages/shared/src";
+import {
+  type BattleView,
+  COATS,
+  SELECTABLE_SPECIES,
+} from "../packages/shared/src";
 import { loadSpeakers, type Speakers } from "./src/audio";
 import { createControls } from "./src/controls";
 import {
@@ -19,7 +23,12 @@ import {
   view,
   WINDOW,
 } from "./src/match";
-import { createRenderer, loadArt, loadCritter } from "./src/render";
+import {
+  createRenderer,
+  loadArt,
+  loadCritter,
+  loadPortrait,
+} from "./src/render";
 import { createSetup, renderSetup } from "./src/setup";
 import { createSetupInput } from "./src/setupInput";
 
@@ -33,11 +42,12 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
   const setup = createSetup(DEFAULT_OPTIONS);
   const setupInput = createSetupInput(input);
   let ready = false;
-  // Every critter, so setup can preview any pick.
+  // Portraits for setup; a critter's parts load when it plays (native holds at most 256 textures).
   const jobs: Promise<void>[] = [loadArt(gpu, draw, loadBytes, root)];
-  for (const species of SPECIES)
+  for (const species of SELECTABLE_SPECIES)
     for (const coat of Object.keys(COATS))
-      jobs.push(loadCritter(gpu, loadBytes, root, species, coat));
+      jobs.push(loadPortrait(gpu, loadBytes, root, species, coat));
+  let starting = false;
   Promise.all(jobs).then((): void => {
     ready = true;
   });
@@ -53,11 +63,32 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
     if (ready && !match) {
       controls.disarm();
       const choice = setupInput.poll(setup, WINDOW.width, WINDOW.height);
-      if (choice)
-        match = createMatch(
-          Math.floor(Math.random() * 0x1_0000_0000),
-          choice.options,
-        );
+      if (choice && !starting) {
+        starting = true;
+        const options = choice.options;
+        Promise.all([
+          loadCritter(
+            gpu,
+            loadBytes,
+            root,
+            options.one.species,
+            options.one.coat,
+          ),
+          loadCritter(
+            gpu,
+            loadBytes,
+            root,
+            options.two.species,
+            options.two.coat,
+          ),
+        ]).then((): void => {
+          match = createMatch(
+            Math.floor(Math.random() * 0x1_0000_0000),
+            options,
+          );
+          starting = false;
+        });
+      }
       renderSetup(setup, draw, WINDOW.width, WINDOW.height);
       simulated = -1;
     } else if (ready && match) {
