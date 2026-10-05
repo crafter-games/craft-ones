@@ -1,2 +1,2 @@
 [test]
-root = "./apps/game-server"
+root = "./packages/shared"

@@ -1,0 +1,17 @@
+{
+  "name": "@craft-ones/dotframe-port",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "dotframe dev",
+    "test": "bun test tests && dotframe replay verify replays/*.json"
+  },
+  "dependencies": {
+    "@discord/embedded-app-sdk": "2.5.0",
+    "dotframe": "0.1.4"
+  },
+  "devDependencies": {
+    "@webgpu/types": "^0.1.74",
+    "sharp": "0.35.4"
+  }
+}

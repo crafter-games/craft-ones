@@ -1,0 +1,62 @@
+{
+  "name": "craft-ones",
+  "sim": "sim.ts",
+  "targets": {
+    "web": {
+      "steps": [
+        {
+          "label": "web",
+          "argv": [
+            "sh",
+            "scripts/build-web.sh"
+          ]
+        }
+      ],
+      "out": "dist/web",
+      "deploy": {
+        "provider": "vercel",
+        "project": "craft-ones-dotframe",
+        "scope": "crafter-station"
+      }
+    },
+    "native": {
+      "native": {
+        "platform": "macos",
+        "entry": "main.native.ts"
+      }
+    },
+    "ios": {
+      "steps": [
+        {
+          "label": "ios",
+          "argv": [
+            "sh",
+            "scripts/build-ios.sh"
+          ]
+        }
+      ],
+      "app": "ios/build/derived/Build/Products/Debug-iphoneos/CraftOnes.app",
+      "device": "00008120-001A5D690A52201E"
+    },
+    "discord": {
+      "steps": [
+        {
+          "label": "web",
+          "argv": [
+            "sh",
+            "scripts/build-web.sh"
+          ]
+        }
+      ],
+      "out": "dist/web",
+      "deploy": {
+        "provider": "vercel",
+        "project": "craft-ones-dotframe",
+        "scope": "crafter-station"
+      }
+    }
+  },
+  "assets": {
+    "localOnly": []
+  }
+}

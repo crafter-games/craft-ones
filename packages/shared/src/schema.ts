@@ -1,4 +1,3 @@
-import { ArraySchema, defineTypes, Schema } from "@colyseus/schema";
 import type { CoatId, ProjectileKind, Species, WeaponId } from "./arsenal";
 
 import { ARENA } from "./config";
@@ -28,203 +27,143 @@ export type SelectionAction = {
   turnNumber: number;
 };
 
-export class Player extends Schema {
-  declare selectedWeapon: WeaponId;
-  declare abilityArmed: boolean;
-  declare species: Species;
-  declare coat: CoatId;
-  declare abilityReadyTurn: number;
-  declare shield: number;
-  declare vx: number;
-  declare sessionId: string;
-  declare number: number;
-  declare x: number;
-  declare y: number;
-  declare hp: number;
-  declare connected: boolean;
-  declare movementLeft: number;
-  declare originX: number;
-  declare jumps: number;
-  declare vy: number;
+// Plain state classes. The simulation never depended on Schema's change tracking; the Colyseus server
+// mirrors this state into its own Schema classes (apps/game-server/src/schemaState.ts) for network patches,
+// and the dotframe port snapshots it directly. toJSON gives the BattleView every client renders.
 
-  constructor() {
-    super();
-    Object.assign(this, {
-      selectedWeapon: "rocket",
-      abilityArmed: false,
-      species: "cuy",
-      coat: "caramel",
-      abilityReadyTurn: 0,
-      shield: 0,
-      vx: 0,
-      sessionId: "",
-      number: 0,
-      x: 0,
-      y: ARENA.groundY - ARENA.playerRadius,
-      hp: 100,
-      connected: true,
-      movementLeft: ARENA.moveBudget,
-      originX: 0,
-      jumps: 0,
-      vy: 0,
-    });
+export class Player {
+  selectedWeapon: WeaponId = "rocket";
+  abilityArmed = false;
+  species: Species = "cuy";
+  coat: CoatId = "caramel";
+  abilityReadyTurn = 0;
+  shield = 0;
+  vx = 0;
+  sessionId = "";
+  number = 0;
+  x = 0;
+  y: number = ARENA.groundY - ARENA.playerRadius;
+  hp = 100;
+  connected = true;
+  movementLeft: number = ARENA.moveBudget;
+  originX = 0;
+  jumps = 0;
+  vy = 0;
+
+  toJSON(): PlayerView {
+    return {
+      selectedWeapon: this.selectedWeapon,
+      abilityArmed: this.abilityArmed,
+      species: this.species,
+      coat: this.coat,
+      abilityReadyTurn: this.abilityReadyTurn,
+      shield: this.shield,
+      vx: this.vx,
+      sessionId: this.sessionId,
+      number: this.number,
+      x: this.x,
+      y: this.y,
+      hp: this.hp,
+      connected: this.connected,
+      movementLeft: this.movementLeft,
+      originX: this.originX,
+      jumps: this.jumps,
+      vy: this.vy,
+    };
   }
 }
-defineTypes(Player, {
-  selectedWeapon: "string",
-  abilityArmed: "boolean",
-  species: "string",
-  coat: "string",
-  abilityReadyTurn: "number",
-  shield: "number",
-  vx: "number",
-  sessionId: "string",
-  number: "number",
-  x: "number",
-  y: "number",
-  hp: "number",
-  connected: "boolean",
-  movementLeft: "number",
-  originX: "number",
-  jumps: "number",
-  vy: "number",
-});
 
-export class Projectile extends Schema {
-  declare kind: ProjectileKind;
-  declare elapsedMs: number;
-  declare bounces: number;
-  declare stuck: boolean;
-  declare attachedPlayer: number;
-  declare offsetX: number;
-  declare offsetY: number;
-  declare active: boolean;
-  declare x: number;
-  declare y: number;
-  declare vx: number;
-  declare vy: number;
+export class Projectile {
+  kind: ProjectileKind = "rocket";
+  elapsedMs = 0;
+  bounces = 0;
+  stuck = false;
+  attachedPlayer = 0;
+  offsetX = 0;
+  offsetY = 0;
+  active = false;
+  x = 0;
+  y = 0;
+  vx = 0;
+  vy = 0;
 
-  constructor() {
-    super();
-    Object.assign(this, {
-      kind: "rocket",
-      elapsedMs: 0,
-      bounces: 0,
-      stuck: false,
-      attachedPlayer: 0,
-      offsetX: 0,
-      offsetY: 0,
-      active: false,
-      x: 0,
-      y: 0,
-      vx: 0,
-      vy: 0,
-    });
+  toJSON(): BattleView["projectile"] {
+    return {
+      kind: this.kind,
+      elapsedMs: this.elapsedMs,
+      bounces: this.bounces,
+      stuck: this.stuck,
+      attachedPlayer: this.attachedPlayer,
+      offsetX: this.offsetX,
+      offsetY: this.offsetY,
+      active: this.active,
+      x: this.x,
+      y: this.y,
+      vx: this.vx,
+      vy: this.vy,
+    };
   }
 }
-defineTypes(Projectile, {
-  kind: "string",
-  elapsedMs: "number",
-  bounces: "number",
-  stuck: "boolean",
-  attachedPlayer: "number",
-  offsetX: "number",
-  offsetY: "number",
-  active: "boolean",
-  x: "number",
-  y: "number",
-  vx: "number",
-  vy: "number",
-});
 
-export class Explosion extends Schema {
-  declare radius: number;
-  declare id: number;
-  declare x: number;
-  declare y: number;
+export class Explosion {
+  radius: number = ARENA.blastRadius;
+  id = 0;
+  x = 0;
+  y = 0;
 
-  constructor() {
-    super();
-    Object.assign(this, { radius: ARENA.blastRadius, id: 0, x: 0, y: 0 });
+  toJSON(): BattleView["explosion"] {
+    return { radius: this.radius, id: this.id, x: this.x, y: this.y };
   }
 }
-defineTypes(Explosion, {
-  radius: "number",
-  id: "number",
-  x: "number",
-  y: "number",
-});
 
-export class BattleState extends Schema {
-  declare worldWidth: number;
-  declare worldHeight: number;
-  declare terrainRows: ArraySchema<string>;
-  declare terrainRevision: number;
-  declare lastAction: string;
-  declare wind: number;
-  declare mapId: string;
-  declare terrain: ArraySchema<number>;
-  declare players: ArraySchema<Player>;
-  declare projectile: Projectile;
-  declare explosion: Explosion;
-  declare phase: Phase;
-  declare currentPlayer: string;
-  declare turnNumber: number;
-  declare roundNumber: number;
-  declare remainingMs: number;
-  declare waitingRemainingMs: number;
-  declare winner: string;
-  declare finishReason: string;
-  declare openingSeat: string;
+export class BattleState {
+  worldWidth: number = ARENA.width;
+  worldHeight: number = ARENA.height;
+  terrainRows: string[] = [];
+  terrainRevision = 0;
+  lastAction = "";
+  wind = 0;
+  mapId = "flat";
+  terrain: number[] = [];
+  players: Player[] = [];
+  projectile = new Projectile();
+  explosion = new Explosion();
+  phase: Phase = "waiting";
+  currentPlayer = "";
+  turnNumber = 0;
+  roundNumber = 0;
+  remainingMs = 0;
+  waitingRemainingMs = 0;
+  winner = "";
+  finishReason = "";
+  openingSeat = "host";
 
-  constructor() {
-    super();
-    Object.assign(this, {
-      worldWidth: ARENA.width,
-      worldHeight: ARENA.height,
-      terrainRows: new ArraySchema<string>(),
-      terrainRevision: 0,
-      lastAction: "",
-      wind: 0,
-      mapId: "flat",
-      terrain: new ArraySchema<number>(),
-      players: new ArraySchema<Player>(),
-      projectile: new Projectile(),
-      explosion: new Explosion(),
-      phase: "waiting",
-      currentPlayer: "",
-      turnNumber: 0,
-      roundNumber: 0,
-      remainingMs: 0,
-      waitingRemainingMs: 0,
-      winner: "",
-      finishReason: "",
-      openingSeat: "host",
-    });
+  // Same key order as the Schema definition, so JSON snapshots and checksums are unchanged.
+  toJSON(): BattleView {
+    return {
+      worldWidth: this.worldWidth,
+      worldHeight: this.worldHeight,
+      terrainRows: this.terrainRows.slice(),
+      terrainRevision: this.terrainRevision,
+      lastAction: this.lastAction,
+      wind: this.wind,
+      mapId: this.mapId,
+      terrain: this.terrain.slice(),
+      players: this.players.map((p) => p.toJSON()),
+      projectile: this.projectile.toJSON(),
+      explosion: this.explosion.toJSON(),
+      phase: this.phase,
+      currentPlayer: this.currentPlayer,
+      turnNumber: this.turnNumber,
+      remainingMs: this.remainingMs,
+      waitingRemainingMs: this.waitingRemainingMs,
+      winner: this.winner,
+      finishReason: this.finishReason,
+      roundNumber: this.roundNumber,
+      openingSeat: this.openingSeat,
+    };
   }
 }
-defineTypes(BattleState, {
-  worldWidth: "number",
-  worldHeight: "number",
-  terrainRows: ["string"],
-  terrainRevision: "number",
-  lastAction: "string",
-  wind: "number",
-  mapId: "string",
-  terrain: ["number"],
-  players: [Player],
-  projectile: Projectile,
-  explosion: Explosion,
-  phase: "string",
-  currentPlayer: "string",
-  turnNumber: "number",
-  remainingMs: "number",
-  waitingRemainingMs: "number",
-  winner: "string",
-  finishReason: "string",
-  roundNumber: "number",
-  openingSeat: "string",
-});
 
 export type PlayerView = Pick<
   Player,
@@ -275,10 +214,11 @@ export type BattleView = {
   phase: Phase;
   currentPlayer: string;
   turnNumber: number;
-  roundNumber: number;
+  // Same order as toJSON: scriptc's JSON.stringify follows the declared type, and checksums hash that text.
   remainingMs: number;
   waitingRemainingMs: number;
   winner: string;
   finishReason: string;
+  roundNumber: number;
   openingSeat: string;
 };

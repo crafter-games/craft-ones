@@ -7,51 +7,21 @@ on:
 
 jobs:
   verify:
-    name: Fast release checks
+    name: Tests, types and replays
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    concurrency:
-      group: verify-${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.11
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install workspace
-        run: bun install --frozen-lockfile
-
-      - name: Types, lint, production build and dependency audit
-        run: bun scripts/converge.ts --only=typecheck,lint,build,audit
-
-  deploy:
-    name: Deploy production
-    needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 55
-    concurrency:
-      group: craft-ones-production
-      cancel-in-progress: false
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.11
-      - name: Deploy verified backend and publish frontend
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          VPS_API_KEY: ${{ secrets.VPS_API_KEY }}
-          GAME_METRICS_TOKEN: ${{ secrets.GAME_METRICS_TOKEN }}
-        run: bun scripts/deploy-production.mjs
+      - name: Install
+        run: bun install --frozen-lockfile && (cd port && bun install --frozen-lockfile)
+      - name: Engine tests
+        run: bun test
+      - name: Types
+        run: bun run typecheck
+      - name: Port tests and golden replays
+        run: cd port && bun run test
+      - name: Netplay desync
+        run: cd port && bunx dotframe desync --latency 474ms --jitter 40ms --delay 10 --frames 3000 --mash 3

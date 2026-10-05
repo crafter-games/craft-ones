@@ -95,9 +95,15 @@ export const SPECIES = [
 ] as const;
 // Freddy and Michi remain implemented for licensed/private builds, but are not
 // offered by the public setup flow until their usage rights are confirmed.
-export const SELECTABLE_SPECIES = SPECIES.filter(
-  (species) => species !== "freddy" && species !== "michi",
-);
+export const SELECTABLE_SPECIES: Species[] = [
+  "cuy",
+  "llama",
+  "zorro",
+  "ronsoco",
+  "puma",
+  "alpaca",
+  "railly",
+];
 export const EXCLUSIVE_SPECIES = ["freddy", "michi", "railly"] as const;
 export function isExclusive(species: Species) {
   return (EXCLUSIVE_SPECIES as readonly string[]).includes(species);
@@ -145,7 +151,8 @@ export const CHARACTERS = {
     tagline: "Fluffy, stubborn, hard to finish.",
   },
 } as const;
-export const ABILITIES = {
+export type AbilityInfo = { name: string; description: string };
+export const ABILITIES: Record<Species, AbilityInfo | null> = {
   freddy: {
     name: "Dimensional rift",
     description:
@@ -186,7 +193,7 @@ export const ABILITIES = {
     description:
       "Shake off 25 damage, up to full health. Costs this turn; 2-turn cooldown.",
   },
-} as const;
+};
 export type Species = (typeof SPECIES)[number];
 export const COATS = {
   caramel: {
@@ -204,7 +211,9 @@ export type CoatId = keyof typeof COATS;
 export type PlayerOptions = { species: Species; coat: CoatId };
 export function validPlayerOptions(value: unknown): value is PlayerOptions {
   if (!value || typeof value !== "object") return false;
-  const { species, coat } = value as Record<string, unknown>;
+  const fields = value as Record<string, unknown>;
+  const species = fields.species;
+  const coat = fields.coat;
   return (
     typeof species === "string" &&
     Object.hasOwn(CHARACTERS, species) &&
@@ -249,8 +258,23 @@ export const ABILITY_PROJECTILES = {
     bounce: 0,
   },
 } as const;
-export const PROJECTILES = { ...WEAPONS, ...ABILITY_PROJECTILES };
-export type ProjectileKind = keyof typeof PROJECTILES;
+export type ProjectileKind = WeaponId | keyof typeof ABILITY_PROJECTILES;
+// The physics every projectile shares; WEAPONS adds UI copy on top.
+export type ProjectileSpec = {
+  name: string;
+  minSpeed: number;
+  maxSpeed: number;
+  gravity: number;
+  radius: number;
+  damage: number;
+  crater: number;
+  fuse: number;
+  bounce: number;
+};
+export const PROJECTILES: Record<ProjectileKind, ProjectileSpec> = {
+  ...WEAPONS,
+  ...ABILITY_PROJECTILES,
+};
 export function abilityProjectile(
   species: Species,
 ): keyof typeof ABILITY_PROJECTILES | null {
