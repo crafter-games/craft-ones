@@ -1133,11 +1133,22 @@ function drawHud(
     );
     text(
       d,
-      touch ? "Tap for a rematch" : "Press R for a rematch",
+      touch ? "Tap for a rematch" : "Click or press R for a rematch",
       W / 2,
       H / 2 + 88,
       "12px Archivo Black",
       HUD.gold,
+      "center",
+    );
+    const b = menuButton(W);
+    panel(d, b.x, b.y, b.w, b.h, HUD.ink);
+    text(
+      d,
+      "MENU",
+      b.x + b.w / 2,
+      b.y + b.h / 2,
+      "16px Archivo Black",
+      HUD.cream,
       "center",
     );
   }
@@ -1248,4 +1259,14 @@ export function drawNetStats(
   line: string,
 ): void {
   text(d, line, W - 12, H - 10, "11px Archivo Black", HUD.dim, "right");
+}
+
+// The results card's way back to setup.
+export function menuButton(W: number): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} {
+  return { x: W - 140, y: 76, w: 124, h: 48 };
 }

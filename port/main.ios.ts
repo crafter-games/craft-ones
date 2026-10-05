@@ -2,7 +2,7 @@
 // frame every display refresh. Loading is synchronous: library mode has no promises.
 import { createDraw2D, type Draw2D } from "dotframe/src/draw2d";
 import { openLibraryPlatform } from "dotframe/src/native/library";
-import type { BattleView } from "../packages/shared/src";
+import { type BattleView, COATS, SPECIES } from "../packages/shared/src";
 import { loadSpeakersSync, type Speakers } from "./src/audio";
 import { type Controls, createControls } from "./src/controls";
 import {
@@ -18,6 +18,8 @@ import {
   WINDOW,
 } from "./src/match";
 import { createRenderer, loadArtSync } from "./src/render";
+import { createSetup, renderSetup, type Setup } from "./src/setup";
+import { createSetupInput, type SetupInput } from "./src/setupInput";
 
 const STEP = 1 / 60;
 let match: Match | null = null;
@@ -29,6 +31,8 @@ let controls: Controls | null = null;
 let speakers: Speakers | null = null;
 let heard: BattleView | null = null;
 let simulated = -1;
+let setup: Setup | null = null;
+let setupInput: SetupInput | null = null;
 
 export function init(base: string): void {
   const platform = openLibraryPlatform(WINDOW);
@@ -41,27 +45,47 @@ export function init(base: string): void {
     (png: Uint8Array) => platform.image(png, true),
     base,
     `${base}/dotframe/assets/fonts`,
-    [DEFAULT_OPTIONS.one, DEFAULT_OPTIONS.two],
+    // Every critter, so setup can preview any pick.
+    SPECIES.flatMap((species) =>
+      Object.keys(COATS).map((coat) => ({ species, coat })),
+    ),
   );
   speakers = loadSpeakersSync(platform.audio, read, platform.sound, base);
   const renderer = createRenderer(platform.gpu, WINDOW);
   render = (m: Match, dr: Draw2D, touched: boolean, preview: number): void =>
     renderer.render(m, dr, touched, preview);
   controls = createControls(platform.input, WINDOW.width, WINDOW.height);
-  match = createMatch(
-    Math.floor(Math.random() * 0x1_0000_0000),
-    DEFAULT_OPTIONS,
-  );
+  setup = createSetup(DEFAULT_OPTIONS);
+  setupInput = createSetupInput(platform.input);
   draw = d;
 }
 
 // Returns false to ask the host to quit.
 export function frame(time: number): boolean {
-  const m = match;
   const d = draw;
   const c = controls;
   const r = render;
-  if (!m || !d || !c || !r) return true;
+  if (!d || !c || !r || !setup || !setupInput) return true;
+  if (!match) {
+    c.disarm();
+    const choice = setupInput.poll(setup, WINDOW.width, WINDOW.height);
+    if (choice)
+      match = createMatch(
+        Math.floor(Math.random() * 0x1_0000_0000),
+        choice.options,
+      );
+    d.begin();
+    renderSetup(setup, d, WINDOW.width, WINDOW.height);
+    d.end({ r: 0, g: 0, b: 0 });
+    simulated = -1;
+    return true;
+  }
+  const m = match;
+  if (m.battle.state.phase === "finished" && c.menu()) {
+    match = null;
+    heard = null;
+    return true;
+  }
   if (simulated < 0) simulated = time;
   for (let n = 0; simulated + STEP <= time && n < 5; n++) {
     const bits = c.bits(m);

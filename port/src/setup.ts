@@ -16,24 +16,105 @@ import { DEFAULT_OPTIONS, type MatchOptions } from "./match";
 import { art } from "./render";
 
 const COAT_IDS = Object.keys(COATS) as CoatId[];
-const ROWS = [
+type Row =
+  | "map"
+  | "one-species"
+  | "one-coat"
+  | "two-species"
+  | "two-coat"
+  | "start";
+type Seat = "one" | "two";
+// Plain arrays, not tuples: scriptc (native and iOS) lowers neither tuple loops nor tuple indexing.
+const ROWS: Row[] = [
   "map",
   "one-species",
   "one-coat",
   "two-species",
   "two-coat",
   "start",
-] as const;
+];
+const SEATS: Seat[] = ["one", "two"];
 
 export interface Setup {
   row: number;
   options: MatchOptions;
+  // Whether a PLAY ONLINE button is offered (web only: native builds have no WebSocket).
+  online: boolean;
 }
 
 export type SetupKey = "up" | "down" | "left" | "right" | "confirm";
 
-export function createSetup(options: MatchOptions = DEFAULT_OPTIONS): Setup {
-  return { row: ROWS.length - 1, options: structuredClone(options) };
+export function createSetup(
+  options: MatchOptions = DEFAULT_OPTIONS,
+  online = false,
+): Setup {
+  return { row: ROWS.length - 1, options: structuredClone(options), online };
+}
+
+// Layout shared by drawing and pointer hit tests.
+const PREVIEW = { w: 520, y: 130 };
+const previewHeight = (): number => (PREVIEW.w * WORLD_HEIGHT) / WORLD_WIDTH;
+const seatX = (W: number, seat: "one" | "two"): number =>
+  seat === "one" ? W * 0.17 : W * 0.83;
+function buttons(
+  setup: Setup,
+  W: number,
+  H: number,
+): { id: "start" | "online"; x: number; y: number; w: number; h: number }[] {
+  const y = H - 130;
+  return setup.online
+    ? [
+        { id: "start", x: W / 2 - 240, y, w: 220, h: 52 },
+        { id: "online", x: W / 2 + 20, y, w: 220, h: 52 },
+      ]
+    : [{ id: "start", x: W / 2 - 110, y, w: 220, h: 52 }];
+}
+// Each row's arrows as tap targets: the left and right halves of a band around its label.
+function rowBands(W: number): { row: Row; x: number; y: number; w: number }[] {
+  const mapY = PREVIEW.y + previewHeight() + 28;
+  const bands: {
+    row: Row;
+    x: number;
+    y: number;
+    w: number;
+  }[] = [{ row: "map", x: W / 2, y: mapY, w: 460 }];
+  for (const seat of SEATS) {
+    bands.push({ row: `${seat}-species`, x: seatX(W, seat), y: 390, w: 300 });
+    bands.push({ row: `${seat}-coat`, x: seatX(W, seat), y: 444, w: 260 });
+  }
+  return bands;
+}
+
+export type SetupChoice = { mode: "local" | "online"; options: MatchOptions };
+
+// A tap or click at (x, y) in logical pixels: arrows change a row, the buttons start.
+export function tap(
+  setup: Setup,
+  x: number,
+  y: number,
+  W: number,
+  H: number,
+): SetupChoice | null {
+  for (const b of buttons(setup, W, H))
+    if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h)
+      return {
+        mode: b.id === "online" ? "online" : "local",
+        options: structuredClone(setup.options),
+      };
+  for (const band of rowBands(W)) {
+    if (Math.abs(y - band.y) > 24 || Math.abs(x - band.x) > band.w / 2)
+      continue;
+    setup.row = ROWS.indexOf(band.row);
+    press(setup, x < band.x ? "left" : "right");
+    return null;
+  }
+  // Tapping a seat's critter cycles it too.
+  for (const seat of SEATS)
+    if (Math.abs(x - seatX(W, seat)) < 90 && Math.abs(y - 270) < 90) {
+      setup.row = ROWS.indexOf(`${seat}-species`);
+      press(setup, "right");
+    }
+  return null;
 }
 
 const cycle = <T>(list: readonly T[], value: T, step: number): T =>
@@ -146,10 +227,10 @@ export function renderSetup(
     "#a99aa6",
   );
   // Map preview.
-  const pw = 520;
-  const ph = (pw * WORLD_HEIGHT) / WORLD_WIDTH;
+  const pw = PREVIEW.w;
+  const ph = previewHeight();
   const px = W / 2 - pw / 2;
-  const py = 130;
+  const py = PREVIEW.y;
   const preview = art.textures.get(`map-${o.map}`);
   d.setFillStyle(map.palette.sky);
   d.fillRect(px, py, pw, ph);
@@ -167,12 +248,14 @@ export function renderSetup(
   );
   label(d, map.subtitle, W / 2, py + ph + 52, "11px Archivo Black", "#a99aa6");
   // Seats.
-  const seats: [string, "one" | "two", number, string][] = [
-    ["PLAYER 1", "one", W * 0.17, "#f5c367"],
-    ["PLAYER 2", "two", W * 0.83, "#6ad1b7"],
+  const seats = [
+    { title: "PLAYER 1", seat: "one" as Seat, color: "#f5c367" },
+    { title: "PLAYER 2", seat: "two" as Seat, color: "#6ad1b7" },
   ];
-  for (const [title, seat, x, color] of seats) {
-    const pick = o[seat];
+  for (const s of seats) {
+    const { title, seat, color } = s;
+    const x = seatX(W, seat);
+    const pick = seat === "one" ? o.one : o.two;
     label(d, title, x, 150, "14px Archivo Black", color);
     critter(d, pick.species, pick.coat, x, 270, 170, seat === "two");
     label(
@@ -201,19 +284,22 @@ export function renderSetup(
     );
   }
   const start = ROWS[setup.row] === "start";
-  d.setFillStyle(start ? "#ffdf82" : "#3a2f3c");
-  d.fillRect(W / 2 - 110, H - 130, 220, 52);
+  for (const b of buttons(setup, W, H)) {
+    const lit = b.id === "start" ? start : false;
+    d.setFillStyle(b.id === "online" ? "#6ad1b7" : lit ? "#ffdf82" : "#f5c367");
+    d.fillRect(b.x, b.y, b.w, b.h);
+    label(
+      d,
+      b.id === "online" ? "PLAY ONLINE" : "START DUEL",
+      b.x + b.w / 2,
+      b.y + b.h / 2,
+      "22px Bangers",
+      "#2b2330",
+    );
+  }
   label(
     d,
-    "START DUEL",
-    W / 2,
-    H - 104,
-    "22px Bangers",
-    start ? "#2b2330" : "#fff2d3",
-  );
-  label(
-    d,
-    "Up / Down pick a row · Left / Right change it · Enter starts",
+    "Tap the arrows to pick · Keyboard: Up / Down, Left / Right, Enter",
     W / 2,
     H - 50,
     "12px Archivo Black",

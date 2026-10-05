@@ -25,6 +25,7 @@ import {
   checksum,
   createMatch,
   DEFAULT_OPTIONS,
+  fitAspect,
   type Match,
   type MatchOptions,
   power01,
@@ -43,7 +44,8 @@ import {
   loadArt,
   loadCritter,
 } from "./src/render";
-import { createSetup, press, renderSetup, type SetupKey } from "./src/setup";
+import { createSetup, renderSetup } from "./src/setup";
+import { createSetupInput } from "./src/setupInput";
 import { restoreMatch, snapshotMatch } from "./src/snapshot";
 
 const STEP = 1 / 60;
@@ -91,18 +93,18 @@ const relay =
   params.get("relay") ??
   (local ? "ws://localhost:8787" : `wss://${location.host}/relay`);
 let link: OnlineLink | null = room ? connectOnline(relay, room) : null;
-const SETUP_KEYS: [SetupKey, number[]][] = [
-  ["up", [Key.Up, Key.W]],
-  ["down", [Key.Down, Key.S]],
-  ["left", [Key.Left, Key.A]],
-  ["right", [Key.Right, Key.D]],
-  ["confirm", [Key.Enter, Key.Space, Key.F]],
-];
+// Fill the window: the logical view takes the screen's aspect (kept between 5:4 and 2.4:1), and CSS scales the
+// canvas to the largest size that fits.
+fitAspect(Math.min(2.4, Math.max(1.25, innerWidth / Math.max(innerHeight, 1))));
+document.documentElement.style.setProperty(
+  "--aspect",
+  String(WINDOW.width / WINDOW.height),
+);
 
 await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
   const draw = createDraw2D(gpu, WINDOW.width, WINDOW.height);
   const renderer = createRenderer(gpu, WINDOW);
-  const setup = createSetup(fromUrl);
+  const setup = createSetup(fromUrl, !discord);
   let match: Match | null = direct
     ? createMatch(Math.floor(Math.random() * 0x1_0000_0000), fromUrl)
     : null;
@@ -123,16 +125,10 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
   loadSpeakers(audio, loadBytes, ".").then((s: Speakers): void => {
     speakers = s;
   });
-  const held = new Set<number>();
-  // Edge-triggered keys for the setup screen, which is not part of the simulation.
-  const tapped = (keys: number[]): boolean => {
-    const down = keys.some((k) => input.down(k));
-    const was = keys.some((k) => held.has(k));
-    for (const k of keys)
-      if (input.down(k)) held.add(k);
-      else held.delete(k);
-    return down && !was;
-  };
+  const setupInput = createSetupInput(input);
+  const tapped = setupInput.tapped;
+  let copied = false;
+  let bannerDown = false;
   const controls = createControls(input, WINDOW.width, WINDOW.height);
   let simulated = -1;
   // Online host: the options picked in setup, sent once the guest arrives.
@@ -211,38 +207,62 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
         match = createMatch(Math.floor(Math.random() * 0x1_0000_0000), pending);
         pending = null;
       } else if (pending) {
+        // A tap shares the link: the share sheet on phones, the clipboard elsewhere.
+        const touching = input.touches().length > 0;
+        const down = touching || (input.pointer().buttons & 1) !== 0;
+        if (down && !bannerDown && !discord) {
+          copied = true;
+          const url = share();
+          const nav = navigator as Navigator & {
+            share?: (data: { url: string }) => Promise<void>;
+          };
+          if (touching && nav.share) nav.share({ url }).catch(() => undefined);
+          else navigator.clipboard?.writeText(url).catch(() => undefined);
+        }
+        bannerDown = down;
         drawBanner(draw, W, H, "Waiting for a rival", [
           discord
             ? "Ask a friend to join this Activity"
             : "Send this link to the other player:",
           discord ? `Instance ${link.room}` : share(),
-          "Esc plays hot-seat on this screen",
+          discord
+            ? "Esc plays hot-seat on this screen"
+            : copied
+              ? "Link copied"
+              : "Tap to copy the link · Esc plays hot-seat",
         ]);
         draw.end({ r: 0, g: 0, b: 0 });
         return true;
       }
     }
     if (!match) {
-      for (const [key, keys] of SETUP_KEYS)
-        if (tapped(keys)) {
-          const options = press(setup, key);
-          if (options && link) pending = options;
-          else if (options)
-            match = createMatch(
-              Math.floor(Math.random() * 0x1_0000_0000),
-              options,
-            );
+      controls.disarm();
+      const choice = setupInput.poll(setup, W, H);
+      if (choice && (link || choice.mode === "online")) {
+        if (!link) {
+          // PLAY ONLINE: open a room and show its link.
+          const code = Math.random().toString(36).slice(2, 8);
+          params.set("room", code);
+          history.replaceState(null, "", `${location.pathname}?${params}`);
+          link = connectOnline(relay, code);
+          copied = false;
         }
-      renderSetup(setup, draw, WINDOW.width, WINDOW.height);
+        pending = choice.options;
+      } else if (choice)
+        match = createMatch(
+          Math.floor(Math.random() * 0x1_0000_0000),
+          choice.options,
+        );
+      renderSetup(setup, draw, W, H);
       draw.end({ r: 0, g: 0, b: 0 });
       simulated = -1;
       return true;
     }
-    // Escape from a finished match goes back to setup (local play only; online, R asks for a rematch).
+    // Escape or MENU on a finished match goes back to setup (local play only; online, rematches only).
     if (
       !link &&
-      tapped([Key.Escape]) &&
-      match.battle.state.phase === "finished"
+      match.battle.state.phase === "finished" &&
+      (tapped([Key.Escape]) || controls.menu())
     ) {
       match = null;
       heard = null;

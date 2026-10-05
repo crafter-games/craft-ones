@@ -3,7 +3,7 @@
 // picks a slot instead of charging a shot.
 import { type Input, Key, type Touch } from "dotframe/src/input";
 import { aimBits, Bit, type Match, seatOf, shootBits, slotBits } from "./match";
-import { hotbarSlots, screenToWorld, touchButtons } from "./render";
+import { hotbarSlots, menuButton, screenToWorld, touchButtons } from "./render";
 
 const BINDINGS: [number, number[]][] = [
   [Bit.Left, [Key.Left, Key.A]],
@@ -38,6 +38,10 @@ export interface Controls {
   touched: () => boolean;
   // The slingshot's pending power while a finger pulls, for the renderer's preview.
   preview: () => number;
+  // Ignore the pointer until it lifts (call while a menu owns it, so the tap that starts a match does not shoot).
+  disarm: () => void;
+  // True once after the MENU button on the results card was tapped or clicked.
+  menu: () => boolean;
 }
 
 function inside(
@@ -61,6 +65,9 @@ export function createControls(input: Input, W: number, H: number): Controls {
   let slingY = 0;
   let slingAngle = 0;
   let slingPower = 0;
+  let menuTapped = false;
+  // The click or tap that started the match is still held on its first frames; ignore the pointer until it lifts.
+  let armed = false;
   const slotAt = (px: number, py: number): number => {
     const slots = hotbarSlots(W, H);
     for (let i = 0; i < slots.length; i++) {
@@ -70,9 +77,18 @@ export function createControls(input: Input, W: number, H: number): Controls {
     return 0;
   };
   const pointerBits = (match: Match): number => {
-    // After the match, any tap asks for a rematch.
-    if (match.battle.state.phase === "finished")
-      return input.touches().length > 0 ? Bit.Restart : 0;
+    // After the match, the MENU button goes back to setup; any other tap or click asks for a rematch.
+    if (match.battle.state.phase === "finished") {
+      const t = input.touches();
+      const p = input.pointer();
+      const down = t.length > 0 || (p.buttons & 1) !== 0;
+      const x = (t.length > 0 ? t[0].x : p.x) * W;
+      const y = (t.length > 0 ? t[0].y : p.y) * H;
+      const b = menuButton(W);
+      const onMenu = x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+      if (down && onMenu) menuTapped = true;
+      return down && !onMenu ? Bit.Restart : 0;
+    }
     const seat = seatOf(match);
     if (seat < 0 || seat >= match.battle.state.players.length) return 0;
     const player = match.battle.state.players[seat];
@@ -155,9 +171,20 @@ export function createControls(input: Input, W: number, H: number): Controls {
         for (const k of keys) if (input.down(k)) bits |= bit;
       for (let i = 0; i < SLOT_KEYS.length; i++)
         if (input.down(SLOT_KEYS[i])) bits |= slotBits(i + 1);
-      return bits | pointerBits(match);
+      if (!armed)
+        armed =
+          input.touches().length === 0 && (input.pointer().buttons & 1) === 0;
+      return armed ? bits | pointerBits(match) : bits;
     },
     touched: (): boolean => touched,
     preview: (): number => slingPower,
+    disarm: (): void => {
+      armed = false;
+    },
+    menu: (): boolean => {
+      const tapped = menuTapped;
+      menuTapped = false;
+      return tapped;
+    },
   };
 }
