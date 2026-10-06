@@ -12,7 +12,8 @@ bun build main.web.ts --outfile "$out/main.js" --target browser --minify
 hash=$( (command -v shasum >/dev/null && shasum -a 256 "$out/main.js" || sha256sum "$out/main.js") | cut -c1-10)
 [ -n "$hash" ] || { echo "no sha256 tool for the bundle hash" >&2; exit 1; }
 mv "$out/main.js" "$out/main.$hash.js"
-sed "s#./main.js#./main.$hash.js#" index.html > "$out/index.html"
+# The base keeps relative URLs under /play/ when nginx serves this page at / for Discord.
+sed -e "s#./main.js#./main.$hash.js#" -e 's#<head>#<head>\n    <base href="/play/" />#' index.html > "$out/index.html"
 cp -R assets "$out/"
 cp -R node_modules/dotframe/assets/fonts "$out/node_modules/dotframe/assets/"
 du -sh "$out" | cut -f1
