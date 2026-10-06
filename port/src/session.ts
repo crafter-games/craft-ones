@@ -28,7 +28,9 @@ import { createSetupInput } from "./setupInput";
 import { restoreMatch, snapshotMatch } from "./snapshot";
 
 const STEP = 1 / 60;
-const INPUT_DELAY = 10;
+// Rollback only has to cover one-way latency: at 500 ms of round trip the deepest rollback is 15 frames, inside
+// ROLLBACK_WINDOW, so the player with the turn sees their own input after 2 frames.
+const INPUT_DELAY = 2;
 
 export interface SessionOptions {
   input: Input;
