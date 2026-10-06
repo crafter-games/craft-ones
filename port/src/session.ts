@@ -80,7 +80,7 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
   let simulated = -1;
   let shared = "";
   let bannerDown = false;
-  // Smoothed display frame time, shown next to the netplay stats to tell a slow renderer from a slow link.
+  // Smoothed display frame time in ms (time is in seconds), shown next to the netplay stats to tell a slow renderer from a slow link.
   let lastTime = -1;
   let frameMs = 0;
   const begin = (options: MatchOptions, seed: number): Match => {
@@ -203,7 +203,7 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       return finish();
     }
     if (simulated < 0) simulated = time;
-    if (lastTime >= 0) frameMs = frameMs * 0.9 + (time - lastTime) * 0.1;
+    if (lastTime >= 0) frameMs = frameMs * 0.9 + (time - lastTime) * 100;
     lastTime = time;
     const speakers = o.speakers();
     for (let n = 0; simulated + STEP <= time && n < 5; n++) {
