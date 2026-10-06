@@ -80,6 +80,9 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
   let simulated = -1;
   let shared = "";
   let bannerDown = false;
+  // Smoothed display frame time, shown next to the netplay stats to tell a slow renderer from a slow link.
+  let lastTime = -1;
+  let frameMs = 0;
   const begin = (options: MatchOptions, seed: number): Match => {
     o.prepare(options);
     const m = createMatch(seed, options);
@@ -200,6 +203,8 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       return finish();
     }
     if (simulated < 0) simulated = time;
+    if (lastTime >= 0) frameMs = frameMs * 0.9 + (time - lastTime) * 0.1;
+    lastTime = time;
     const speakers = o.speakers();
     for (let n = 0; simulated + STEP <= time && n < 5; n++) {
       const bits = o.mashing ? o.masher() : controls.bits(m);
@@ -238,7 +243,7 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
         draw,
         W,
         H,
-        `you are P${link.relay.slot() + 1} · ping ${Math.round((stats.rtt * 1000) / 60)} ms · rollbacks ${stats.rollbacks}`,
+        `you are P${link.relay.slot() + 1} · ping ${Math.round((stats.rtt * 1000) / 60)} ms · rollbacks ${stats.rollbacks} (max ${stats.longestRollback}) · stalls ${stats.stalls} · ahead ${stats.ahead.toFixed(1)} · tick ${stats.tickMs.toFixed(1)} ms · frame ${frameMs.toFixed(1)} ms`,
       );
     }
     return finish();
