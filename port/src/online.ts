@@ -1,8 +1,9 @@
 // The relay link for online play, over dotframe's relay client (web: connectRelay, native and iOS:
 // connectRelayNative). Rooms are prefixed per game so a shared relay works too. The only game message is the
 // host's match start.
-import type { RelayLink } from "dotframe/src/netplay";
+
 import type { MatchOptions } from "./match";
+import type { RelayLink } from "./netplay";
 
 export interface StartMessage {
   t: string;

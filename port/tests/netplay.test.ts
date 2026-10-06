@@ -2,11 +2,11 @@ import { expect, test } from "bun:test";
 import {
   checksum,
   createMatch,
-  randomInput,
   ROLLBACK_WINDOW,
+  randomInput,
   step,
 } from "../src/match";
-import { createRollback, type NetMessage } from "dotframe/src/netplay";
+import { createRollback, type NetMessage } from "../src/netplay";
 import { restoreMatch, snapshotMatch } from "../src/snapshot";
 
 const rng = (seed: number): (() => number) => {
@@ -33,7 +33,10 @@ test("two rollback peers over a slow link end in the same state as a direct run"
       },
       transport: {
         send: (message: NetMessage): void => {
-          queues[1 - seat].push({ at: clock + latency, message: structuredClone(message) });
+          queues[1 - seat].push({
+            at: clock + latency,
+            message: structuredClone(message),
+          });
         },
         receive: (): NetMessage[] => {
           const ready = queues[seat].filter((q) => q.at <= clock);
@@ -48,7 +51,10 @@ test("two rollback peers over a slow link end in the same state as a direct run"
     });
     return { match, rollback, next: rng(100 + seat), sent: [] as number[] };
   });
-  while (peers.some((p) => p.rollback.stats().frame < frames) && clock < frames * 4) {
+  while (
+    peers.some((p) => p.rollback.stats().frame < frames) &&
+    clock < frames * 4
+  ) {
     for (const p of peers)
       if (p.rollback.stats().frame < frames) {
         const input = randomInput(p.next);
@@ -67,7 +73,8 @@ test("two rollback peers over a slow link end in the same state as a direct run"
   const frame = Math.min(...peers.map((p) => p.match.frame)) - latency * 2;
   const inputsAt = (seat: number, f: number): number =>
     f < 10 ? 0 : (peers[seat].sent[f - 10] ?? 0);
-  for (let f = 0; f < frame; f++) step(direct, [inputsAt(0, f), inputsAt(1, f)]);
+  for (let f = 0; f < frame; f++)
+    step(direct, [inputsAt(0, f), inputsAt(1, f)]);
   expect(peers[0].match.log.slice(0, frame)).toEqual(direct.log);
   expect(peers[1].match.log.slice(0, frame)).toEqual(direct.log);
 }, 30000);

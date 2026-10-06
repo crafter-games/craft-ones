@@ -3,7 +3,6 @@
 // and name the room).
 import type { Draw2D } from "dotframe/src/draw2d";
 import { type Input, Key } from "dotframe/src/input";
-import { createRollback, type Rollback } from "dotframe/src/netplay";
 import type { Probe } from "dotframe/src/probe";
 import type { BattleView } from "../../packages/shared/src";
 import type { Speakers } from "./audio";
@@ -21,6 +20,7 @@ import {
   view,
   WINDOW,
 } from "./match";
+import { createRollback, type Rollback } from "./netplay";
 import type { OnlineLink } from "./online";
 import { drawBanner, drawNetStats } from "./render";
 import { createSetup, renderSetup } from "./setup";
@@ -110,6 +110,7 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       neutral: 0,
       inputDelay: INPUT_DELAY,
       maxRollback: ROLLBACK_WINDOW,
+      clock: () => performance.now(),
     });
   };
   const finish = (): boolean => {
