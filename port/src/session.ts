@@ -28,8 +28,8 @@ import { createSetupInput } from "./setupInput";
 import { restoreMatch, snapshotMatch } from "./snapshot";
 
 const STEP = 1 / 60;
-// Rollback only has to cover one-way latency: at 500 ms of round trip the deepest rollback is 15 frames, inside
-// ROLLBACK_WINDOW, so the player with the turn sees their own input after 2 frames.
+// Rollback only has to cover one-way latency plus jitter: a Discord link at 526 ms of ping hit 20 frames, so the
+// window is a second (ROLLBACK_WINDOW) and the player with the turn sees their own input after 2 frames.
 const INPUT_DELAY = 2;
 
 export interface SessionOptions {

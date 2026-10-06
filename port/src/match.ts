@@ -22,7 +22,7 @@ import { createEffects, type Effects, updateEffects } from "./effects";
 export const WINDOW = { width: 1280, height: 720, title: "Craft Ones" };
 export const PLAYERS = 2;
 // Deepest rollback netplay allows before a peer waits instead of predicting further.
-export const ROLLBACK_WINDOW = 20;
+export const ROLLBACK_WINDOW = 60;
 export const STEP_MS = 1000 / 60;
 const AIM_SPEED = 0.035;
 export const WEAPON_IDS = Object.keys(WEAPONS) as WeaponId[];
