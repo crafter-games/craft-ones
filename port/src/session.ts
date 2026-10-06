@@ -207,6 +207,9 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
     if (simulated < 0) simulated = time;
     if (lastTime >= 0) frameMs = frameMs * 0.9 + (time - lastTime) * 100;
     lastTime = time;
+    // Behind the peer (a hitch, a throttled tab): one extra step this display frame to catch up, or the peer
+    // stalls waiting for us every frame from then on.
+    if (rollback && rollback.stats().ahead < -1) simulated -= STEP;
     const speakers = o.speakers();
     for (let n = 0; simulated + STEP <= time && n < 5; n++) {
       const bits = o.mashing ? o.masher() : controls.bits(m);
