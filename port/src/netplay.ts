@@ -1,5 +1,5 @@
-// Copy of dotframe's src/netplay.ts with the wall-clock round trip (dotframe branch fix/netplay-wallclock-rtt).
-// Delete it and import dotframe/src/netplay again once a dotframe release ships the fix.
+// Copy of dotframe's src/netplay.ts with the wall-clock round trip and lead tolerance (dotframe branch
+// fix/netplay-wallclock-rtt). Delete it and import dotframe/src/netplay again once a dotframe release ships the fix.
 // Rollback netplay for two peers, game-agnostic (generalized from Crafter Smash). Each peer simulates every frame
 // immediately, predicting the remote input as "same as the last one seen". When the real input arrives and differs,
 // it restores the snapshot taken before that frame and re-simulates to the present. Local input is delayed a few
@@ -89,6 +89,9 @@ const SUM_EVERY = 30;
 // Weight of each new sample in the round-trip and lead averages (an exponential moving average over about 10 ticks).
 const SMOOTHING = 0.1;
 const FRAME_MS = 1000 / 60;
+// Frames of estimated lead before a peer waits for the other. One frame was inside link jitter: both peers kept
+// reading themselves ahead and stalled every few frames.
+const AHEAD_TOLERANCE = 2;
 // Inputs resent with every message so a late peer catches up without acknowledgments.
 const RESEND = 8;
 
@@ -112,7 +115,7 @@ export function createRollback<S>(options: RollbackOptions<S>): Rollback {
   let sentSums = 0;
   const clock = options.clock;
   // When each frame number was first sent as `now`; the peer echoes the newest one back as `ack`.
-  const sentAt: number[] = [];
+  const sentAt: (number | undefined)[] = [];
   const stats: RollbackStats = {
     frame: 0,
     rollbacks: 0,
@@ -205,13 +208,13 @@ export function createRollback<S>(options: RollbackOptions<S>): Rollback {
   const step = (localInput: number): boolean => {
     if (clock && sentAt[frame] === undefined) sentAt[frame] = clock();
     // Acks trail by one round trip; ten seconds back is never echoed again.
-    if (frame >= 600) sentAt[frame - 600] = undefined as unknown as number;
+    if (frame >= 600) sentAt[frame - 600] = undefined;
     settle();
     // Wait rather than predict too far, or run ahead of a slower peer. The peer's last reported frame is one trip
     // old; its current frame is about that plus half the round trip. Waiting on the raw gap instead would make both
     // peers wait for each other and play at round-trip speed.
     ahead = ahead * (1 - SMOOTHING) + (frame - (peerNow + rtt / 2)) * SMOOTHING;
-    if (frame - confirmed >= maxRollback || ahead > 1) {
+    if (frame - confirmed >= maxRollback || ahead > AHEAD_TOLERANCE) {
       stats.stalls += 1;
       const from = Math.max(0, frame + inputDelay - RESEND);
       transport.send({
