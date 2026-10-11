@@ -7,7 +7,6 @@ import type { Frame } from "dotframe/src/gpu";
 import type { Platform } from "dotframe/src/platform";
 import { createMasher, createProbe } from "dotframe/src/probe";
 import { publishProbe } from "dotframe/src/probe-web";
-import { connectRelay } from "dotframe/src/relay-client";
 import { loadBytes, run } from "dotframe/src/web/run";
 import {
   COATS,
@@ -26,6 +25,7 @@ import {
   WINDOW,
 } from "./src/match";
 import { type OnlineLink, roomKey, wrapLink } from "./src/online";
+import { connectRelay } from "./src/relay-client";
 import { createRenderer, loadArt, loadCritter } from "./src/render";
 import { createSession } from "./src/session";
 
