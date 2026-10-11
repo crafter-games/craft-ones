@@ -92,7 +92,10 @@ export function restoreMatch(match: Match, snap: MatchSnapshot): void {
   match.kickoff = snap.kickoff;
   match.notice = snap.notice;
   match.noticeUntil = snap.noticeUntil;
+  // The overview flag is the viewer's own online (session.ts), so a restore keeps it.
+  const map = match.camera.map;
   match.camera = copyCamera(snap.camera);
+  match.camera.map = map;
   match.fx = copyEffects(snap.fx);
   match.log.length = snap.logLength;
   match.rematches = snap.rematches;

@@ -20,7 +20,7 @@ import {
   view,
   WINDOW,
 } from "./match";
-import { createRollback, type Rollback } from "./netplay";
+import { createRollback, NOBODY, type Rollback } from "./netplay";
 import type { OnlineLink } from "./online";
 import { drawBanner, drawNetStats } from "./render";
 import { createSetup, renderSetup } from "./setup";
@@ -85,6 +85,7 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
   // Smoothed display frame time in ms (time is in seconds), shown next to the netplay stats to tell a slow renderer from a slow link.
   let lastTime = -1;
   let frameMs = 0;
+  let mapHeld = 0;
   const begin = (options: MatchOptions, seed: number): Match => {
     o.prepare(options);
     const m = createMatch(seed, options);
@@ -111,6 +112,14 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       inputDelay: INPUT_DELAY,
       maxRollback: ROLLBACK_WINDOW,
       clock: () => performance.now(),
+      // The seat with the turn owns the input, so it aims and shoots with no wait on any ping and the rival
+      // watches the shot arrive. The kickoff uses no input; a finished match needs both (either seat rematches).
+      owner: (): number =>
+        m.kickoff > 0
+          ? NOBODY
+          : m.battle.state.phase === "finished"
+            ? -1
+            : seatOf(m),
     });
   };
   const finish = (): boolean => {
@@ -216,8 +225,13 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       const bits = o.mashing ? o.masher() : controls.bits(m);
       const seat = seatOf(m);
       const listener = m.battle.state.currentPlayer;
-      if (rollback) rollback.tick(bits);
-      else {
+      if (rollback) {
+        // Online the overview is each player's own view: toggled here, outside the step, which ignores the input
+        // of the seat without the turn. Restores keep it (snapshot.ts).
+        if (bits & ~mapHeld & Bit.Map) m.camera.map = !m.camera.map;
+        mapHeld = bits & Bit.Map;
+        rollback.tick(bits & ~Bit.Map);
+      } else {
         const inputs = [0, 0];
         if (seat >= 0) inputs[seat] = bits;
         // R and M work for both seats; the rest only for the seat with the turn.
@@ -239,7 +253,11 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       const stats = r.stats();
       const status = link.relay.status();
       if (o.probe) o.probe.update(r, status);
-      if (status !== "paired")
+      if (status === "connecting")
+        drawBanner(draw, W, H, "Reconnecting", [
+          "The match resumes where it was",
+        ]);
+      else if (status !== "paired")
         drawBanner(draw, W, H, "Rival left", ["The other player disconnected"]);
       else if (stats.desync >= 0)
         drawBanner(draw, W, H, "Desync", [
