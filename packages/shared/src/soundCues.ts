@@ -12,6 +12,8 @@ export type SoundCue =
   | { kind: "stick" }
   | { kind: "blast"; radius: number }
   | { kind: "hurt"; amount: number; mine: boolean }
+  /** A shot landed on someone other than its shooter; mine when the listener fired it. */
+  | { kind: "hit"; amount: number; mine: boolean }
   | { kind: "heal"; amount: number }
   | { kind: "shield" }
   | { kind: "leap" }
@@ -66,6 +68,12 @@ export function soundCues(
         kind: "hurt",
         amount: was.hp - player.hp,
         mine: mine(player.sessionId),
+      });
+    if (player.hp < was.hp && player.sessionId !== before.currentPlayer)
+      cues.push({
+        kind: "hit",
+        amount: was.hp - player.hp,
+        mine: mine(before.currentPlayer),
       });
     if (player.hp > was.hp)
       cues.push({ kind: "heal", amount: player.hp - was.hp });

@@ -121,6 +121,42 @@ function hurt(weight: number, mine: boolean): Op[] {
   ];
 }
 
+// Hit confirm: a dry thwack, then a bright ding that lands just after the blast's attack so it reads over it.
+// Heavier hits ring higher and add a third note; the shooter's version is brighter than the target's.
+const HIT_WEIGHTS = [0, 0.5, 1];
+function hit(weight: number, mine: boolean): Op[] {
+  const root = (mine ? 880 : 660) * (1 + weight * 0.5);
+  const ops: Op[] = [
+    tone({ from: 220, to: 70, decay: 0.09, gain: 0.3 }),
+    hiss({ decay: 0.06, from: 2400, to: 700, gain: 0.18, q: 1.2 }),
+    tone({
+      from: root,
+      type: "triangle",
+      decay: 0.18,
+      gain: mine ? 0.2 : 0.13,
+      delay: 0.07,
+    }),
+    tone({
+      from: root * 1.5,
+      type: "sine",
+      decay: 0.26,
+      gain: mine ? 0.16 : 0.1,
+      delay: 0.13,
+    }),
+  ];
+  if (weight >= 1)
+    ops.push(
+      tone({
+        from: root * 2,
+        type: "sine",
+        decay: 0.34,
+        gain: 0.12,
+        delay: 0.2,
+      }),
+    );
+  return ops;
+}
+
 function turn(mine: boolean): Op[] {
   const root = mine ? 660 : 440;
   return [
@@ -183,6 +219,10 @@ for (const kind of Object.keys(PROJECTILES))
 BLAST_SIZES.forEach((size, i) => {
   RECIPES[`blast-${i}`] = blast(size);
 });
+HIT_WEIGHTS.forEach((weight, i) => {
+  RECIPES[`hit-mine-${i}`] = hit(weight, true);
+  RECIPES[`hit-other-${i}`] = hit(weight, false);
+});
 HURT_WEIGHTS.forEach((weight, i) => {
   RECIPES[`hurt-mine-${i}`] = hurt(weight, true);
   RECIPES[`hurt-other-${i}`] = hurt(weight, false);
@@ -205,6 +245,8 @@ export function cueSound(cue: SoundCue): string {
       return `blast-${nearest(BLAST_SIZES, Math.min(1.6, Math.max(0.6, cue.radius / 100)))}`;
     case "hurt":
       return `hurt-${cue.mine ? "mine" : "other"}-${nearest(HURT_WEIGHTS, Math.min(1, cue.amount / 55))}`;
+    case "hit":
+      return `hit-${cue.mine ? "mine" : "other"}-${cue.amount >= 40 ? 2 : cue.amount >= 20 ? 1 : 0}`;
     case "turn":
       return cue.mine ? "turn-mine" : "turn-other";
     case "heal":
