@@ -8,10 +8,13 @@ import {
   abilityNeedsAim,
   Battle,
   type BattleView,
+  COATS,
+  type CoatId,
   dcos,
   PLAYABLE_MAP_IDS,
   type PlayableMapId,
   type PlayerOptions,
+  SELECTABLE_SPECIES,
   WEAPONS,
   type WeaponId,
   wrapAngle,
@@ -62,6 +65,29 @@ export const shootBits = (angle: number, power: number): number =>
   aimBits(angle) |
   SHOOT |
   (Math.round(Math.max(0, Math.min(1, power)) * POWER_STEPS) << POWER_SHIFT);
+// After the match each seat's input carries its pick for the rematch instead of aim: bit 13 marks a pick, bits
+// 14-17 the map, 18-21 the species and 22-25 the coat, as indexes into the shared lists. Bit 9 (Restart) means ready.
+const PICK_SHIFT = 14;
+const COAT_IDS = Object.keys(COATS) as CoatId[];
+export interface Pick {
+  map: PlayableMapId;
+  species: PlayerOptions["species"];
+  coat: CoatId;
+}
+export const pickBits = (pick: Pick): number =>
+  AIM_SET |
+  (PLAYABLE_MAP_IDS.indexOf(pick.map) << PICK_SHIFT) |
+  (SELECTABLE_SPECIES.indexOf(pick.species) << (PICK_SHIFT + 4)) |
+  (COAT_IDS.indexOf(pick.coat) << (PICK_SHIFT + 8));
+// A seat's pick, or null while it has sent none or the word names something that does not exist.
+export function pickOf(bits: number): Pick | null {
+  if (!(bits & AIM_SET)) return null;
+  const map = PLAYABLE_MAP_IDS[(bits >> PICK_SHIFT) & 15];
+  const species = SELECTABLE_SPECIES[(bits >> (PICK_SHIFT + 4)) & 15];
+  const coat = COAT_IDS[(bits >> (PICK_SHIFT + 8)) & 15];
+  return map && species && coat ? { map, species, coat } : null;
+}
+const PICK_MASK = AIM_SET | (((1 << 12) - 1) << PICK_SHIFT);
 const aimOf = (bits: number): number =>
   (((bits >> AIM_SHIFT) & (AIM_STEPS - 1)) / AIM_STEPS) * 2 * Math.PI - Math.PI;
 
@@ -99,9 +125,26 @@ export const DEFAULT_OPTIONS: MatchOptions = {
   destructible: true,
 };
 
+export function cloneOptions(o: MatchOptions): MatchOptions {
+  return {
+    map: o.map,
+    one: { species: o.one.species, coat: o.one.coat },
+    two: { species: o.two.species, coat: o.two.coat },
+    opening: o.opening,
+    infiniteHp: o.infiniteHp,
+    destructible: o.destructible,
+  };
+}
+
 export interface Match {
   seed: number;
+  // The options the match started with; the replay log starts from these.
   options: MatchOptions;
+  // The map and critters of the battle being played: options until a rematch changes them.
+  lineup: MatchOptions;
+  // Per seat, once the match is over: the pick word last sent and whether the seat is ready for the rematch.
+  picks: number[];
+  ready: boolean[];
   frame: number;
   elapsed: number;
   battle: Battle;
@@ -124,7 +167,7 @@ export interface Match {
 }
 
 function newBattle(match: Match): void {
-  const { options } = match;
+  const options = match.lineup;
   match.elapsed = 0;
   match.movedAt = -Infinity;
   match.battle = new Battle(
@@ -139,12 +182,28 @@ function newBattle(match: Match): void {
   match.battle.addPlayer("p2", options.two);
   match.angle = [-Math.PI / 4, (-3 * Math.PI) / 4];
   match.charge = [0, 0];
+  match.picks = [0, 0];
+  match.ready = [false, false];
   match.kickoff = KICKOFF_FRAMES;
   match.notice = "";
   match.noticeUntil = 0;
   match.camera = createCamera(view(match), FRAME);
   match.fx = createEffects(view(match));
 }
+
+function applyPicks(match: Match): void {
+  const lineup = match.lineup;
+  const one = pickOf(match.picks[0]);
+  const two = pickOf(match.picks[1]);
+  if (one) lineup.one = { species: one.species, coat: one.coat };
+  if (two) lineup.two = { species: two.species, coat: two.coat };
+  const mapPick = match.battle.state.winner === "p1" ? two : one;
+  if (mapPick) lineup.map = mapPick.map;
+}
+
+// The seat that picks the next map: whoever lost (seat 0 on a draw).
+export const mapPicker = (match: Match): number =>
+  match.battle.state.winner === "p1" ? 1 : 0;
 
 export function createMatch(
   seed: number,
@@ -159,6 +218,9 @@ export function createMatch(
   const match: Match = {
     seed,
     options: chosen,
+    lineup: cloneOptions(chosen),
+    picks: [0, 0],
+    ready: [false, false],
     frame: 0,
     elapsed: 0,
     battle,
@@ -199,7 +261,14 @@ export function step(match: Match, inputs: number[]): void {
   for (let i = 0; i < PLAYERS; i++)
     if (pressedBy(i) & Bit.Map) match.camera.map = !match.camera.map;
   if (match.battle.state.phase === "finished") {
-    if ([0, 1].some((i) => pressedBy(i) & Bit.Restart)) {
+    for (let i = 0; i < PLAYERS; i++) {
+      if (!match.ready[i] && (inputs[i] ?? 0) & AIM_SET)
+        match.picks[i] = (inputs[i] ?? 0) & PICK_MASK;
+      if (pressedBy(i) & Bit.Restart) match.ready[i] = true;
+    }
+    // Both seats have to be ready: each one's critter is its own pick, and the loser picks the map.
+    if (match.ready[0] && match.ready[1]) {
+      applyPicks(match);
       match.rematches += 1;
       newBattle(match);
     }
@@ -369,7 +438,15 @@ export function checksum(match: Match): number {
   sum.add(state.explosion.id).add(state.explosion.x).add(state.explosion.y);
   for (const a of match.angle) sum.add(a);
   for (const c of match.charge) sum.add(c);
-  return sum.add(match.kickoff).add(match.rematches).value();
+  sum.add(match.kickoff).add(match.rematches);
+  // Rematch picks only exist once a match is over, so earlier hashes (and replays) stay as they were.
+  if (match.ready[0] || match.ready[1] || match.picks[0] || match.picks[1])
+    sum
+      .add(match.picks[0])
+      .add(match.picks[1])
+      .add(match.ready[0] ? 1 : 0)
+      .add(match.ready[1] ? 1 : 0);
+  return sum.value();
 }
 
 export function summary(match: Match): unknown {

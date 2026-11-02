@@ -40,6 +40,17 @@ export interface Setup {
   options: MatchOptions;
   // Whether a PLAY ONLINE button is offered (web only: native builds have no WebSocket).
   online: boolean;
+  // The same screen also picks the guest's critter and the rematch: which rows this player may change, and the text.
+  editMap: boolean;
+  editOne: boolean;
+  editTwo: boolean;
+  title: string;
+  subtitle: string;
+  startLabel: string;
+  // Under each seat's heading ("YOU", "RIVAL").
+  tags: string[];
+  // Replaces the START button while a pick is sent and the peer has not answered.
+  waiting: string;
 }
 
 export type SetupKey = "up" | "down" | "left" | "right" | "confirm";
@@ -48,8 +59,28 @@ export function createSetup(
   options: MatchOptions = DEFAULT_OPTIONS,
   online = false,
 ): Setup {
-  return { row: ROWS.length - 1, options: structuredClone(options), online };
+  return {
+    row: ROWS.length - 1,
+    options: structuredClone(options),
+    online,
+    editMap: true,
+    editOne: true,
+    editTwo: true,
+    title: "CRAFT ONES",
+    subtitle: "Six critters, six tools, fifteen-second turns.",
+    startLabel: "START DUEL",
+    tags: ["", ""],
+    waiting: "",
+  };
 }
+
+const editable = (setup: Setup, row: Row): boolean =>
+  row === "start" ||
+  (row === "map"
+    ? setup.editMap
+    : row === "one-species" || row === "one-coat"
+      ? setup.editOne
+      : setup.editTwo);
 
 // Layout shared by drawing and pointer hit tests.
 const PREVIEW = { w: 520, y: 130 };
@@ -62,6 +93,7 @@ function buttons(
   H: number,
 ): { id: "start" | "online"; x: number; y: number; w: number; h: number }[] {
   const y = H - 130;
+  if (setup.waiting !== "") return [];
   return setup.online
     ? [
         { id: "start", x: W / 2 - 240, y, w: 220, h: 52 },
@@ -95,6 +127,7 @@ export function tap(
   W: number,
   H: number,
 ): SetupChoice | null {
+  if (setup.waiting !== "") return null;
   for (const b of buttons(setup, W, H))
     if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h)
       return {
@@ -110,7 +143,11 @@ export function tap(
   }
   // Tapping a seat's critter cycles it too.
   for (const seat of SEATS)
-    if (Math.abs(x - seatX(W, seat)) < 90 && Math.abs(y - 270) < 90) {
+    if (
+      Math.abs(x - seatX(W, seat)) < 90 &&
+      Math.abs(y - 270) < 90 &&
+      editable(setup, `${seat}-species`)
+    ) {
       setup.row = ROWS.indexOf(`${seat}-species`);
       press(setup, "right");
     }
@@ -122,8 +159,14 @@ const cycle = <T>(list: readonly T[], value: T, step: number): T =>
 
 // Returns the options to start with when the player confirms on START.
 export function press(setup: Setup, key: SetupKey): MatchOptions | null {
-  if (key === "up") setup.row = (setup.row + ROWS.length - 1) % ROWS.length;
-  if (key === "down") setup.row = (setup.row + 1) % ROWS.length;
+  if (setup.waiting !== "") return null;
+  if (key === "up" || key === "down") {
+    const move = key === "up" ? ROWS.length - 1 : 1;
+    for (let n = 0; n < ROWS.length; n++) {
+      setup.row = (setup.row + move) % ROWS.length;
+      if (editable(setup, ROWS[setup.row])) break;
+    }
+  }
   if (key === "confirm") {
     // Confirming on any other row jumps to START, so Enter twice always begins.
     if (ROWS[setup.row] === "start") return structuredClone(setup.options);
@@ -134,6 +177,7 @@ export function press(setup: Setup, key: SetupKey): MatchOptions | null {
   const step = key === "left" ? -1 : 1;
   const o = setup.options;
   const row = ROWS[setup.row];
+  if (!editable(setup, row)) return null;
   if (row === "map") o.map = cycle(PLAYABLE_MAP_IDS, o.map, step);
   if (row === "one-species")
     o.one.species = cycle(
@@ -234,15 +278,8 @@ export function renderSetup(
   const map = WORLD_MAPS[o.map];
   d.setFillStyle("#2b2330");
   d.fillRect(0, 0, W, H);
-  label(d, "CRAFT ONES", W / 2, 54, "54px Bangers", "#ffdf82");
-  label(
-    d,
-    "Six critters, six tools, fifteen-second turns.",
-    W / 2,
-    92,
-    "13px Archivo Black",
-    "#a99aa6",
-  );
+  label(d, setup.title, W / 2, 54, "54px Bangers", "#ffdf82");
+  label(d, setup.subtitle, W / 2, 92, "13px Archivo Black", "#a99aa6");
   // Map preview.
   const pw = PREVIEW.w;
   const ph = previewHeight();
@@ -253,11 +290,17 @@ export function renderSetup(
   d.fillRect(px, py, pw, ph);
   if (preview)
     d.drawImage(preview, 0, 0, preview.width, preview.height, px, py, pw, ph);
-  const rowColor = (row: string): string =>
-    ROWS[setup.row] === row ? "#ffdf82" : "#fff2d3";
+  const rowColor = (row: Row): string =>
+    !editable(setup, row)
+      ? "#a99aa6"
+      : ROWS[setup.row] === row
+        ? "#ffdf82"
+        : "#fff2d3";
+  const arrows = (row: Row, text: string): string =>
+    editable(setup, row) ? `<  ${text}  >` : text;
   label(
     d,
-    `<  ${map.name.toUpperCase()}  >`,
+    arrows("map", map.name.toUpperCase()),
     W / 2,
     py + ph + 28,
     "18px Archivo Black",
@@ -273,11 +316,20 @@ export function renderSetup(
     const { title, seat, color } = s;
     const x = seatX(W, seat);
     const pick = seat === "one" ? o.one : o.two;
-    label(d, title, x, 150, "14px Archivo Black", color);
+    label(
+      d,
+      setup.tags[seat === "one" ? 0 : 1] === ""
+        ? title
+        : `${title} · ${setup.tags[seat === "one" ? 0 : 1]}`,
+      x,
+      150,
+      "14px Archivo Black",
+      color,
+    );
     critter(d, pick.species, pick.coat, x, 270, 170, seat === "two");
     label(
       d,
-      `<  ${CHARACTERS[pick.species].name.toUpperCase()}  >`,
+      arrows(`${seat}-species`, CHARACTERS[pick.species].name.toUpperCase()),
       x,
       390,
       "16px Archivo Black",
@@ -293,7 +345,7 @@ export function renderSetup(
     );
     label(
       d,
-      `<  ${COATS[pick.coat].name.toUpperCase()}  >`,
+      arrows(`${seat}-coat`, COATS[pick.coat].name.toUpperCase()),
       x,
       444,
       "14px Archivo Black",
@@ -307,13 +359,15 @@ export function renderSetup(
     d.fillRect(b.x, b.y, b.w, b.h);
     label(
       d,
-      b.id === "online" ? "PLAY ONLINE" : "START DUEL",
+      b.id === "online" ? "PLAY ONLINE" : setup.startLabel,
       b.x + b.w / 2,
       b.y + b.h / 2,
       "22px Bangers",
       "#2b2330",
     );
   }
+  if (setup.waiting !== "")
+    label(d, setup.waiting, W / 2, H - 104, "20px Bangers", "#ffdf82");
   label(
     d,
     "Tap the arrows to pick · Keyboard: Up / Down, Left / Right, Enter",
