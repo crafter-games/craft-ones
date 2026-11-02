@@ -1,6 +1,8 @@
-// Discord Activity entry: detects the embedded launch and completes the SDK handshake. The room for online play
-// is the Activity instance id, so everyone in the same launch meets.
-import { DiscordSDK } from "@discord/embedded-app-sdk";
+// Discord Activity entry: detects the embedded launch, completes the SDK handshake and, in the background, signs
+// the player in so the name plates can show real usernames and avatars. The room for online play is the Activity
+// instance id, so everyone in the same launch meets.
+import { DiscordSDK, Events } from "@discord/embedded-app-sdk";
+import type { People, Person } from "./identity";
 
 const HANDSHAKE_TIMEOUT_MS = 20000;
 
@@ -27,8 +29,28 @@ export function showMessage(text: string): void {
   document.body.appendChild(box);
 }
 
-// Resolves with the Activity instance id once Discord acknowledges the Activity.
-export async function startDiscord(): Promise<string> {
+interface Raw {
+  id: string;
+  username: string;
+  discriminator: string;
+  avatar?: string | null;
+}
+const person = (u: Raw): Person => ({
+  id: u.id,
+  username: u.username,
+  discriminator: u.discriminator,
+  avatar: u.avatar ?? "",
+});
+
+export interface DiscordSession {
+  // The Activity instance id.
+  instanceId: string;
+  people: People;
+}
+
+// Resolves with the Activity instance id once Discord acknowledges the Activity. Sign-in and the participant list
+// continue in the background: until they land, people.me() is "" and the game uses its plain labels.
+export async function startDiscord(): Promise<DiscordSession> {
   const id = clientId();
   if (id === "") throw new Error("Missing the Discord client id.");
   const sdk = new DiscordSDK(id, { disableConsoleLogOverride: true });
@@ -51,5 +73,45 @@ export async function startDiscord(): Promise<string> {
   } finally {
     clearTimeout(timer);
   }
-  return sdk.instanceId;
+  const known = new Map<string, Person>();
+  let me = "";
+  const remember = (list: Raw[]): void => {
+    for (const u of list) known.set(u.id, person(u));
+  };
+  // The participant list is Discord's own data about everyone in the instance.
+  sdk.commands
+    .getInstanceConnectedParticipants()
+    .then((r) => remember(r.participants))
+    .catch(() => undefined);
+  sdk
+    .subscribe(Events.ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE, (e) =>
+      remember(e.participants),
+    )
+    .catch(() => undefined);
+  // Who this player is takes an OAuth round trip: authorize gives a code, the server (deploy/token.ts) trades it for
+  // a token, and authenticate returns the user.
+  (async (): Promise<void> => {
+    const { code } = await sdk.commands.authorize({
+      client_id: id,
+      response_type: "code",
+      state: "",
+      scope: ["identify"],
+    });
+    const prefix = location.pathname.startsWith("/.proxy/") ? "/.proxy" : "";
+    const response = await fetch(`${prefix}/api/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    const { access_token } = (await response.json()) as {
+      access_token: string;
+    };
+    const auth = await sdk.commands.authenticate({ access_token });
+    remember([auth.user]);
+    me = auth.user.id;
+  })().catch((error) => console.warn("Discord sign-in failed", error));
+  return {
+    instanceId: sdk.instanceId,
+    people: { me: (): string => me, find: (u: string) => known.get(u) ?? null },
+  };
 }

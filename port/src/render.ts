@@ -29,6 +29,7 @@ import {
 } from "./art/pose";
 import { WEAPON_ART } from "./art/weapons";
 import { POPUP_LIFE } from "./effects";
+import { avatarKey, plates } from "./identity";
 import {
   FRAME,
   HUD_HEIGHT,
@@ -518,12 +519,18 @@ export function createRenderer(
       d.setFont("11px Archivo Black");
       d.setTextAlign("center");
       d.setTextBaseline("middle");
-      const label = `${CHARACTERS[player.species].name.toUpperCase()} · P${player.number}`;
-      const w = d.measureText(label).width + 14;
+      const plate = plates[i].name;
+      const label =
+        plate !== ""
+          ? plate
+          : `${CHARACTERS[player.species].name.toUpperCase()} · P${player.number}`;
+      const face = plate !== "" && art.textures.has(avatarKey(i)) ? 20 : 0;
+      const w = d.measureText(label).width + 14 + face;
       d.setFillStyle("#493d46");
       d.fillRect(-w / 2, -10, w, 20);
+      if (face > 0) avatar(d, i, -w / 2, -10, 20, SEAT_COLORS[i]);
       d.setFillStyle("#fff2d3");
-      d.fillText(label, 0, 1);
+      d.fillText(label, face / 2, 1);
       d.restore();
 
       if (active && aiming && i === seat) {
@@ -804,6 +811,50 @@ function text(
   d.fillText(value, x, y);
 }
 
+// A name on one line: the font shrinks to fit the width, the text never changes.
+function fitName(
+  d: Draw2D,
+  value: string,
+  maxWidth: number,
+  px: number,
+  family = "Archivo Black",
+): string {
+  d.setFont(`${px}px ${family}`);
+  const width = d.measureText(value).width;
+  const size =
+    width > maxWidth ? Math.max(7, Math.floor((px * maxWidth) / width)) : px;
+  return `${size}px ${family}`;
+}
+
+function fitText(
+  d: Draw2D,
+  value: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  px: number,
+  color: string,
+  align: string,
+): void {
+  text(d, value, x, y, fitName(d, value, maxWidth, px), color, align);
+}
+
+// A seat's Discord avatar in a square frame in the seat's color.
+function avatar(
+  d: Draw2D,
+  seat: number,
+  x: number,
+  y: number,
+  size: number,
+  color: string,
+): void {
+  const t = art.textures.get(avatarKey(seat));
+  if (!t) return;
+  d.setFillStyle(color);
+  d.fillRect(x, y, size, size);
+  d.drawImage(t, 0, 0, t.width, t.height, x + 2, y + 2, size - 4, size - 4);
+}
+
 function portrait(
   d: Draw2D,
   p: PlayerView,
@@ -894,27 +945,45 @@ function drawHud(
     const active =
       state.currentPlayer === p.sessionId && state.phase !== "finished";
     panel(d, x, 6, 330, 52, active ? "#4a3c4a" : HUD.panel);
-    portrait(d, p, left ? x + 28 : x + 302, 32, 46);
+    const plate = plates[i].name;
     const tx = left ? x + 58 : x + 272;
     const align = left ? "left" : "right";
-    text(
-      d,
-      CHARACTERS[p.species].name.toUpperCase(),
-      tx,
-      20,
-      "15px Archivo Black",
-      SEAT_COLORS[i],
-      align,
-    );
-    text(
-      d,
-      `P${p.number}`,
-      left ? x + 318 : x + 12,
-      20,
-      "11px Archivo Black",
-      HUD.dim,
-      left ? "right" : "left",
-    );
+    if (plate !== "") {
+      // Online in Discord: the player's avatar and username lead, the critter's name moves to the corner.
+      if (art.textures.has(avatarKey(i)))
+        avatar(d, i, left ? x + 6 : x + 330 - 6 - 44, 10, 44, SEAT_COLORS[i]);
+      else portrait(d, p, left ? x + 28 : x + 302, 32, 46);
+      fitText(d, plate, tx, 20, 190, 15, SEAT_COLORS[i], align);
+      text(
+        d,
+        CHARACTERS[p.species].name.toUpperCase(),
+        left ? x + 318 : x + 12,
+        20,
+        "10px Archivo Black",
+        HUD.dim,
+        left ? "right" : "left",
+      );
+    } else {
+      portrait(d, p, left ? x + 28 : x + 302, 32, 46);
+      text(
+        d,
+        CHARACTERS[p.species].name.toUpperCase(),
+        tx,
+        20,
+        "15px Archivo Black",
+        SEAT_COLORS[i],
+        align,
+      );
+      text(
+        d,
+        `P${p.number}`,
+        left ? x + 318 : x + 12,
+        20,
+        "11px Archivo Black",
+        HUD.dim,
+        left ? "right" : "left",
+      );
+    }
     const bar = 190;
     const bx = left ? tx : tx - bar;
     d.setFillStyle("#241d27");
@@ -1170,12 +1239,15 @@ function drawHud(
     panel(d, W / 2 - 220, H / 2 - 110, 440, 220);
     if (winner) portrait(d, winner, W / 2, H / 2 - 50, 80);
     const index = winner ? state.players.indexOf(winner) : 0;
+    const headline = winner
+      ? `${plates[index].name !== "" ? plates[index].name : `Player ${winner.number}`} wins!`
+      : "Draw";
     text(
       d,
-      winner ? `Player ${winner.number} wins!` : "Draw",
+      headline,
       W / 2,
       H / 2 + 22,
-      "44px Bangers",
+      fitName(d, headline, 400, 44, "Bangers"),
       winner ? SEAT_COLORS[index] : HUD.cream,
       "center",
     );
@@ -1192,7 +1264,9 @@ function drawHud(
     );
     text(
       d,
-      touch ? "Tap for a rematch" : "Click or press R for a rematch",
+      touch
+        ? "Tap to set up the rematch"
+        : "Click or press R to set up the rematch",
       W / 2,
       H / 2 + 88,
       "12px Archivo Black",
