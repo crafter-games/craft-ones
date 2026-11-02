@@ -94,8 +94,13 @@ function artImages(): { key: string; path: string }[] {
 }
 
 // Loads fonts, the maps and weapons. Paths are relative to the port root.
+// What art loading needs from the GPU: decoding a PNG.
+export interface ImageLoader {
+  createImage: Gpu["createImage"];
+}
+
 export async function loadArt(
-  gpu: Gpu,
+  gpu: ImageLoader,
   draw: Draw2D,
   load: LoadBytes,
   root: string,
@@ -123,7 +128,7 @@ export async function loadArt(
 
 // Parts load per species and coat on first use, like the web client: only critters in the match.
 export function loadCritter(
-  gpu: Gpu,
+  gpu: ImageLoader,
   load: LoadBytes,
   root: string,
   species: string,

@@ -487,7 +487,7 @@ export function summary(match: Match): unknown {
       y: Math.round(p.y),
       weapon: p.abilityArmed ? "ability" : p.selectedWeapon,
       abilityReadyTurn: p.abilityReadyTurn,
-      angle: Number(match.angle[i].toFixed(3)),
+      angle: Math.round(match.angle[i] * 1000) / 1000,
     })),
   };
 }
