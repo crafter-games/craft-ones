@@ -17,6 +17,7 @@ import {
 } from "../packages/shared/src";
 import { loadSpeakers, type Speakers } from "./src/audio";
 import { isDiscordActivity, showMessage, startDiscord } from "./src/discord";
+import { avatarKey, type People, stubPeople } from "./src/identity";
 import {
   DEFAULT_OPTIONS,
   fitAspect,
@@ -26,7 +27,7 @@ import {
 } from "./src/match";
 import { type OnlineLink, roomKey, wrapLink } from "./src/online";
 import { connectRelay } from "./src/relay-client";
-import { createRenderer, loadArt, loadCritter } from "./src/render";
+import { art, createRenderer, loadArt, loadCritter } from "./src/render";
 import { createSession } from "./src/session";
 
 const params = new URLSearchParams(location.search);
@@ -50,9 +51,12 @@ const fromUrl: MatchOptions = {
 // In Discord the room is the Activity instance.
 const discord = isDiscordActivity();
 let room = params.get("room");
+let people: People | null = null;
 if (discord) {
   try {
-    room = await startDiscord();
+    const started = await startDiscord();
+    room = started.instanceId;
+    people = started.people;
   } catch (error) {
     showMessage(
       error instanceof Error ? error.message : "Discord failed to start.",
@@ -71,6 +75,9 @@ const local =
 const relay =
   params.get("relay") ??
   (local ? "ws://localhost:8787" : `wss://${location.host}/relay`);
+// Localhost only, for testing the Discord name plates without Discord: ?as=<id>&people=<id>:<username>,<id>:<username>.
+if (local && params.has("people"))
+  people = stubPeople(params.get("people") ?? "", params.get("as") ?? "");
 const connect = (code: string): OnlineLink =>
   wrapLink(connectRelay(relay, roomKey(code)), code);
 const link: OnlineLink | null = room ? connect(room) : null;
@@ -87,6 +94,7 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
   const renderer = createRenderer(gpu, WINDOW);
   let speakers: Speakers | null = null;
   let ready = false;
+  const avatarTicket = [0, 0];
   // Every critter loads up front (about 4 MB) so the setup screen can preview any pick.
   Promise.all([
     loadArt(gpu, draw, loadBytes, "."),
@@ -142,6 +150,23 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
     masher: createMasher(Number(mashSeed ?? 0), randomInput),
     probe,
     prepare: (): void => undefined,
+    people,
+    avatar: (seat: number, path: string): void => {
+      const key = avatarKey(seat);
+      art.textures.delete(key);
+      avatarTicket[seat] += 1;
+      const ticket = avatarTicket[seat];
+      if (path === "") return;
+      // The CDN is reached through the game's own host (deploy/nginx.conf): an Activity may only call its proxy.
+      const prefix = location.pathname.startsWith("/.proxy/") ? "/.proxy" : "";
+      loadBytes(`${location.origin}${prefix}/cdn/${path}`)
+        .then((png) => gpu.createImage(png, true))
+        .then((texture) => {
+          // The seat may have changed player while this one loaded.
+          if (ticket === avatarTicket[seat]) art.textures.set(key, texture);
+        })
+        .catch(() => undefined);
+    },
   });
   return (time: number): boolean => {
     if (ready) return session(time);

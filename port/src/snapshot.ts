@@ -5,7 +5,7 @@
 import type { BattleSnapshot } from "../../packages/shared/src";
 import type { Camera } from "./camera";
 import type { Effects } from "./effects";
-import type { Match } from "./match";
+import { cloneOptions, type Match, type MatchOptions } from "./match";
 
 export interface MatchSnapshot {
   battle: BattleSnapshot;
@@ -23,6 +23,9 @@ export interface MatchSnapshot {
   fx: Effects;
   logLength: number;
   rematches: number;
+  lineup: MatchOptions;
+  picks: number[];
+  ready: boolean[];
 }
 
 function copyCamera(c: Camera): Camera {
@@ -95,6 +98,9 @@ export function snapshotMatch(match: Match): MatchSnapshot {
     fx: copyEffects(match.fx),
     logLength: match.log.length,
     rematches: match.rematches,
+    lineup: cloneOptions(match.lineup),
+    picks: match.picks.slice(),
+    ready: match.ready.slice(),
   };
 }
 
@@ -117,4 +123,7 @@ export function restoreMatch(match: Match, snap: MatchSnapshot): void {
   match.fx = copyEffects(snap.fx);
   match.log.length = snap.logLength;
   match.rematches = snap.rematches;
+  match.lineup = cloneOptions(snap.lineup);
+  match.picks = snap.picks.slice();
+  match.ready = snap.ready.slice();
 }

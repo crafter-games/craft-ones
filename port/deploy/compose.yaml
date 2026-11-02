@@ -1,5 +1,6 @@
 # craft-ones: the game at / and the netplay relay at /relay on the same host. In Dokploy, point the domain's
-# / at service web (port 80) and /relay at service relay (port 8787).
+# / at service web (port 80) and /relay at service relay (port 8787). The token service is internal: web forwards
+# /api/token to it. Set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET in the compose environment.
 services:
   web:
     build:
@@ -17,3 +18,14 @@ services:
       PORT: "8787"
     expose:
       - "8787"
+  token:
+    build:
+      context: .
+      dockerfile: Dockerfile.token
+    restart: unless-stopped
+    environment:
+      PORT: "8788"
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+    expose:
+      - "8788"
