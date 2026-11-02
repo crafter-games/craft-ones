@@ -6,7 +6,7 @@
       "name": "port",
       "dependencies": {
         "@discord/embedded-app-sdk": "2.5.0",
-        "dotframe": "0.2.0",
+        "dotframe": "0.3.6",
       },
       "devDependencies": {
         "@webgpu/types": "^0.1.74",
@@ -87,7 +87,7 @@
 
     "detect-libc": ["detect-libc@2.1.2", "", {}, "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ=="],
 
-    "dotframe": ["dotframe@0.2.0", "", { "bin": { "dotframe": "cli/main.ts" } }, "sha512-T2jgrdt6L4FoI2JHBftnRB75fntCuiD1lg4Hw3zRbY3IBbkAJwJGbrUyVDnchl3+jksZ/Lx5wiyQpb8KEMUr5g=="],
+    "dotframe": ["dotframe@0.3.6", "", { "bin": { "dotframe": "cli/bin.cjs" } }, "sha512-M6T3myZ9oD4RY9S+6UIhT5NKFMhtJC0XSJsoMGc5t2+0iX7stwfP20anrQDSRg4eRYsOHulqEC1d3jaf9V8ylQ=="],
 
     "eventemitter3": ["eventemitter3@5.0.4", "", {}, "sha512-mlsTRyGaPBjPedk6Bvw+aqbsXDtoAyAzm5MO7JgU+yVRyMQ5O8bD4Kcci7BS85f93veegeCPkL8R4GLClnjLFw=="],
 

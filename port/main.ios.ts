@@ -4,6 +4,7 @@
 // browser can play each other.
 import { createDraw2D } from "dotframe/src/draw2d";
 import { openLibraryPlatform } from "dotframe/src/native/library";
+import { connectRelayNative, shareText } from "dotframe/src/native/relay";
 import { COATS, SELECTABLE_SPECIES } from "../packages/shared/src";
 import { loadSpeakersSync, type Speakers } from "./src/audio";
 import {
@@ -14,7 +15,6 @@ import {
   WINDOW,
 } from "./src/match";
 import { type OnlineLink, roomKey, wrapLink } from "./src/online";
-import { connectRelayNative, shareText } from "./src/relay-native";
 import {
   createRenderer,
   loadArtSync,

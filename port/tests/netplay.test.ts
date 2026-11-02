@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { createRollback, type NetMessage, NOBODY } from "dotframe/src/netplay";
 import {
   checksum,
   createMatch,
@@ -7,7 +8,6 @@ import {
   seatOf,
   step,
 } from "../src/match";
-import { createRollback, type NetMessage, NOBODY } from "../src/netplay";
 import { restoreMatch, snapshotMatch } from "../src/snapshot";
 
 const rng = (seed: number): (() => number) => {
