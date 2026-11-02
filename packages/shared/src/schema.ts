@@ -37,6 +37,8 @@ export class Player {
   species: Species = "cuy";
   coat: CoatId = "caramel";
   abilityReadyTurn = 0;
+  // A landing hit still owed after a leap: 0 none, 1 stomp, 2 claw.
+  strike = 0;
   shield = 0;
   vx = 0;
   sessionId = "";
@@ -57,6 +59,7 @@ export class Player {
       species: this.species,
       coat: this.coat,
       abilityReadyTurn: this.abilityReadyTurn,
+      strike: this.strike,
       shield: this.shield,
       vx: this.vx,
       sessionId: this.sessionId,
@@ -122,6 +125,8 @@ export class BattleState {
   terrainRows: string[] = [];
   terrainRevision = 0;
   lastAction = "";
+  // Counts ability events, so two identical ones in a row still differ.
+  actionId = 0;
   wind = 0;
   mapId = "flat";
   terrain: number[] = [];
@@ -146,6 +151,7 @@ export class BattleState {
       terrainRows: this.terrainRows.slice(),
       terrainRevision: this.terrainRevision,
       lastAction: this.lastAction,
+      actionId: this.actionId,
       wind: this.wind,
       mapId: this.mapId,
       terrain: this.terrain.slice(),
@@ -172,6 +178,7 @@ export type PlayerView = Pick<
   | "species"
   | "coat"
   | "abilityReadyTurn"
+  | "strike"
   | "shield"
   | "vx"
   | "sessionId"
@@ -191,6 +198,7 @@ export type BattleView = {
   terrainRows: string[];
   terrainRevision: number;
   lastAction: string;
+  actionId: number;
   wind: number;
   mapId: string;
   terrain: number[];

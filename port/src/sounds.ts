@@ -59,6 +59,12 @@ function fire(weapon: string): Op[] {
         }),
         hiss({ from: 3200, to: 900, decay: 0.14, gain: 0.1 }),
       ];
+    case "papa":
+      return [
+        tone({ from: 190, to: 330, type: "triangle", decay: 0.12, gain: 0.16 }),
+        tone({ from: 880, to: 1250, decay: 0.09, gain: 0.07, delay: 0.03 }),
+        hiss({ decay: 0.1, from: 500, to: 220, gain: 0.07 }),
+      ];
     case "grenade":
       return [
         tone({ from: 420, to: 180, type: "square", decay: 0.1, gain: 0.12 }),
@@ -160,6 +166,39 @@ export const RECIPES: Record<string, Op[]> = {
     tone({ from: 260, to: 720, type: "triangle", decay: 0.24, gain: 0.13 }),
   ],
   dash: [hiss({ decay: 0.2, from: 700, to: 2600, gain: 0.09, q: 4 })],
+  // Dash whoosh, then a snap of teeth.
+  bite: [
+    hiss({ decay: 0.18, from: 700, to: 2600, gain: 0.09, q: 4 }),
+    tone({
+      from: 900,
+      to: 300,
+      type: "square",
+      decay: 0.06,
+      gain: 0.14,
+      delay: 0.17,
+    }),
+    hiss({ decay: 0.05, from: 3000, gain: 0.1, q: 3, delay: 0.17 }),
+  ],
+  pounce: [
+    tone({ from: 140, to: 420, type: "sawtooth", decay: 0.2, gain: 0.12 }),
+    hiss({ decay: 0.22, from: 500, to: 1800, gain: 0.07, q: 2 }),
+  ],
+  stomp: [
+    tone({ from: 120, to: 38, decay: 0.38, gain: 0.34 }),
+    hiss({ decay: 0.3, from: 900, to: 90, gain: 0.2, q: 0.8 }),
+  ],
+  claw: [
+    hiss({ decay: 0.12, from: 4200, to: 1400, gain: 0.12, q: 5 }),
+    hiss({ decay: 0.12, from: 4600, to: 1600, gain: 0.1, q: 5, delay: 0.07 }),
+    tone({
+      from: 220,
+      to: 110,
+      type: "sawtooth",
+      decay: 0.16,
+      gain: 0.12,
+      delay: 0.02,
+    }),
+  ],
   jump: [tone({ from: 300, to: 560, type: "square", decay: 0.11, gain: 0.07 })],
   step: [hiss({ decay: 0.05, from: 420, to: 180, gain: 0.05, q: 1.4 })],
   win: fanfare([523, 659, 784, 1047], 0.11),

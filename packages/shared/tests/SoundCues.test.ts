@@ -130,6 +130,10 @@ test("healing, shields, leaps and dashes each get their own cue", () => {
     ["shield", "shield"],
     ["leap", "leap"],
     ["dash", "dash"],
+    ["bite", "bite"],
+    ["pounce", "pounce"],
+    ["stomp", "stomp"],
+    ["claw", "claw"],
   ] as const) {
     expect(soundCues(view, { ...view, lastAction: action }, "one")).toEqual([
       { kind },
@@ -143,6 +147,14 @@ test("healing, shields, leaps and dashes each get their own cue", () => {
       ),
     ).toEqual([]);
   }
+});
+
+test("the same ability twice in a row is heard twice", () => {
+  const view = fixture().battle.state.toJSON() as BattleView;
+  const first = { ...view, lastAction: "leap", actionId: 1 };
+  expect(soundCues(first, { ...first, actionId: 2 }, "one")).toEqual([
+    { kind: "leap" },
+  ]);
 });
 
 test("jumping is heard once, and walking is heard per stride rather than per pixel", () => {

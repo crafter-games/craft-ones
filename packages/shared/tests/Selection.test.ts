@@ -84,7 +84,8 @@ test("selection validates owner, turn, phase, payload and ability availability w
   const cuy = fixture("cuy");
   expect(
     cuy.battle.select("one", { selection: "ability", turnNumber: 1 }),
-  ).toBeString();
+  ).toBeNull();
+  expect(cuy.one.abilityArmed).toBe(true);
 });
 
 test.each(Object.keys(WEAPONS) as WeaponId[])(
