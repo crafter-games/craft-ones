@@ -15,6 +15,7 @@ import {
 } from "./battleActions";
 import { ARENA } from "./config";
 import { dcos, dhypot } from "./detmath";
+import { distanceToBody } from "./hitbox";
 import {
   isOpeningSeat,
   type OpeningSeat,
@@ -150,6 +151,7 @@ function loadPlayer(player: Player, view: PlayerView) {
   player.originX = view.originX;
   player.jumps = view.jumps;
   player.vy = view.vy;
+  player.facing = view.facing;
 }
 
 export class Battle {
@@ -718,7 +720,10 @@ export class Battle {
     const shot = this.state.projectile;
     // advanceShot works on a plain Shot; scriptc copies a class instance passed as one, so copy back.
     const flight = shotOf(shot);
-    const impact = advanceShot(flight, this.state, this.state.players);
+    const shooter = this.state.players.findIndex(
+      (player) => player.sessionId === this.state.currentPlayer,
+    );
+    const impact = advanceShot(flight, this.state, this.state.players, shooter);
     loadShot(shot, flight);
     this.flightMs += ARENA.stepMs;
     if (impact === "anchor") {
@@ -898,7 +903,12 @@ export class Battle {
       this.state.terrainRevision++;
     }
     for (const player of this.state.players) {
-      const distance = dhypot(player.x - explosion.x, player.y - explosion.y);
+      // A blast near an ear or a foot counts like one at the old body circle's edge, and never for less than
+      // the distance to the centre gave before silhouettes.
+      const distance = Math.min(
+        dhypot(player.x - explosion.x, player.y - explosion.y),
+        distanceToBody(player, explosion.x, explosion.y) + ARENA.playerRadius,
+      );
       if (distance >= weapon.radius) continue;
       this.controlledMotion.delete(player);
       const strength = 1 - distance / weapon.radius;

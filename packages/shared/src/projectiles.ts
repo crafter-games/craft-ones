@@ -1,7 +1,8 @@
 import { PROJECTILES, type ProjectileKind } from "./arsenal";
 import { advanceRocket, clamp } from "./ballistics";
 import { ARENA } from "./config";
-import { dcos, dhypot, dsin, sq } from "./detmath";
+import { dcos, dsin, sq } from "./detmath";
+import { bodiesHit, type HitBody } from "./hitbox";
 import type { PlayerView } from "./schema";
 import { type Geometry, gridHit, solidAt } from "./terrainGrid";
 
@@ -47,38 +48,11 @@ export function launchShot(
   };
 }
 
-function bodyHit(
-  x: number,
-  y: number,
-  dx: number,
-  dy: number,
-  players: Pick<PlayerView, "x" | "y" | "hp">[],
-) {
-  let hit = Infinity;
-  for (const p of players) {
-    if (p.hp <= 0) continue;
-    const ox = x - p.x,
-      oy = y - p.y,
-      c = ox * ox + oy * oy - sq(ARENA.playerRadius);
-    if (c <= 0) {
-      hit = 0;
-      continue;
-    }
-    const a = dx * dx + dy * dy,
-      b = 2 * (ox * dx + oy * dy),
-      discriminant = b * b - 4 * a * c;
-    if (a > 0 && discriminant >= 0) {
-      const t = (-b - Math.sqrt(discriminant)) / (2 * a);
-      if (t >= 0 && t <= 1) hit = Math.min(hit, t);
-    }
-  }
-  return hit;
-}
-
 export function advanceShot(
   shot: Shot,
   world: Geometry,
-  players: Pick<PlayerView, "x" | "y" | "hp">[],
+  players: HitBody[],
+  shooter = -1,
 ): Impact {
   const spec = PROJECTILES[shot.kind],
     dt = ARENA.stepMs / 1000,
@@ -106,10 +80,11 @@ export function advanceShot(
   const dx = shot.vx * dt + 0.5 * wind * sq(dt),
     dy = shot.vy * dt + 0.5 * ARENA.gravity * spec.gravity * sq(dt);
   const terrain = gridHit(world, shot.x, shot.y, dx, dy);
-  const player =
+  const body =
     shot.kind === "grapple" || spec.bounce
-      ? Infinity
-      : bodyHit(shot.x, shot.y, dx, dy, bodies);
+      ? { t: Infinity, index: -1 }
+      : bodiesHit(bodies, shot.x, shot.y, dx, dy, shooter);
+  const player = body.t;
   const hit = Math.min(terrain, player);
   if (hit <= 1) {
     const travel = Math.max(0, hit - 0.001);
@@ -122,17 +97,10 @@ export function advanceShot(
       shot.stuck = true;
       shot.vx = 0;
       shot.vy = 0;
-      if (player < terrain) {
-        const index = bodies.findIndex(
-          (p) =>
-            p.hp > 0 &&
-            dhypot(p.x - shot.x, p.y - shot.y) <= ARENA.playerRadius + 1,
-        );
-        if (index >= 0) {
-          shot.attachedPlayer = index + 1;
-          shot.offsetX = shot.x - bodies[index].x;
-          shot.offsetY = shot.y - bodies[index].y;
-        }
+      if (player < terrain && body.index >= 0) {
+        shot.attachedPlayer = body.index + 1;
+        shot.offsetX = shot.x - bodies[body.index].x;
+        shot.offsetY = shot.y - bodies[body.index].y;
       }
     } else if (spec.bounce) {
       const hitX = shot.x + dx * 0.003,
@@ -174,8 +142,9 @@ export function shotTrajectory(
 ) {
   const shot = launchShot(world, player, angle, power, kind);
   const points = [{ x: shot.x, y: shot.y }];
+  const shooter = players.indexOf(player);
   for (let i = 0; i < 480; i++) {
-    const result = advanceShot(shot, world, players);
+    const result = advanceShot(shot, world, players, shooter);
     if (i % 6 === 0 || result !== "flying")
       points.push({ x: shot.x, y: shot.y });
     if (result !== "flying") break;
