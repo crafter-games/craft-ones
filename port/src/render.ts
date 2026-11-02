@@ -29,6 +29,7 @@ import {
 } from "./art/pose";
 import { WEAPON_ART } from "./art/weapons";
 import { POPUP_LIFE } from "./effects";
+import { avatarKey, plates } from "./identity";
 import {
   FRAME,
   HUD_HEIGHT,
@@ -38,6 +39,12 @@ import {
   view,
   WEAPON_IDS,
 } from "./match";
+import {
+  drawAbilityIcon,
+  drawFlash,
+  drawMovePreview,
+  drawShield,
+} from "./powers";
 
 const PARTS = [
   "body",
@@ -493,13 +500,7 @@ export function createRenderer(
       );
       d.fill();
       drawCritter(d, match, player, match.angle[i], charge, kind ?? null);
-      if (player.shield > 0) {
-        d.setStrokeStyle("rgba(180,217,210,0.8)");
-        d.setLineWidth(2);
-        d.beginPath();
-        d.ellipse(player.x, player.y - 15, 32, 41, 0, 0, Math.PI * 2, false);
-        d.stroke();
-      }
+      if (player.shield > 0) drawShield(d, player, match.frame);
       const headTop = player.y - (player.species === "cuy" ? 76 : 103);
       if (active && state.phase !== "finished") {
         const y = headTop - 6 + Math.sin(match.frame / 11) * 2; // dotframe-allow-math
@@ -518,12 +519,18 @@ export function createRenderer(
       d.setFont("11px Archivo Black");
       d.setTextAlign("center");
       d.setTextBaseline("middle");
-      const label = `${CHARACTERS[player.species].name.toUpperCase()} · P${player.number}`;
-      const w = d.measureText(label).width + 14;
+      const plate = plates[i].name;
+      const label =
+        plate !== ""
+          ? plate
+          : `${CHARACTERS[player.species].name.toUpperCase()} · P${player.number}`;
+      const face = plate !== "" && art.textures.has(avatarKey(i)) ? 20 : 0;
+      const w = d.measureText(label).width + 14 + face;
       d.setFillStyle("#493d46");
       d.fillRect(-w / 2, -10, w, 20);
+      if (face > 0) avatar(d, i, -w / 2, -10, 20, SEAT_COLORS[i]);
       d.setFillStyle("#fff2d3");
-      d.fillText(label, 0, 1);
+      d.fillText(label, face / 2, 1);
       d.restore();
 
       if (active && aiming && i === seat) {
@@ -551,46 +558,11 @@ export function createRenderer(
             d.fill();
           });
         } else {
-          // Where a leap, pounce or dash will carry the critter, as the web arena draws it.
-          const species = player.species;
-          const direction = Math.cos(match.angle[i]) >= 0 ? 1 : -1; // dotframe-allow-math
-          const lift = species === "zorro" ? 0 : species === "puma" ? 72 : 118;
-          const distance =
-            species === "zorro" ? 185 : species === "puma" ? 155 : 125;
-          const sx = player.x + direction * 38;
-          const sy = player.y - 28;
-          const ex = player.x + direction * distance;
-          const ey = player.y - 28 - lift;
-          const a = Math.atan2(ey - sy, ex - sx); // dotframe-allow-math
-          const head = (wing: number, tip: number): void => {
-            d.beginPath();
-            d.moveTo(ex + Math.cos(a) * tip, ey + Math.sin(a) * tip); // dotframe-allow-math
-            d.lineTo(
-              ex - Math.cos(a - 0.62) * wing, // dotframe-allow-math
-              ey - Math.sin(a - 0.62) * wing, // dotframe-allow-math
-            );
-            d.lineTo(
-              ex - Math.cos(a + 0.62) * wing, // dotframe-allow-math
-              ey - Math.sin(a + 0.62) * wing, // dotframe-allow-math
-            );
-            d.closePath();
-            d.fill();
-          };
-          for (const stroke of [
-            { color: "rgba(41,39,51,0.92)", width: 9 },
-            { color: "#ffdf82", width: 5 },
-          ]) {
-            d.setStrokeStyle(stroke.color);
-            d.setLineWidth(stroke.width);
-            d.beginPath();
-            d.moveTo(sx, sy);
-            d.lineTo(ex, ey);
-            d.stroke();
-          }
-          d.setFillStyle("#292733");
-          head(23, 4);
-          d.setFillStyle("#ffdf82");
-          head(18, 0);
+          drawMovePreview(
+            d,
+            player,
+            Math.cos(match.angle[i]) >= 0 ? 1 : -1, // dotframe-allow-math
+          );
         }
         if (charge > 0) {
           d.setStrokeStyle("#ffef9f");
@@ -636,7 +608,9 @@ export function createRenderer(
           ? "204,235,220"
           : shot.kind === "shuriken"
             ? "196,194,210"
-            : "255,245,216";
+            : shot.kind === "papa"
+              ? "224,176,104"
+              : "255,245,216";
     const trail = match.fx.trail;
     trail.forEach((point, n) => {
       d.setFillStyle(
@@ -707,7 +681,9 @@ export function createRenderer(
             ? ["#6faea6", "#b3efd7", "#fffbdd"]
             : b.kind === "shuriken"
               ? ["#484954", "#b2b5cc", "#f0edf8"]
-              : ["#786362", "#ffb35f", "#ffedac"];
+              : b.kind === "papa"
+                ? ["#6b4724", "#d8a85c", "#fff0c4"]
+                : ["#786362", "#ffb35f", "#ffedac"];
       const ease = (t: number): number => 1 - (1 - Math.min(1, t)) ** 3; // dotframe-allow-math
       if (age < 420) {
         const t = ease(age / 420);
@@ -743,6 +719,8 @@ export function createRenderer(
       }
       d.setGlobalAlpha(1);
     }
+    for (const flash of match.fx.flashes)
+      drawFlash(d, flash, match.frame, state.players, zoom);
     // Damage and healing numbers float up and fade.
     for (const t of match.fx.popups) {
       const k = Math.min(1, (match.frame - t.frame) / POPUP_LIFE);
@@ -802,6 +780,50 @@ function text(
   d.setTextBaseline("middle");
   d.setFillStyle(color);
   d.fillText(value, x, y);
+}
+
+// A name on one line: the font shrinks to fit the width, the text never changes.
+function fitName(
+  d: Draw2D,
+  value: string,
+  maxWidth: number,
+  px: number,
+  family = "Archivo Black",
+): string {
+  d.setFont(`${px}px ${family}`);
+  const width = d.measureText(value).width;
+  const size =
+    width > maxWidth ? Math.max(7, Math.floor((px * maxWidth) / width)) : px;
+  return `${size}px ${family}`;
+}
+
+function fitText(
+  d: Draw2D,
+  value: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  px: number,
+  color: string,
+  align: string,
+): void {
+  text(d, value, x, y, fitName(d, value, maxWidth, px), color, align);
+}
+
+// A seat's Discord avatar in a square frame in the seat's color.
+function avatar(
+  d: Draw2D,
+  seat: number,
+  x: number,
+  y: number,
+  size: number,
+  color: string,
+): void {
+  const t = art.textures.get(avatarKey(seat));
+  if (!t) return;
+  d.setFillStyle(color);
+  d.fillRect(x, y, size, size);
+  d.drawImage(t, 0, 0, t.width, t.height, x + 2, y + 2, size - 4, size - 4);
 }
 
 function portrait(
@@ -894,27 +916,45 @@ function drawHud(
     const active =
       state.currentPlayer === p.sessionId && state.phase !== "finished";
     panel(d, x, 6, 330, 52, active ? "#4a3c4a" : HUD.panel);
-    portrait(d, p, left ? x + 28 : x + 302, 32, 46);
+    const plate = plates[i].name;
     const tx = left ? x + 58 : x + 272;
     const align = left ? "left" : "right";
-    text(
-      d,
-      CHARACTERS[p.species].name.toUpperCase(),
-      tx,
-      20,
-      "15px Archivo Black",
-      SEAT_COLORS[i],
-      align,
-    );
-    text(
-      d,
-      `P${p.number}`,
-      left ? x + 318 : x + 12,
-      20,
-      "11px Archivo Black",
-      HUD.dim,
-      left ? "right" : "left",
-    );
+    if (plate !== "") {
+      // Online in Discord: the player's avatar and username lead, the critter's name moves to the corner.
+      if (art.textures.has(avatarKey(i)))
+        avatar(d, i, left ? x + 6 : x + 330 - 6 - 44, 10, 44, SEAT_COLORS[i]);
+      else portrait(d, p, left ? x + 28 : x + 302, 32, 46);
+      fitText(d, plate, tx, 20, 190, 15, SEAT_COLORS[i], align);
+      text(
+        d,
+        CHARACTERS[p.species].name.toUpperCase(),
+        left ? x + 318 : x + 12,
+        20,
+        "10px Archivo Black",
+        HUD.dim,
+        left ? "right" : "left",
+      );
+    } else {
+      portrait(d, p, left ? x + 28 : x + 302, 32, 46);
+      text(
+        d,
+        CHARACTERS[p.species].name.toUpperCase(),
+        tx,
+        20,
+        "15px Archivo Black",
+        SEAT_COLORS[i],
+        align,
+      );
+      text(
+        d,
+        `P${p.number}`,
+        left ? x + 318 : x + 12,
+        20,
+        "11px Archivo Black",
+        HUD.dim,
+        left ? "right" : "left",
+      );
+    }
     const bar = 190;
     const bx = left ? tx : tx - bar;
     d.setFillStyle("#241d27");
@@ -1023,7 +1063,10 @@ function drawHud(
       size + 16,
       HUD.ink,
     );
-    const cooldown = Math.max(0, current.abilityReadyTurn - state.turnNumber);
+    // Turn numbers count both seats; the player counts their own turns.
+    const cooldown = Math.ceil(
+      Math.max(0, current.abilityReadyTurn - state.turnNumber) / 2,
+    );
     for (let n = 0; n < slots.length; n++) {
       const ability = n === WEAPON_IDS.length;
       const x = slots[n].x;
@@ -1048,8 +1091,8 @@ function drawHud(
             (size - 10) * 0.75,
           );
       } else if (hasAbility) {
-        if (cooldown > 0) d.setGlobalAlpha(0.35);
-        portrait(d, current, x + size / 2, y + size / 2 + 2, 38);
+        if (cooldown > 0) d.setGlobalAlpha(0.3);
+        drawAbilityIcon(d, current.species, x + size / 2, y + size / 2 + 2, 38);
         d.setGlobalAlpha(1);
         if (cooldown > 0)
           text(
@@ -1069,6 +1112,26 @@ function drawHud(
         y + 9,
         "10px Archivo Black",
         selected ? HUD.ink : HUD.dim,
+      );
+    }
+    // The power's name and state, over slot 7.
+    {
+      const slot = slots[WEAPON_IDS.length];
+      const info = ABILITIES[current.species];
+      const note = cooldown > 0 ? `READY IN ${cooldown}` : "READY";
+      const label = `${info.name.toUpperCase()}  ${note}`;
+      d.setFont("11px Archivo Black");
+      const w = d.measureText(label).width + 18;
+      const bx = Math.min(W - w - 8, slot.x + size / 2 - w / 2);
+      panel(d, bx, y - 34, w, 20, HUD.ink);
+      text(
+        d,
+        label,
+        bx + w / 2,
+        y - 24,
+        "11px Archivo Black",
+        cooldown > 0 ? HUD.dim : current.abilityArmed ? HUD.gold : HUD.cream,
+        "center",
       );
     }
     // Power and walking range.
@@ -1170,12 +1233,15 @@ function drawHud(
     panel(d, W / 2 - 220, H / 2 - 110, 440, 220);
     if (winner) portrait(d, winner, W / 2, H / 2 - 50, 80);
     const index = winner ? state.players.indexOf(winner) : 0;
+    const headline = winner
+      ? `${plates[index].name !== "" ? plates[index].name : `Player ${winner.number}`} wins!`
+      : "Draw";
     text(
       d,
-      winner ? `Player ${winner.number} wins!` : "Draw",
+      headline,
       W / 2,
       H / 2 + 22,
-      "44px Bangers",
+      fitName(d, headline, 400, 44, "Bangers"),
       winner ? SEAT_COLORS[index] : HUD.cream,
       "center",
     );
@@ -1192,7 +1258,9 @@ function drawHud(
     );
     text(
       d,
-      touch ? "Tap for a rematch" : "Click or press R for a rematch",
+      touch
+        ? "Tap to set up the rematch"
+        : "Click or press R to set up the rematch",
       W / 2,
       H / 2 + 88,
       "12px Archivo Black",

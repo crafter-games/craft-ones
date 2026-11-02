@@ -5,6 +5,8 @@ import {
   Bit,
   createMatch,
   KICKOFF_FRAMES,
+  mapPicker,
+  pickBits,
   randomInput,
   restore,
   save,
@@ -14,8 +16,11 @@ import {
   step,
   summary,
 } from "../src/match";
+import { restoreMatch, snapshotMatch } from "../src/snapshot";
 import { cueSound, SOUND_NAMES } from "../src/sounds";
 
+// A pick word naming indexes that do not exist (bit 13 set, all index bits 15).
+const AIM_BAD = (1 << 13) | (0xfff << 14);
 const mash = (seed: number): (() => number) => {
   let s = seed >>> 0;
   return (): number => {
@@ -45,7 +50,7 @@ test("slot keys pick tools and the ability", () => {
   expect(match.battle.state.players[0].abilityArmed).toBe(true);
 });
 
-test("R after a finished match starts a fresh one", () => {
+test("a finished match starts a fresh one once both seats are ready", () => {
   const next = mash(3);
   const match = createMatch(1);
   let frames = 0;
@@ -57,6 +62,8 @@ test("R after a finished match starts a fresh one", () => {
   expect(match.battle.state.phase).toBe("finished");
   step(match, [0, 0]);
   step(match, [0, Bit.Restart]);
+  expect(match.rematches).toBe(0);
+  step(match, [Bit.Restart, Bit.Restart]);
   const after = summary(match) as {
     phase: string;
     rematches: number;
@@ -69,6 +76,86 @@ test("R after a finished match starts a fresh one", () => {
   expect(
     (summary(restore(save(match))) as { rematches: number }).rematches,
   ).toBe(1);
+});
+
+function finished(seed: number): ReturnType<typeof createMatch> {
+  const next = mash(seed);
+  const match = createMatch(1);
+  let frames = 0;
+  while (match.battle.state.phase !== "finished" && frames++ < 30000)
+    step(match, [
+      randomInput(next) & ~Bit.Restart,
+      randomInput(next) & ~Bit.Restart,
+    ]);
+  expect(match.battle.state.phase).toBe("finished");
+  return match;
+}
+
+test("each seat's pick sets its own critter and the loser picks the map", () => {
+  const match = finished(3);
+  const picker = mapPicker(match);
+  expect(picker).toBe(match.battle.state.winner === "p1" ? 1 : 0);
+  const word = (seat: number, map: "coast" | "andes"): number =>
+    pickBits({
+      map,
+      species: seat === 0 ? "puma" : "zorro",
+      coat: seat === 0 ? "sage" : "slate",
+    });
+  // The winner asks for one map and the loser for the other: the loser's wins.
+  const bits = [0, 0];
+  bits[picker] = word(picker, "coast");
+  bits[1 - picker] = word(1 - picker, "andes");
+  step(match, [bits[0] | Bit.Restart, bits[1]]);
+  expect(match.rematches).toBe(0);
+  step(match, [bits[0] | Bit.Restart, bits[1] | Bit.Restart]);
+  expect(match.rematches).toBe(1);
+  const s = summary(match) as {
+    map: string;
+    players: { species: string }[];
+  };
+  expect(s.map).toBe("coast");
+  expect(s.players.map((p) => p.species)).toEqual(["puma", "zorro"]);
+  expect(match.battle.state.players[0].coat).toBe("sage");
+  expect(match.battle.state.players[1].coat).toBe("slate");
+  // The match keeps the options it started with, which its replay starts from.
+  expect(match.options.map).toBe("andes");
+  expect(restore(save(match)).lineup.map).toBe("coast");
+  expect(restore(save(match)).battle.state.players[0].species).toBe("puma");
+});
+
+test("a seat that is ready cannot change its pick, and a bad pick is ignored", () => {
+  const match = finished(3);
+  const keep = match.lineup.two.species;
+  step(match, [
+    pickBits({ map: "coast", species: "puma", coat: "sage" }) | Bit.Restart,
+    0,
+  ]);
+  // Ready already: this later pick is dropped. The other seat's word names indexes that do not exist.
+  step(match, [
+    pickBits({ map: "coast", species: "zorro", coat: "sage" }),
+    AIM_BAD,
+  ]);
+  expect(match.rematches).toBe(0);
+  step(match, [0, Bit.Restart]);
+  expect(match.rematches).toBe(1);
+  expect(match.battle.state.players[0].species).toBe("puma");
+  expect(match.battle.state.players[1].species).toBe(keep);
+});
+
+test("rematch picks survive a rollback snapshot", () => {
+  const match = finished(3);
+  step(match, [
+    pickBits({ map: "coast", species: "puma", coat: "sage" }) | Bit.Restart,
+    0,
+  ]);
+  const snap = snapshotMatch(match);
+  step(match, [0, Bit.Restart]);
+  expect(match.rematches).toBe(1);
+  restoreMatch(match, snap);
+  expect(match.rematches).toBe(0);
+  expect(match.ready).toEqual([true, false]);
+  step(match, [0, Bit.Restart]);
+  expect(match.battle.state.players[0].species).toBe("puma");
 });
 
 test("every sound cue maps to a synthesized sound", () => {
@@ -133,4 +220,23 @@ test("a slingshot shot fires in one frame with its own angle and power", () => {
   step(match, inputs);
   expect(match.battle.state.phase).toBe("flying");
   expect(match.battle.state.projectile.vy).toBeLessThan(0);
+});
+
+test("a charge held through the turn timer does not freeze the camera on the next turn", () => {
+  const match = createMatch(1);
+  for (let i = 0; i <= KICKOFF_FRAMES; i++) step(match, [0, 0]);
+  const first = match.battle.state.currentPlayer;
+  let frames = 0;
+  while (match.battle.state.currentPlayer === first && frames++ < 2000)
+    step(match, [Bit.Fire, Bit.Fire]);
+  expect(match.battle.state.currentPlayer).not.toBe(first);
+  for (let i = 0; i < 5; i++) step(match, [0, 0]);
+  expect(match.charge).toEqual([0, 0]);
+  // The overview must still be reachable: the camera follows the map toggle.
+  step(match, [Bit.Map, 0]);
+  step(match, [0, 0]);
+  const before = match.camera.zoom;
+  for (let i = 0; i < 120; i++) step(match, [0, 0]);
+  expect(match.camera.map).toBe(true);
+  expect(match.camera.zoom).not.toBe(before);
 });

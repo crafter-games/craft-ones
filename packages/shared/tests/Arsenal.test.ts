@@ -132,7 +132,7 @@ test("missed hook consumes the turn without a phantom explosion", () => {
   expect(battle.state.explosion.id).toBe(0);
 });
 test.each([100, 85, 1])(
-  "default Cuy at %i HP has no special ability and cannot forge another species",
+  "default Cuy at %i HP ignores forged species and stat fields on its own ability",
   (hp) => {
     const { battle } = fixture();
     battle.state.players[0].hp = hp;
@@ -142,9 +142,7 @@ test.each([100, 85, 1])(
       { turnNumber: 1, direction: 1, species: "llama", ability: "leap" },
       { turnNumber: 1, species: "ronsoco", shield: 999, hp: 100 },
     ]) {
-      expect(battle.ability("one", payload)).toBe(
-        "This character has no special ability",
-      );
+      expect(battle.ability("one", payload)).toBe("Invalid ability aim");
       expect(battle.state.toJSON()).toEqual(before);
     }
     expect(

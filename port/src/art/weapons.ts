@@ -11,6 +11,7 @@ export const WEAPON_ART = {
   mortar: { backGrip: [-5, 9], frontGrip: [12, 9], shotSize: [27, 22] },
   dynamite: { backGrip: [-3, 7], frontGrip: [12, 7], shotSize: [27, 23] },
   grapple: { backGrip: [-7, 8], frontGrip: [10, 7], shotSize: [28, 22] },
+  papa: { backGrip: [0, 7], frontGrip: [0, 9], shotSize: [38, 30] },
 } as const;
 /** Original toy-like silhouettes, flat shadow planes and warm metal highlights. */
 export function weaponMarkup(kind: ProjectileKind, projectile = false): string {
@@ -27,6 +28,10 @@ export function weaponMarkup(kind: ProjectileKind, projectile = false): string {
   if (kind === "shuriken")
     return wrap(
       `<path d="M0-20L19 13H-19Z" fill="#f4eedf"/><path d="M0-20L3 5L19 13H-19L0 1Z" fill="#9394a2" stroke="none"/><path d="M0-10L9 7H-9Z" fill="#34333e"/><path d="M0-19L-18 12" fill="none" stroke="#ffffff" stroke-width="2"/>`,
+    );
+  if (kind === "papa")
+    return wrap(
+      `<path d="M-16-4Q-17-14-6-13Q4-17 13-11Q22-5 17 5Q14 14 3 13Q-7 17-14 9Q-19 3-16-4Z" fill="#d8a85c"/><path d="M6-12Q18-7 16 5Q13 13 3 13Q11 6 6-12Z" fill="#b07c3d" stroke="none"/><path d="M-12-6Q-7-11-1-10" fill="none" stroke="#f5dba0" stroke-width="2.4"/><ellipse cx="-6" cy="1" rx="2.2" ry="1.6" fill="#6b4724" stroke="none"/><ellipse cx="5" cy="-3" rx="2" ry="1.5" fill="#6b4724" stroke="none"/><ellipse cx="3" cy="7" rx="2" ry="1.5" fill="#6b4724" stroke="none"/><path d="M-9 8L-14 14M-14 8L-9 14" stroke="none"/>`,
     );
   if (kind === "sticky")
     return wrap(

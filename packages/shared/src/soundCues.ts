@@ -12,10 +12,16 @@ export type SoundCue =
   | { kind: "stick" }
   | { kind: "blast"; radius: number }
   | { kind: "hurt"; amount: number; mine: boolean }
+  /** A shot landed on someone other than its shooter; mine when the listener fired it. */
+  | { kind: "hit"; amount: number; mine: boolean }
   | { kind: "heal"; amount: number }
   | { kind: "shield" }
   | { kind: "leap" }
   | { kind: "dash" }
+  | { kind: "bite" }
+  | { kind: "pounce" }
+  | { kind: "stomp" }
+  | { kind: "claw" }
   | { kind: "jump" }
   | { kind: "step" }
   | { kind: "turn"; mine: boolean }
@@ -52,10 +58,18 @@ export function soundCues(
   if (after.explosion.id !== before.explosion.id)
     cues.push({ kind: "blast", radius: after.explosion.radius });
 
-  if (after.lastAction !== before.lastAction) {
+  // actionId separates two identical abilities in a row; lastAction alone would stay silent the second time.
+  if (
+    after.lastAction !== before.lastAction ||
+    after.actionId !== before.actionId
+  ) {
     if (after.lastAction === "shield") cues.push({ kind: "shield" });
     if (after.lastAction === "leap") cues.push({ kind: "leap" });
     if (after.lastAction === "dash") cues.push({ kind: "dash" });
+    if (after.lastAction === "bite") cues.push({ kind: "bite" });
+    if (after.lastAction === "pounce") cues.push({ kind: "pounce" });
+    if (after.lastAction === "stomp") cues.push({ kind: "stomp" });
+    if (after.lastAction === "claw") cues.push({ kind: "claw" });
   }
 
   for (const player of after.players) {
@@ -66,6 +80,12 @@ export function soundCues(
         kind: "hurt",
         amount: was.hp - player.hp,
         mine: mine(player.sessionId),
+      });
+    if (player.hp < was.hp && player.sessionId !== before.currentPlayer)
+      cues.push({
+        kind: "hit",
+        amount: was.hp - player.hp,
+        mine: mine(before.currentPlayer),
       });
     if (player.hp > was.hp)
       cues.push({ kind: "heal", amount: player.hp - was.hp });

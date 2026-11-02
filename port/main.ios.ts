@@ -72,6 +72,8 @@ export function init(base: string): void {
     mashing: false,
     masher: (): number => 0,
     probe: null,
+    people: null,
+    avatar: (): void => undefined,
     prepare: (options: MatchOptions): void => {
       loadCritterSync(read, image, base, options.one.species, options.one.coat);
       loadCritterSync(read, image, base, options.two.species, options.two.coat);

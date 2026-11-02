@@ -5,7 +5,7 @@
 import type { BattleSnapshot } from "../../packages/shared/src";
 import type { Camera } from "./camera";
 import type { Effects } from "./effects";
-import type { Match } from "./match";
+import { cloneOptions, type Match, type MatchOptions } from "./match";
 
 export interface MatchSnapshot {
   battle: BattleSnapshot;
@@ -23,6 +23,9 @@ export interface MatchSnapshot {
   fx: Effects;
   logLength: number;
   rematches: number;
+  lineup: MatchOptions;
+  picks: number[];
+  ready: boolean[];
 }
 
 function copyCamera(c: Camera): Camera {
@@ -51,7 +54,25 @@ function copyEffects(fx: Effects): Effects {
   const popups: Effects["popups"] = [];
   for (const p of fx.popups)
     popups.push({ x: p.x, y: p.y, amount: p.amount, frame: p.frame });
+  const flashes: Effects["flashes"] = [];
+  for (const f of fx.flashes)
+    flashes.push({
+      kind: f.kind,
+      seat: f.seat,
+      x: f.x,
+      y: f.y,
+      x1: f.x1,
+      y1: f.y1,
+      dir: f.dir,
+      frame: f.frame,
+      label: f.label,
+    });
+  const pos: Effects["pos"] = [];
+  for (const q of fx.pos) pos.push({ x: q.x, y: q.y });
   return {
+    flashes,
+    actionId: fx.actionId,
+    pos,
     trail,
     bursts,
     popups,
@@ -77,6 +98,9 @@ export function snapshotMatch(match: Match): MatchSnapshot {
     fx: copyEffects(match.fx),
     logLength: match.log.length,
     rematches: match.rematches,
+    lineup: cloneOptions(match.lineup),
+    picks: match.picks.slice(),
+    ready: match.ready.slice(),
   };
 }
 
@@ -99,4 +123,7 @@ export function restoreMatch(match: Match, snap: MatchSnapshot): void {
   match.fx = copyEffects(snap.fx);
   match.log.length = snap.logLength;
   match.rematches = snap.rematches;
+  match.lineup = cloneOptions(snap.lineup);
+  match.picks = snap.picks.slice();
+  match.ready = snap.ready.slice();
 }
