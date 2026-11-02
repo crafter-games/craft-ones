@@ -1,8 +1,11 @@
 import {
+  ABILITY_STRIKES,
   abilityNeedsAim,
   abilityProjectile,
   isWeapon,
   PROJECTILES,
+  type StrikeKind,
+  volleySpread,
   WEAPONS,
 } from "./arsenal";
 import { clamp, launch, windForTurn } from "./ballistics";
@@ -138,6 +141,7 @@ function loadPlayer(player: Player, view: PlayerView) {
   player.species = view.species;
   player.coat = view.coat;
   player.abilityReadyTurn = view.abilityReadyTurn;
+  player.strike = view.strike;
   player.shield = view.shield;
   player.vx = view.vx;
   player.sessionId = view.sessionId;
@@ -222,6 +226,7 @@ export class Battle {
     state.terrainRows = view.terrainRows.slice();
     state.terrainRevision = view.terrainRevision;
     state.lastAction = view.lastAction;
+    state.actionId = view.actionId;
     state.wind = view.wind;
     state.mapId = view.mapId;
     state.terrain = view.terrain.slice();
@@ -420,6 +425,7 @@ export class Battle {
       player.vy = 0;
       player.vx = 0;
       player.abilityReadyTurn = 0;
+      player.strike = 0;
       player.shield = 0;
       resetMovement(player);
     }
@@ -615,6 +621,7 @@ export class Battle {
         ) ||
           now >= this.resolveDeadline + 2500)
       ) {
+        if (this.landStrike(now)) return;
         if (!this.finishIfEliminated() && !this.continueVolley(now))
           this.nextTurn(now);
       }
@@ -684,7 +691,10 @@ export class Battle {
     this.controlledMotion.clear();
     this.volley = null;
     // Tools persist per seat; aimed powers must be armed again on a new turn.
-    for (const player of this.state.players) player.abilityArmed = false;
+    for (const player of this.state.players) {
+      player.abilityArmed = false;
+      player.strike = 0;
+    }
     this.state.phase = "aiming";
     this.state.currentPlayer = this.state.players[index].sessionId;
     this.state.turnNumber++;
@@ -771,15 +781,14 @@ export class Battle {
     const player = validateTurn(this.state, sessionId, payload);
     if (!player || this.state.turnNumber < player.abilityReadyTurn)
       return "Ability unavailable";
-    if (player.species === "cuy")
-      return "This character has no special ability";
     const projectile = abilityProjectile(player.species);
     if (projectile) {
       if (!isFireAction(payload)) return "Invalid ability aim";
       player.abilityArmed = true;
       player.abilityReadyTurn = this.state.turnNumber + 4;
+      const spread = volleySpread(player.species);
       this.volley =
-        projectile === "shuriken"
+        projectile === "shuriken" || projectile === "papa"
           ? {
               sessionId,
               angle: payload.angle,
@@ -787,13 +796,14 @@ export class Battle {
               remaining: 2,
             }
           : null;
-      this.launchAbility(player, payload.angle, payload.power, now);
+      this.act(projectile);
+      this.launchAbility(player, payload.angle - spread, payload.power, now);
       return null;
     }
     if (player.species === "ronsoco") {
       if (player.shield > 0) return "Shield already active";
       player.shield = 30;
-      this.state.lastAction = "shield";
+      this.act("shield");
     } else if (player.species === "zorro") {
       const direction = (payload as { direction?: unknown }).direction;
       if (
@@ -815,11 +825,11 @@ export class Battle {
         if (error || Math.abs(player.x - x) < 0.01) break;
       }
       if (Math.abs(player.x - start) < 1) return "No room to dash";
-      this.state.lastAction = "dash";
+      this.act(this.strike(player, "bite") ? "bite" : "dash");
     } else if (player.species === "alpaca") {
       if (player.hp >= 100) return "Already at full health";
       player.hp = Math.min(100, player.hp + 25);
-      this.state.lastAction = "shield";
+      this.act("heal");
     } else {
       const direction = (payload as { direction?: unknown }).direction;
       if (
@@ -831,7 +841,8 @@ export class Battle {
       const pounce = player.species === "puma";
       player.vx = direction * (pounce ? 470 : 360);
       player.vy = pounce ? -360 : -480;
-      this.state.lastAction = "leap";
+      player.strike = pounce ? 2 : 1;
+      this.act(pounce ? "pounce" : "leap");
     }
     this.controlledMotion.delete(player);
     player.abilityArmed = true;
@@ -874,7 +885,48 @@ export class Battle {
       return false;
     }
     volley.remaining--;
-    this.launchAbility(owner, volley.angle, volley.power, now);
+    // Fanned volleys step the aim by one spread per shot, centered on the first aim.
+    const spread = volleySpread(owner.species);
+    this.launchAbility(
+      owner,
+      volley.angle + spread * (1 - volley.remaining),
+      volley.power,
+      now,
+    );
+    return true;
+  }
+
+  private act(name: string) {
+    this.state.lastAction = name;
+    this.state.actionId++;
+  }
+
+  // Damage that is not a blast: blast shields still absorb it.
+  private strike(owner: Player, kind: StrikeKind) {
+    const spec = ABILITY_STRIKES[kind];
+    const foe = this.state.players.find((p) => p !== owner && p.hp > 0);
+    if (!foe || dhypot(foe.x - owner.x, foe.y - owner.y) > spec.range)
+      return false;
+    const absorbed = Math.min(foe.shield, spec.damage);
+    foe.shield -= absorbed;
+    foe.hp = this.infiniteHp
+      ? 100
+      : Math.max(0, foe.hp - spec.damage + absorbed);
+    foe.vy = -120;
+    return true;
+  }
+
+  // A leap that ends beside the enemy hits it, then play pauses briefly so the hit reads.
+  private landStrike(now: number) {
+    const owner = this.state.players.find(
+      (p) => p.sessionId === this.state.currentPlayer,
+    );
+    if (!owner || owner.strike === 0) return false;
+    const kind: StrikeKind = owner.strike === 1 ? "stomp" : "claw";
+    owner.strike = 0;
+    if (!this.strike(owner, kind)) return false;
+    this.act(kind);
+    this.resolve(now, 450);
     return true;
   }
 

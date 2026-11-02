@@ -152,7 +152,7 @@ export const CHARACTERS = {
   },
 } as const;
 export type AbilityInfo = { name: string; description: string };
-export const ABILITIES: Record<Species, AbilityInfo | null> = {
+export const ABILITIES: Record<Species, AbilityInfo> = {
   freddy: {
     name: "Dimensional rift",
     description:
@@ -168,11 +168,15 @@ export const ABILITIES: Record<Species, AbilityInfo | null> = {
     description:
       "Aim and charge, then release three triangular shurikens along the same line. Up to 24 damage each. Costs one turn; 2-turn cooldown.",
   },
-  cuy: null,
-  zorro: {
-    name: "Quickstep",
+  cuy: {
+    name: "Papa storm",
     description:
-      "Dash up to 320 units along the ground toward your aim. Stops at walls, ledges and other critters. Costs this turn; 2-turn cooldown.",
+      "Aim and charge, then lob three potatoes in a fan. Up to 34 damage each, so a close target eats several. Costs this turn; 2-turn cooldown.",
+  },
+  zorro: {
+    name: "Quickstep bite",
+    description:
+      "Dash up to 320 units along the ground toward your aim. Stops at walls, ledges and other critters. Finish within a body length of the enemy and you bite for 30. Costs this turn; 2-turn cooldown.",
   },
   ronsoco: {
     name: "Iron hide",
@@ -180,13 +184,14 @@ export const ABILITIES: Record<Species, AbilityInfo | null> = {
       "Absorb the next 30 blast damage. Shield lasts until used and cannot stack. Costs this turn; 2-turn cooldown.",
   },
   llama: {
-    name: "Andean leap",
-    description: "Leap toward your aim. Costs this turn; 2-turn cooldown.",
+    name: "Altiplano slam",
+    description:
+      "Leap high toward your aim. Landing within 150 units of the enemy sends a shockwave for 30. Costs this turn; 2-turn cooldown.",
   },
   puma: {
     name: "Pounce",
     description:
-      "Spring low and far toward your aim, further than a leap but closer to the ground. Costs this turn; 2-turn cooldown.",
+      "Spring low and far toward your aim. Landing within 110 units of the enemy rakes it for 40. Costs this turn; 2-turn cooldown.",
   },
   alpaca: {
     name: "Second wind",
@@ -194,6 +199,13 @@ export const ABILITIES: Record<Species, AbilityInfo | null> = {
       "Shake off 25 damage, up to full health. Costs this turn; 2-turn cooldown.",
   },
 };
+// Hits a movement ability lands when its owner arrives next to the enemy.
+export const ABILITY_STRIKES = {
+  bite: { range: 110, damage: 30 },
+  stomp: { range: 150, damage: 30 },
+  claw: { range: 110, damage: 40 },
+} as const;
+export type StrikeKind = keyof typeof ABILITY_STRIKES;
 export type Species = (typeof SPECIES)[number];
 export const COATS = {
   caramel: {
@@ -257,6 +269,17 @@ export const ABILITY_PROJECTILES = {
     fuse: 3000,
     bounce: 0,
   },
+  papa: {
+    name: "Papa storm",
+    minSpeed: 300,
+    maxSpeed: 980,
+    gravity: 1,
+    radius: 85,
+    damage: 34,
+    crater: 44,
+    fuse: 6000,
+    bounce: 0,
+  },
 } as const;
 export type ProjectileKind = WeaponId | keyof typeof ABILITY_PROJECTILES;
 // The physics every projectile shares; WEAPONS adds UI copy on top.
@@ -284,7 +307,13 @@ export function abilityProjectile(
       ? "meow"
       : species === "railly"
         ? "shuriken"
-        : null;
+        : species === "cuy"
+          ? "papa"
+          : null;
+}
+// Radians between consecutive shots of a volley; 0 fires along one line.
+export function volleySpread(species: Species) {
+  return species === "cuy" ? 0.16 : 0;
 }
 export function isMovementAbility(
   species: Species,
