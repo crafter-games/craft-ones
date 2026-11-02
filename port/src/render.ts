@@ -810,7 +810,7 @@ function fitText(
   text(d, value, x, y, fitName(d, value, maxWidth, px), color, align);
 }
 
-// A seat's Discord avatar in a square frame in the seat's color.
+// A seat's Discord avatar in a circular ring in the seat's color (main.web.ts masks the image to a circle).
 function avatar(
   d: Draw2D,
   seat: number,
@@ -822,7 +822,9 @@ function avatar(
   const t = art.textures.get(avatarKey(seat));
   if (!t) return;
   d.setFillStyle(color);
-  d.fillRect(x, y, size, size);
+  d.beginPath();
+  d.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2, false);
+  d.fill();
   d.drawImage(t, 0, 0, t.width, t.height, x + 2, y + 2, size - 4, size - 4);
 }
 
