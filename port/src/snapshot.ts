@@ -51,7 +51,25 @@ function copyEffects(fx: Effects): Effects {
   const popups: Effects["popups"] = [];
   for (const p of fx.popups)
     popups.push({ x: p.x, y: p.y, amount: p.amount, frame: p.frame });
+  const flashes: Effects["flashes"] = [];
+  for (const f of fx.flashes)
+    flashes.push({
+      kind: f.kind,
+      seat: f.seat,
+      x: f.x,
+      y: f.y,
+      x1: f.x1,
+      y1: f.y1,
+      dir: f.dir,
+      frame: f.frame,
+      label: f.label,
+    });
+  const pos: Effects["pos"] = [];
+  for (const q of fx.pos) pos.push({ x: q.x, y: q.y });
   return {
+    flashes,
+    actionId: fx.actionId,
+    pos,
     trail,
     bursts,
     popups,

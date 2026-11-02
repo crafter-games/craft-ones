@@ -338,6 +338,7 @@ export function checksum(match: Match): number {
   text(state.currentPlayer);
   text(state.winner);
   text(state.lastAction);
+  sum.add(state.actionId);
   for (const h of state.terrain) sum.add(h);
   for (const p of state.players) {
     sum
@@ -351,6 +352,7 @@ export function checksum(match: Match): number {
       .add(p.movementLeft)
       .add(p.originX)
       .add(p.abilityReadyTurn)
+      .add(p.strike)
       .add(p.abilityArmed ? 1 : 0);
     text(p.selectedWeapon);
   }
