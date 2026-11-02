@@ -3,12 +3,12 @@
 // traffic before the match: the guest's critter pick, the host's match start (the one place the match options
 // are decided, so both peers build the same match), and a Discord user id for the name plates.
 
+import type { RelayLink } from "dotframe/src/netplay";
 import {
   type PlayerOptions,
   validPlayerOptions,
 } from "../../packages/shared/src";
 import type { MatchOptions } from "./match";
-import type { RelayLink } from "./netplay";
 
 export interface GameMessage {
   // "start", "pick" or "who".

@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ARENA, type BattleView } from "../src";
-import { Battle } from "../src";
+import { ARENA, Battle, type BattleView, distanceToBody } from "../src";
 
 function setup(start = true) {
   let time = 0;
@@ -468,11 +467,14 @@ describe("explosion, damage and knockback", () => {
     const { battle, frames } = setup();
     const shooter = battle.state.players[0];
     const x = shooter.x;
+    const distance = Math.min(
+      Math.hypot(60, ARENA.playerRadius),
+      distanceToBody(shooter, x + 60, ARENA.groundY) + ARENA.playerRadius,
+    );
     placeProjectile(battle, x + 60, ARENA.groundY);
     frames(1);
     const damage = Math.round(
-      ARENA.maxDamage *
-        (1 - Math.hypot(60, ARENA.playerRadius) / ARENA.blastRadius),
+      ARENA.maxDamage * (1 - distance / ARENA.blastRadius),
     );
     expect(shooter.hp).toBe(100 - damage);
     expect(battle.state.players[1].hp).toBe(100);

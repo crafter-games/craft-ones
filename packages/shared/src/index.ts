@@ -3,6 +3,8 @@ export * from "./Battle";
 export * from "./ballistics";
 export * from "./config";
 export * from "./detmath";
+export * from "./hitbox";
+export * from "./hitboxes";
 export * from "./matchOptions";
 export * from "./projectiles";
 export * from "./schema";

@@ -367,6 +367,11 @@ export function step(match: Match, inputs: number[]): void {
       match.charge[seat] = 0;
     }
   } else match.charge = [0, 0];
+  // The hit silhouette faces where the critter is drawn facing (render.ts drawCritter).
+  for (const p of state.players) {
+    const i = p.sessionId === "p1" ? 0 : 1;
+    p.facing = dcos(match.angle[i]) >= 0 ? 1 : -1;
+  }
   match.previous = [inputs[0] ?? 0, inputs[1] ?? 0];
   match.elapsed += STEP_MS;
   battle.step(STEP_MS);

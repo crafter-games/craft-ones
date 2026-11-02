@@ -3,6 +3,7 @@
 // and name the room).
 import type { Draw2D } from "dotframe/src/draw2d";
 import { type Input, Key } from "dotframe/src/input";
+import { createRollback, NOBODY, type Rollback } from "dotframe/src/netplay";
 import type { Probe } from "dotframe/src/probe";
 import type { BattleView, PlayerOptions } from "../../packages/shared/src";
 import type { Speakers } from "./audio";
@@ -24,7 +25,6 @@ import {
   view,
   WINDOW,
 } from "./match";
-import { createRollback, NOBODY, type Rollback } from "./netplay";
 import type { OnlineLink } from "./online";
 import { drawBanner, drawNetStats } from "./render";
 import { createSetup, press, renderSetup, type Setup } from "./setup";

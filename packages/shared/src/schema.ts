@@ -51,6 +51,8 @@ export class Player {
   originX = 0;
   jumps = 0;
   vy = 0;
+  /** 1 facing right, -1 left: mirrors the hit silhouette. */
+  facing = 1;
 
   toJSON(): PlayerView {
     return {
@@ -72,6 +74,7 @@ export class Player {
       originX: this.originX,
       jumps: this.jumps,
       vy: this.vy,
+      facing: this.facing,
     };
   }
 }
@@ -191,6 +194,7 @@ export type PlayerView = Pick<
   | "originX"
   | "jumps"
   | "vy"
+  | "facing"
 >;
 export type BattleView = {
   worldWidth: number;
