@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { PROJECTILES, type SoundCue } from "../../packages/shared/src";
+import { ARENA, PROJECTILES, type SoundCue } from "../../packages/shared/src";
 import {
   aimBits,
   Bit,
@@ -9,6 +9,7 @@ import {
   pickBits,
   randomInput,
   restore,
+  STEP_MS,
   save,
   seatOf,
   shootBits,
@@ -220,6 +221,23 @@ test("a slingshot shot fires in one frame with its own angle and power", () => {
   step(match, inputs);
   expect(match.battle.state.phase).toBe("flying");
   expect(match.battle.state.projectile.vy).toBeLessThan(0);
+});
+
+test("a held charge fires by itself when it reaches full power", () => {
+  const match = createMatch(1);
+  for (let i = 0; i <= KICKOFF_FRAMES; i++) step(match, [0, 0]);
+  const seat = seatOf(match);
+  const inputs = [0, 0];
+  inputs[seat] = Bit.Fire;
+  const full = Math.round(ARENA.chargeMs / STEP_MS);
+  let frames = 0;
+  while (match.battle.state.phase === "aiming" && frames < full * 2) {
+    step(match, inputs);
+    frames++;
+  }
+  expect(match.battle.state.phase).toBe("flying");
+  expect(frames).toBe(full);
+  expect(match.charge[seat]).toBe(0);
 });
 
 test("a charge held through the turn timer does not freeze the camera on the next turn", () => {

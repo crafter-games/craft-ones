@@ -352,7 +352,9 @@ export function step(match: Match, inputs: number[]): void {
     }
     if (bits & Bit.Fire) match.charge[seat] += 1;
     const shoot = (pressed & SHOOT) !== 0 && !charging;
-    if ((released & Bit.Fire && charging) || shoot) {
+    // A full charge fires on its own, through the same path as a release.
+    const full = match.charge[seat] > 0 && power01(match.charge[seat]) >= 1;
+    if ((released & Bit.Fire && charging) || shoot || full) {
       const power = shoot
         ? ((bits >> POWER_SHIFT) & POWER_STEPS) / POWER_STEPS
         : power01(match.charge[seat]);
