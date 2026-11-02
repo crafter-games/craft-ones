@@ -285,6 +285,8 @@ export function step(match: Match, inputs: number[]): void {
   const state = battle.state;
   const seat = seatOf(match);
   if (seat >= 0 && state.phase === "aiming") {
+    // A charge belongs to the turn it started in; the timer can pass the turn while fire is still held.
+    match.charge[1 - seat] = 0;
     const id = seat === 0 ? "p1" : "p2";
     const bits = inputs[seat] ?? 0;
     const pressed = pressedBy(seat);

@@ -221,3 +221,22 @@ test("a slingshot shot fires in one frame with its own angle and power", () => {
   expect(match.battle.state.phase).toBe("flying");
   expect(match.battle.state.projectile.vy).toBeLessThan(0);
 });
+
+test("a charge held through the turn timer does not freeze the camera on the next turn", () => {
+  const match = createMatch(1);
+  for (let i = 0; i <= KICKOFF_FRAMES; i++) step(match, [0, 0]);
+  const first = match.battle.state.currentPlayer;
+  let frames = 0;
+  while (match.battle.state.currentPlayer === first && frames++ < 2000)
+    step(match, [Bit.Fire, Bit.Fire]);
+  expect(match.battle.state.currentPlayer).not.toBe(first);
+  for (let i = 0; i < 5; i++) step(match, [0, 0]);
+  expect(match.charge).toEqual([0, 0]);
+  // The overview must still be reachable: the camera follows the map toggle.
+  step(match, [Bit.Map, 0]);
+  step(match, [0, 0]);
+  const before = match.camera.zoom;
+  for (let i = 0; i < 120; i++) step(match, [0, 0]);
+  expect(match.camera.map).toBe(true);
+  expect(match.camera.zoom).not.toBe(before);
+});
