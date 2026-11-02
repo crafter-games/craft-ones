@@ -117,6 +117,30 @@ test("damage names its size and whether it landed on you", () => {
   ]);
 });
 
+test("a shot that lands on the other critter confirms the hit, louder for its shooter", () => {
+  const view = fixture().battle.state.toJSON() as BattleView;
+  expect(view.currentPlayer).toBe("one");
+  const struck = {
+    ...view,
+    players: view.players.map((p, i) => (i ? { ...p, hp: p.hp - 45 } : p)),
+  };
+  expect(soundCues(view, struck, "one")).toEqual([
+    { kind: "hurt", amount: 45, mine: false },
+    { kind: "hit", amount: 45, mine: true },
+  ]);
+  expect(soundCues(view, struck, "two")).toContainEqual({
+    kind: "hit",
+    amount: 45,
+    mine: false,
+  });
+  // Splash on yourself is not a hit.
+  const self = {
+    ...view,
+    players: view.players.map((p, i) => (i ? p : { ...p, hp: p.hp - 10 })),
+  };
+  expect(kinds(soundCues(view, self, "one"))).not.toContain("hit");
+});
+
 test("healing, shields, leaps and dashes each get their own cue", () => {
   const view = fixture().battle.state.toJSON() as BattleView;
   const healed = {
