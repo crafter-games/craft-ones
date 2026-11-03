@@ -13,7 +13,7 @@ import {
   WORLD_WIDTH,
 } from "../../packages/shared/src";
 import { DEFAULT_OPTIONS, type MatchOptions } from "./match";
-import { art } from "./render";
+import { art, fillRound, HUD, SEAT_COLORS, strokeRound } from "./render";
 
 const COAT_IDS = Object.keys(COATS) as CoatId[];
 type Row =
@@ -67,7 +67,7 @@ export function createSetup(
     editOne: true,
     editTwo: true,
     title: "CRAFT ONES",
-    subtitle: "Six critters, six tools, fifteen-second turns.",
+    subtitle: "Seven critters, six tools and a power, fifteen-second turns.",
     startLabel: "START DUEL",
     tags: ["", ""],
     waiting: "",
@@ -276,26 +276,57 @@ export function renderSetup(
 ): void {
   const o = setup.options;
   const map = WORLD_MAPS[o.map];
-  d.setFillStyle("#2b2330");
+  // The chosen map fills the screen, dimmed, behind glass cards.
+  const backdrop = art.textures.get(`map-${o.map}`);
+  d.setFillStyle(HUD.ink);
   d.fillRect(0, 0, W, H);
-  label(d, setup.title, W / 2, 54, "54px Bangers", "#ffdf82");
-  label(d, setup.subtitle, W / 2, 92, "13px Archivo Black", "#a99aa6");
+  if (backdrop) {
+    const scale = Math.max(W / backdrop.width, H / backdrop.height);
+    const bw = backdrop.width * scale;
+    const bh = backdrop.height * scale;
+    d.drawImage(
+      backdrop,
+      0,
+      0,
+      backdrop.width,
+      backdrop.height,
+      (W - bw) / 2,
+      (H - bh) / 2,
+      bw,
+      bh,
+    );
+  }
+  d.setFillStyle("rgba(10,6,20,0.62)");
+  d.fillRect(0, 0, W, H);
+  label(d, setup.title, W / 2, 54, "54px Bangers", HUD.cream);
+  d.setFillStyle(HUD.gold);
+  d.fillRect(W / 2 - 40, 78, 80, 3);
+  label(
+    d,
+    setup.subtitle.toUpperCase(),
+    W / 2,
+    96,
+    "11px Archivo Black",
+    HUD.dim,
+  );
   // Map preview.
   const pw = PREVIEW.w;
   const ph = previewHeight();
   const px = W / 2 - pw / 2;
   const py = PREVIEW.y;
   const preview = art.textures.get(`map-${o.map}`);
+  fillRound(d, px - 10, py - 10, pw + 20, ph + 76, 12, HUD.glass);
   d.setFillStyle(map.palette.sky);
   d.fillRect(px, py, pw, ph);
   if (preview)
     d.drawImage(preview, 0, 0, preview.width, preview.height, px, py, pw, ph);
+  strokeRound(d, px, py, pw, ph, 2, "rgba(255,255,255,0.18)", 2);
   const rowColor = (row: Row): string =>
     !editable(setup, row)
-      ? "#a99aa6"
+      ? HUD.dim
       : ROWS[setup.row] === row
-        ? "#ffdf82"
-        : "#fff2d3";
+        ? HUD.gold
+        : HUD.cream;
   const arrows = (row: Row, text: string): string =>
     editable(setup, row) ? `<  ${text}  >` : text;
   label(
@@ -306,16 +337,19 @@ export function renderSetup(
     "18px Archivo Black",
     rowColor("map"),
   );
-  label(d, map.subtitle, W / 2, py + ph + 52, "11px Archivo Black", "#a99aa6");
+  label(d, map.subtitle, W / 2, py + ph + 52, "11px Archivo Black", HUD.dim);
   // Seats.
   const seats = [
-    { title: "PLAYER 1", seat: "one" as Seat, color: "#f5c367" },
-    { title: "PLAYER 2", seat: "two" as Seat, color: "#6ad1b7" },
+    { title: "PLAYER 1", seat: "one" as Seat, color: SEAT_COLORS[0] },
+    { title: "PLAYER 2", seat: "two" as Seat, color: SEAT_COLORS[1] },
   ];
   for (const s of seats) {
     const { title, seat, color } = s;
     const x = seatX(W, seat);
     const pick = seat === "one" ? o.one : o.two;
+    fillRound(d, x - 150, 126, 300, 340, 12, HUD.glass);
+    d.setFillStyle(color);
+    d.fillRect(x - 130, 463, 260, 3);
     label(
       d,
       setup.tags[seat === "one" ? 0 : 1] === ""
@@ -341,7 +375,7 @@ export function renderSetup(
       x,
       412,
       "11px Archivo Black",
-      "#a99aa6",
+      HUD.dim,
     );
     label(
       d,
@@ -355,25 +389,26 @@ export function renderSetup(
   const start = ROWS[setup.row] === "start";
   for (const b of buttons(setup, W, H)) {
     const lit = b.id === "start" ? start : false;
-    d.setFillStyle(b.id === "online" ? "#6ad1b7" : lit ? "#ffdf82" : "#f5c367");
-    d.fillRect(b.x, b.y, b.w, b.h);
+    const color = b.id === "online" ? SEAT_COLORS[1] : SEAT_COLORS[0];
+    fillRound(d, b.x, b.y, b.w, b.h, 10, lit ? color : HUD.glassHot);
+    strokeRound(d, b.x, b.y, b.w, b.h, 10, color, 2);
     label(
       d,
       b.id === "online" ? "PLAY ONLINE" : setup.startLabel,
       b.x + b.w / 2,
       b.y + b.h / 2,
       "22px Bangers",
-      "#2b2330",
+      lit ? HUD.ink : color,
     );
   }
   if (setup.waiting !== "")
-    label(d, setup.waiting, W / 2, H - 104, "20px Bangers", "#ffdf82");
+    label(d, setup.waiting, W / 2, H - 104, "20px Bangers", HUD.gold);
   label(
     d,
     "Tap the arrows to pick · Keyboard: Up / Down, Left / Right, Enter",
     W / 2,
     H - 50,
-    "12px Archivo Black",
-    "#a99aa6",
+    "11px Archivo Black",
+    HUD.dim,
   );
 }
