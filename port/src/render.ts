@@ -61,7 +61,7 @@ const PARTS = [
   "tail",
 ];
 export const TEXEL = 4;
-const SEAT_COLORS = ["#f5c367", "#6ad1b7"];
+export const SEAT_COLORS = ["#ffc531", "#3fd6c2"];
 
 export interface Art {
   textures: Map<string, Texture>;
@@ -530,12 +530,13 @@ export function createRenderer(
           ? plate
           : `${CHARACTERS[player.species].name.toUpperCase()} · P${player.number}`;
       const face = plate !== "" && art.textures.has(avatarKey(i)) ? 20 : 0;
-      const w = d.measureText(label).width + 14 + face;
-      d.setFillStyle("#493d46");
-      d.fillRect(-w / 2, -10, w, 20);
-      if (face > 0) avatar(d, i, -w / 2, -10, 20, SEAT_COLORS[i]);
-      d.setFillStyle("#fff2d3");
-      d.fillText(label, face / 2, 1);
+      const w = d.measureText(label).width + 22 + face;
+      fillRound(d, -w / 2, -11, w, 22, 6, HUD.glass);
+      d.setFillStyle(SEAT_COLORS[i]);
+      d.fillRect(-w / 2, -11, 4, 22);
+      if (face > 0) avatar(d, i, -w / 2 + 6, -9, 18, SEAT_COLORS[i]);
+      d.setFillStyle(HUD.cream);
+      d.fillText(label, (face + 4) / 2, 1);
       d.restore();
 
       if (active && aiming && i === seat) {
@@ -749,26 +750,100 @@ export function createRenderer(
   return { render };
 }
 
-const HUD = {
-  ink: "#2b2330",
-  panel: "#3a2f3c",
-  cream: "#fff2d3",
-  dim: "#a99aa6",
-  gold: "#ffdf82",
+// Arena HUD: dark translucent glass over the map, thin seat-colour accents, small spaced type.
+export const HUD = {
+  ink: "#100a1e",
+  glass: "rgba(16,10,30,0.72)",
+  glassHot: "rgba(30,20,52,0.82)",
+  track: "rgba(255,255,255,0.12)",
+  slot: "rgba(255,255,255,0.06)",
+  cream: "#ffffff",
+  dim: "#9c8fbd",
+  gold: "#ffc531",
+  power: "#ff7a3d",
+  range: "#7be04a",
+  danger: "#ff6b6b",
 };
 
+function roundRect(
+  d: Draw2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
+  const k = Math.min(r, w / 2, h / 2);
+  d.beginPath();
+  d.moveTo(x + k, y);
+  d.lineTo(x + w - k, y);
+  d.arc(x + w - k, y + k, k, -Math.PI / 2, 0, false);
+  d.lineTo(x + w, y + h - k);
+  d.arc(x + w - k, y + h - k, k, 0, Math.PI / 2, false);
+  d.lineTo(x + k, y + h);
+  d.arc(x + k, y + h - k, k, Math.PI / 2, Math.PI, false);
+  d.lineTo(x, y + k);
+  d.arc(x + k, y + k, k, Math.PI, Math.PI * 1.5, false);
+  d.closePath();
+}
+
+export function fillRound(
+  d: Draw2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+  fill: string,
+): void {
+  d.setFillStyle(fill);
+  roundRect(d, x, y, w, h, r);
+  d.fill();
+}
+
+export function strokeRound(
+  d: Draw2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+  color: string,
+  width: number,
+): void {
+  d.setStrokeStyle(color);
+  d.setLineWidth(width);
+  roundRect(d, x + width / 2, y + width / 2, w - width, h - width, r);
+  d.stroke();
+}
+
+// A glass card; fill overrides the default tint.
 function panel(
   d: Draw2D,
   x: number,
   y: number,
   w: number,
   h: number,
-  fill = HUD.panel,
+  fill: string = HUD.glass,
 ): void {
-  d.setFillStyle("rgba(20,16,24,0.35)");
-  d.fillRect(x + 2, y + 3, w, h);
-  d.setFillStyle(fill);
-  d.fillRect(x, y, w, h);
+  fillRound(d, x, y, w, h, 10, fill);
+}
+
+// A thin bar with a rounded track and fill; from the right when rtl.
+function meter(
+  d: Draw2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  amount: number,
+  color: string,
+  rtl = false,
+): void {
+  fillRound(d, x, y, w, h, h / 2, HUD.track);
+  const f = Math.max(0, Math.min(1, amount)) * w;
+  if (f < 1) return;
+  fillRound(d, rtl ? x + w - f : x, y, f, h, h / 2, color);
 }
 
 function text(
@@ -904,7 +979,29 @@ export function screenToWorld(
   };
 }
 
-// The web HUD's information on canvas: cards, clock, turn line, hotbar, meters, kickoff and results.
+// A seat's face in a ring: the Discord avatar online, the critter's head otherwise.
+function face(
+  d: Draw2D,
+  p: PlayerView,
+  seat: number,
+  cx: number,
+  cy: number,
+  size: number,
+): void {
+  d.setFillStyle(SEAT_COLORS[seat]);
+  d.beginPath();
+  d.arc(cx, cy, size / 2 + 3, 0, Math.PI * 2, false);
+  d.fill();
+  d.setFillStyle("#2a1f44");
+  d.beginPath();
+  d.arc(cx, cy, size / 2, 0, Math.PI * 2, false);
+  d.fill();
+  if (art.textures.has(avatarKey(seat)))
+    avatar(d, seat, cx - size / 2, cy - size / 2, size, SEAT_COLORS[seat]);
+  else portrait(d, p, cx, cy + size * 0.12, size * 0.92);
+}
+
+// The Arena HUD: glass cards over the map with seat-colour accents (direction C).
 function drawHud(
   d: Draw2D,
   match: Match,
@@ -914,166 +1011,163 @@ function drawHud(
   touch: boolean,
   preview: number,
 ): void {
-  d.setFillStyle(HUD.ink);
-  d.fillRect(0, 0, W, HUD_HEIGHT);
   const seat = seatOf(match);
+  const card = 380;
   state.players.forEach((p, i) => {
     const left = i === 0;
-    const x = left ? 12 : W - 12 - 330;
+    const x = left ? 16 : W - 16 - card;
+    const color = SEAT_COLORS[i];
     const active =
       state.currentPlayer === p.sessionId && state.phase !== "finished";
-    panel(d, x, 6, 330, 52, active ? "#4a3c4a" : HUD.panel);
-    const plate = plates[i].name;
-    const tx = left ? x + 58 : x + 272;
+    panel(d, x, 16, card, 64, active ? HUD.glassHot : HUD.glass);
+    // Accent edge on the outer side; full height on the seat whose turn it is.
+    d.setFillStyle(color);
+    const edge = active ? 64 : 40;
+    d.fillRect(left ? x : x + card - 5, 16 + (64 - edge) / 2, 5, edge);
+    face(d, p, i, left ? x + 40 : x + card - 40, 48, 44);
+    const tx = left ? x + 74 : x + card - 74;
     const align = left ? "left" : "right";
-    if (plate !== "") {
-      // Online in Discord: the player's avatar and username lead, the critter's name moves to the corner.
-      if (art.textures.has(avatarKey(i)))
-        avatar(d, i, left ? x + 6 : x + 330 - 6 - 44, 10, 44, SEAT_COLORS[i]);
-      else portrait(d, p, left ? x + 28 : x + 302, 32, 46);
-      fitText(d, plate, tx, 20, 190, 15, SEAT_COLORS[i], align);
-      text(
-        d,
-        CHARACTERS[p.species].name.toUpperCase(),
-        left ? x + 318 : x + 12,
-        20,
-        "10px Archivo Black",
-        HUD.dim,
-        left ? "right" : "left",
-      );
-    } else {
-      portrait(d, p, left ? x + 28 : x + 302, 32, 46);
-      text(
-        d,
-        CHARACTERS[p.species].name.toUpperCase(),
-        tx,
-        20,
-        "15px Archivo Black",
-        SEAT_COLORS[i],
-        align,
-      );
-      text(
-        d,
-        `P${p.number}`,
-        left ? x + 318 : x + 12,
-        20,
-        "11px Archivo Black",
-        HUD.dim,
-        left ? "right" : "left",
-      );
-    }
-    const bar = 190;
-    const bx = left ? tx : tx - bar;
-    d.setFillStyle("#241d27");
-    d.fillRect(bx, 37, bar, 10);
+    const plate = plates[i].name;
+    const critter = `${CHARACTERS[p.species].name.toUpperCase()} · P${p.number}`;
+    fitText(
+      d,
+      plate !== "" ? plate : critter,
+      tx,
+      31,
+      220,
+      16,
+      HUD.cream,
+      align,
+    );
+    if (plate !== "")
+      text(d, critter, tx, 47, "10px Archivo Black", HUD.dim, align);
     const hp = Math.max(0, p.hp);
-    d.setFillStyle(SEAT_COLORS[i]);
-    const w = (bar * hp) / 100;
-    d.fillRect(left ? bx : bx + bar - w, 37, w, 10);
+    meter(
+      d,
+      left ? tx : tx - 230,
+      plate !== "" ? 59 : 52,
+      230,
+      8,
+      hp / 100,
+      color,
+      !left,
+    );
+    const nx = left ? x + card - 18 : x + 18;
     text(
       d,
       String(hp),
-      left ? bx + bar + 34 : bx - 34,
-      42,
-      "18px Archivo Black",
-      HUD.cream,
-      "center",
+      nx,
+      46,
+      "34px Bangers",
+      hp <= 25 ? HUD.danger : HUD.cream,
+      left ? "right" : "left",
     );
     if (p.shield > 0)
       text(
         d,
         `+${p.shield}`,
-        left ? bx + bar + 34 : bx - 34,
+        nx,
         24,
         "10px Archivo Black",
-        "#b4d9d2",
-        "center",
+        "#b4f0ff",
+        left ? "right" : "left",
       );
   });
+
+  // Clock and round.
   const id =
     PLAYABLE_MAP_IDS.find((m) => m === state.mapId) ?? PLAYABLE_MAP_IDS[0];
-  panel(d, W / 2 - 110, 6, 220, 52);
+  panel(d, W / 2 - 90, 16, 180, 64);
   if (state.phase === "finished")
-    text(d, "MATCH OVER", W / 2, 25, "24px Bangers", HUD.cream, "center");
+    text(d, "MATCH OVER", W / 2, 42, "26px Bangers", HUD.cream, "center");
   else {
+    // The clock only runs while someone aims; between shots it rests.
     const seconds = Math.ceil(state.remainingMs / 1000);
+    const aiming = state.phase === "aiming";
     text(
       d,
-      `${seconds}`,
-      W / 2 - 6,
-      26,
-      "30px Bangers",
-      seconds <= 5 && state.phase === "aiming" ? "#ef6f6c" : HUD.cream,
-      "right",
+      aiming ? `${seconds}` : "--",
+      W / 2,
+      42,
+      "40px Bangers",
+      !aiming ? HUD.dim : seconds <= 5 ? HUD.danger : HUD.cream,
+      "center",
     );
-    text(d, "SEC", W / 2, 30, "11px Archivo Black", HUD.dim);
   }
-  text(
+  fitText(
     d,
-    `ROUND ${state.roundNumber} · ${WORLD_MAPS[id].name}`,
+    `ROUND ${state.roundNumber} · ${WORLD_MAPS[id].name.toUpperCase()}`,
     W / 2,
-    47,
-    "10px Archivo Black",
+    70,
+    164,
+    9,
     HUD.dim,
     "center",
   );
 
-  // Turn line, or the latest refusal from the engine.
+  // Turn line, or the latest refusal from the engine, underlined in the seat's colour.
   const current = state.players.find(
     (p) => p.sessionId === state.currentPlayer,
   );
+  const currentIndex = current ? state.players.indexOf(current) : 0;
   const notice = match.frame < match.noticeUntil ? match.notice : "";
+  const who = current
+    ? plates[currentIndex].name !== ""
+      ? plates[currentIndex].name
+      : CHARACTERS[current.species].name
+    : "";
   const line =
     state.phase === "finished"
       ? ""
       : notice ||
         (state.phase === "aiming" && current
-          ? `${CHARACTERS[current.species].name}'s turn. Let it fly!`
-          : state.phase === "flying"
-            ? ""
-            : "");
+          ? `${who.toUpperCase()}'S TURN · LET IT FLY`
+          : "");
   if (line) {
     d.setFont("13px Archivo Black");
-    const w = d.measureText(line).width + 32;
-    panel(d, W / 2 - w / 2, 66, w, 28, notice ? "#5a3238" : HUD.panel);
-    text(
+    const w = Math.min(W - 40, d.measureText(line).width + 40);
+    const accent = notice ? HUD.danger : SEAT_COLORS[currentIndex];
+    panel(d, W / 2 - w / 2, 92, w, 32);
+    d.setFillStyle(accent);
+    d.fillRect(W / 2 - w / 2 + 10, 121, w - 20, 3);
+    fitText(
       d,
       line,
       W / 2,
-      80,
-      "13px Archivo Black",
-      notice ? "#ffc9c4" : "#c8f08f",
+      107,
+      w - 24,
+      13,
+      notice ? "#ffc9c4" : accent,
       "center",
     );
   }
   const wind = Math.round(state.wind);
+  const windText =
+    wind === 0 ? "NO WIND" : wind > 0 ? `WIND ${wind} >>` : `<< WIND ${-wind}`;
+  panel(d, W / 2 - 60, line ? 134 : 92, 120, 24);
   text(
     d,
-    wind === 0 ? "NO WIND" : wind > 0 ? `WIND ${wind} >>` : `<< WIND ${-wind}`,
+    windText,
     W / 2,
-    104,
+    (line ? 134 : 92) + 12,
     "11px Archivo Black",
-    HUD.ink,
+    HUD.cream,
     "center",
   );
 
-  // Hotbar: the six tools, then the critter's ability with its cooldown.
+  // Hotbar: the six tools, then the critter's power with its cooldown.
   if (current && state.phase !== "finished") {
     const slots = hotbarSlots(W, H);
     const { size } = slots[0];
     const y = slots[0].y;
-    panel(
-      d,
-      slots[0].x - 10,
-      y - 8,
-      slots[slots.length - 1].x + size - slots[0].x + 20,
-      size + 16,
-      HUD.ink,
-    );
+    const barX = slots[0].x - 10;
+    const barW = slots[slots.length - 1].x + size - slots[0].x + 20;
+    panel(d, barX, y - 8, barW, size + 16);
     // Turn numbers count both seats; the player counts their own turns.
     const cooldown = Math.ceil(
       Math.max(0, current.abilityReadyTurn - state.turnNumber) / 2,
     );
+    const hasAbility = ABILITIES[current.species] !== null;
     for (let n = 0; n < slots.length; n++) {
       const ability = n === WEAPON_IDS.length;
       const x = slots[n].x;
@@ -1081,8 +1175,18 @@ function drawHud(
       const selected = ability
         ? current.abilityArmed
         : !current.abilityArmed && current.selectedWeapon === kind;
-      const hasAbility = ABILITIES[current.species] !== null;
-      panel(d, x, y, size, size, selected ? "#f1c56a" : "#3f4a45");
+      fillRound(
+        d,
+        x,
+        y,
+        size,
+        size,
+        8,
+        selected ? "rgba(255,197,49,0.22)" : HUD.slot,
+      );
+      if (selected) strokeRound(d, x, y, size, size, 8, HUD.gold, 2);
+      else if (ability && hasAbility && cooldown === 0)
+        strokeRound(d, x, y, size, size, 8, HUD.power, 2);
       if (kind) {
         const t = art.textures.get(`weapon-${kind}`);
         if (t)
@@ -1117,69 +1221,69 @@ function drawHud(
         String(n + 1),
         x + 6,
         y + 9,
-        "10px Archivo Black",
-        selected ? HUD.ink : HUD.dim,
+        "9px Archivo Black",
+        selected ? HUD.gold : HUD.dim,
       );
     }
     // The power's name and state, over slot 7.
-    {
+    if (hasAbility) {
       const slot = slots[WEAPON_IDS.length];
       const info = ABILITIES[current.species];
       const note = cooldown > 0 ? `READY IN ${cooldown}` : "READY";
-      const label = `${info.name.toUpperCase()}  ${note}`;
-      d.setFont("11px Archivo Black");
-      const w = d.measureText(label).width + 18;
+      const label = `${info.name.toUpperCase()} · ${note}`;
+      d.setFont("10px Archivo Black");
+      const w = d.measureText(label).width + 20;
       const bx = Math.min(W - w - 8, slot.x + size / 2 - w / 2);
-      panel(d, bx, y - 34, w, 20, HUD.ink);
+      panel(d, bx, y - 38, w, 22);
       text(
         d,
         label,
         bx + w / 2,
-        y - 24,
-        "11px Archivo Black",
-        cooldown > 0 ? HUD.dim : current.abilityArmed ? HUD.gold : HUD.cream,
+        y - 27,
+        "10px Archivo Black",
+        cooldown > 0 ? HUD.dim : current.abilityArmed ? HUD.gold : HUD.power,
         "center",
       );
     }
-    // Power and walking range.
+    // Power and walking range, each a card at a bottom corner.
+    const side = Math.min(324, (barX - 32) | 0);
+    const cy = H - 80;
     const charge = seat >= 0 ? preview || power01(match.charge[seat]) : 0;
-    panel(d, W - 232, H - 68, 220, 54, HUD.ink);
-    text(d, "POWER", W - 218, H - 52, "11px Archivo Black", HUD.dim);
-    text(
-      d,
-      `${Math.round(charge * 100)}%`,
-      W - 26,
-      H - 52,
-      "16px Archivo Black",
-      HUD.cream,
-      "right",
-    );
-    d.setFillStyle("#241d27");
-    d.fillRect(W - 218, H - 36, 192, 10);
-    d.setFillStyle(HUD.gold);
-    d.fillRect(W - 218, H - 36, 192 * charge, 10);
-    const used = Math.abs(current.x - current.originX);
-    const range = Math.max(0, Math.round(ARENA.moveBudget - used));
-    panel(d, 12, H - 68, 220, 54, HUD.ink);
-    text(d, "RANGE", 26, H - 52, "11px Archivo Black", HUD.dim);
-    text(
-      d,
-      `${range} / ${ARENA.moveBudget}`,
-      218,
-      H - 52,
-      "13px Archivo Black",
-      HUD.cream,
-      "right",
-    );
-    d.setFillStyle("#241d27");
-    d.fillRect(26, H - 36, 192, 10);
-    d.setFillStyle("#c8f08f");
-    d.fillRect(26, H - 36, (192 * range) / ARENA.moveBudget, 10);
+    if (side >= 140) {
+      const px = W - 16 - side;
+      panel(d, px, cy, side, 66);
+      text(d, "POWER", px + 16, cy + 18, "10px Archivo Black", HUD.dim);
+      text(
+        d,
+        `${Math.round(charge * 100)}%`,
+        px + side - 16,
+        cy + 20,
+        "26px Bangers",
+        HUD.cream,
+        "right",
+      );
+      meter(d, px + 16, cy + 42, side - 32, 10, charge, HUD.power);
+      const used = Math.abs(current.x - current.originX);
+      const range = Math.max(0, Math.round(ARENA.moveBudget - used));
+      panel(d, 16, cy, side, 66);
+      text(d, "RANGE", 32, cy + 18, "10px Archivo Black", HUD.dim);
+      text(
+        d,
+        `${range} / ${ARENA.moveBudget}`,
+        16 + side - 16,
+        cy + 20,
+        "15px Archivo Black",
+        HUD.cream,
+        "right",
+      );
+      meter(d, 32, cy + 42, side - 32, 10, range / ARENA.moveBudget, HUD.range);
+    }
   }
 
   if (touch && current && state.phase === "aiming")
     for (const b of touchButtons(H)) {
-      panel(d, b.x, b.y, b.w, b.h, HUD.ink);
+      panel(d, b.x, b.y, b.w, b.h);
+      strokeRound(d, b.x, b.y, b.w, b.h, 10, "rgba(255,255,255,0.14)", 2);
       const label =
         b.id === "left"
           ? "<"
@@ -1195,51 +1299,60 @@ function drawHud(
         b.y + b.h / 2,
         b.id === "left" || b.id === "right"
           ? "28px Archivo Black"
-          : "16px Archivo Black",
+          : "15px Archivo Black",
         HUD.cream,
         "center",
       );
     }
-  // Kickoff banner while the clock waits, then the results card.
+  // Kickoff card while the clock waits, then the results card.
   if (match.kickoff > 0 && current && state.phase !== "finished") {
-    d.setFillStyle("rgba(24,18,28,0.55)");
+    d.setFillStyle("rgba(10,6,20,0.45)");
     d.fillRect(0, 0, W, H);
-    panel(d, W / 2 - 200, H / 2 - 70, 400, 140);
+    panel(d, W / 2 - 200, H / 2 - 70, 400, 140, HUD.glassHot);
+    d.setFillStyle(SEAT_COLORS[currentIndex]);
+    d.fillRect(W / 2 - 180, H / 2 + 67, 360, 3);
     text(
       d,
       "KICKOFF",
       W / 2,
-      H / 2 - 36,
-      "13px Archivo Black",
+      H / 2 - 38,
+      "11px Archivo Black",
       HUD.dim,
       "center",
     );
+    const starter =
+      plates[currentIndex].name !== ""
+        ? plates[currentIndex].name
+        : `Player ${current.number}`;
     text(
       d,
-      `Player ${current.number} starts`,
+      `${starter} starts`,
       W / 2,
-      H / 2 + 8,
-      "40px Bangers",
-      SEAT_COLORS[seat],
+      H / 2 + 4,
+      fitName(d, `${starter} starts`, 360, 40, "Bangers"),
+      SEAT_COLORS[currentIndex],
       "center",
     );
     text(
       d,
-      `${ARENA.turnMs / 1000}s turns · 100 HP`,
+      `${ARENA.turnMs / 1000}S TURNS · 100 HP`,
       W / 2,
-      H / 2 + 44,
-      "12px Archivo Black",
+      H / 2 + 42,
+      "11px Archivo Black",
       HUD.cream,
       "center",
     );
   }
   if (state.phase === "finished") {
     const winner = state.players.find((p) => p.sessionId === state.winner);
-    d.setFillStyle("rgba(24,18,28,0.6)");
-    d.fillRect(0, 0, W, H);
-    panel(d, W / 2 - 220, H / 2 - 110, 440, 220);
-    if (winner) portrait(d, winner, W / 2, H / 2 - 50, 80);
     const index = winner ? state.players.indexOf(winner) : 0;
+    const accent = winner ? SEAT_COLORS[index] : HUD.cream;
+    d.setFillStyle("rgba(10,6,20,0.55)");
+    d.fillRect(0, 0, W, H);
+    panel(d, W / 2 - 220, H / 2 - 120, 440, 240, HUD.glassHot);
+    d.setFillStyle(accent);
+    d.fillRect(W / 2 - 200, H / 2 + 117, 400, 3);
+    if (winner) face(d, winner, index, W / 2, H / 2 - 58, 76);
     const headline = winner
       ? `${plates[index].name !== "" ? plates[index].name : `Player ${winner.number}`} wins!`
       : "Draw";
@@ -1249,39 +1362,40 @@ function drawHud(
       W / 2,
       H / 2 + 22,
       fitName(d, headline, 400, 44, "Bangers"),
-      winner ? SEAT_COLORS[index] : HUD.cream,
+      accent,
       "center",
     );
     text(
       d,
       winner
-        ? `${CHARACTERS[winner.species].name} takes the duel`
-        : state.finishReason,
+        ? `${CHARACTERS[winner.species].name.toUpperCase()} TAKES THE DUEL`
+        : state.finishReason.toUpperCase(),
       W / 2,
       H / 2 + 58,
-      "13px Archivo Black",
-      HUD.cream,
+      "11px Archivo Black",
+      HUD.dim,
       "center",
     );
     text(
       d,
       touch
-        ? "Tap to set up the rematch"
-        : "Click or press R to set up the rematch",
+        ? "TAP TO SET UP THE REMATCH"
+        : "CLICK OR PRESS R TO SET UP THE REMATCH",
       W / 2,
-      H / 2 + 88,
-      "12px Archivo Black",
+      H / 2 + 90,
+      "11px Archivo Black",
       HUD.gold,
       "center",
     );
     const b = menuButton(W);
-    panel(d, b.x, b.y, b.w, b.h, HUD.ink);
+    panel(d, b.x, b.y, b.w, b.h);
+    strokeRound(d, b.x, b.y, b.w, b.h, 10, "rgba(255,255,255,0.14)", 2);
     text(
       d,
       "MENU",
       b.x + b.w / 2,
       b.y + b.h / 2,
-      "16px Archivo Black",
+      "15px Archivo Black",
       HUD.cream,
       "center",
     );
@@ -1362,7 +1476,7 @@ export function drawBanner(
   d.setFillStyle("rgba(24,18,28,0.6)");
   d.fillRect(0, 0, W, H);
   const h = 90 + lines.length * 26;
-  panel(d, W / 2 - 300, H / 2 - h / 2, 600, h);
+  panel(d, W / 2 - 300, H / 2 - h / 2, 600, h, HUD.glassHot);
   text(
     d,
     title,
@@ -1402,5 +1516,5 @@ export function menuButton(W: number): {
   w: number;
   h: number;
 } {
-  return { x: W - 140, y: 76, w: 124, h: 48 };
+  return { x: W - 140, y: 96, w: 124, h: 48 };
 }

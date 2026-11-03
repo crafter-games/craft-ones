@@ -91,8 +91,8 @@ const PICK_MASK = AIM_SET | (((1 << 12) - 1) << PICK_SHIFT);
 const aimOf = (bits: number): number =>
   (((bits >> AIM_SHIFT) & (AIM_STEPS - 1)) / AIM_STEPS) * 2 * Math.PI - Math.PI;
 
-// The screen area below the HUD bar, which the camera frames.
-export const HUD_HEIGHT = 64;
+// The HUD floats over the map as glass cards, so the camera frames the whole screen.
+export const HUD_HEIGHT = 0;
 export const FRAME = {
   width: WINDOW.width,
   height: WINDOW.height - HUD_HEIGHT,
