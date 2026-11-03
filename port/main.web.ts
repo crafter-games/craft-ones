@@ -89,6 +89,27 @@ document.documentElement.style.setProperty(
   String(WINDOW.width / WINDOW.height),
 );
 
+// Draw2D has no clip, so the avatar is cut to a circle before it reaches the GPU.
+async function circleMask(png: Uint8Array): Promise<Uint8Array> {
+  const bitmap = await createImageBitmap(new Blob([png as BlobPart]));
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const g = canvas.getContext("2d");
+  if (!g) return png;
+  g.beginPath();
+  g.arc(
+    bitmap.width / 2,
+    bitmap.height / 2,
+    Math.min(bitmap.width, bitmap.height) / 2,
+    0,
+    Math.PI * 2,
+  );
+  g.clip();
+  g.drawImage(bitmap, 0, 0);
+  bitmap.close();
+  const out = await canvas.convertToBlob({ type: "image/png" });
+  return new Uint8Array(await out.arrayBuffer());
+}
+
 await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
   const draw = createDraw2D(gpu, WINDOW.width, WINDOW.height);
   const renderer = createRenderer(gpu, WINDOW);
@@ -160,6 +181,7 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
       // The CDN is reached through the game's own host (deploy/nginx.conf): an Activity may only call its proxy.
       const prefix = location.pathname.startsWith("/.proxy/") ? "/.proxy" : "";
       loadBytes(`${location.origin}${prefix}/cdn/${path}`)
+        .then(circleMask)
         .then((png) => gpu.createImage(png, true))
         .then((texture) => {
           // The seat may have changed player while this one loaded.

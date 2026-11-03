@@ -1,5 +1,4 @@
 // The dotframe CLI contract: dotframe sim, snap, replay, and desync drive a Craft Ones match through this module.
-import type { Gpu } from "dotframe/src/gpu";
 import { defineSim, type SimPlatform, type SimRun } from "dotframe/src/sim";
 import { COATS, SPECIES } from "../packages/shared/src";
 import {
@@ -18,7 +17,12 @@ import {
   view,
   WINDOW,
 } from "./src/match";
-import { createRenderer, loadArt, loadCritter } from "./src/render";
+import {
+  createRenderer,
+  type ImageLoader,
+  loadArt,
+  loadCritter,
+} from "./src/render";
 import {
   type MatchSnapshot,
   restoreMatch,
@@ -38,22 +42,21 @@ export default defineSim({
     let match: Match = createMatch(1);
     const draw = platform.draw;
     // Snap does not know the match options when it loads, so it loads every critter (about 4 MB).
-    const gpu = platform.gpu as Gpu;
-    const art =
-      platform.headless || !draw
-        ? null
-        : Promise.all([
-            loadArt(gpu, draw, platform.load, "."),
-            ...SPECIES.flatMap((species) =>
-              Object.keys(COATS).map((coat) =>
-                loadCritter(gpu, platform.load, ".", species, coat),
-              ),
-            ),
-          ]);
+    const image = platform.image;
+    const load = async (): Promise<void> => {
+      if (!draw || !image) return;
+      const gpu: ImageLoader = {
+        createImage: (png, smooth, mipmaps) => image(png, smooth, mipmaps),
+      };
+      await loadArt(gpu, draw, platform.load, ".");
+      for (const species of SPECIES)
+        for (const coat of Object.keys(COATS))
+          await loadCritter(gpu, platform.load, ".", species, coat);
+    };
     // Always built: desync renders through a stub Draw2D to prove rendering never changes the match.
     const renderer = createRenderer(platform.gpu, WINDOW);
     return {
-      ready: art ? art.then((): void => undefined) : Promise.resolve(),
+      ready: platform.headless ? Promise.resolve() : load(),
       start: (seed: number, options: Record<string, unknown>): void => {
         match = createMatch(seed, options as Partial<MatchOptions>);
       },
@@ -65,7 +68,14 @@ export default defineSim({
       restore: (saved: unknown): void => {
         restoreMatch(match, saved as MatchSnapshot);
       },
-      inspect: (): unknown => ({ view: view(match), angle: match.angle, charge: match.charge, camera: match.camera, fx: match.fx, kickoff: match.kickoff }),
+      inspect: (): unknown => ({
+        view: view(match),
+        angle: match.angle,
+        charge: match.charge,
+        camera: match.camera,
+        fx: match.fx,
+        kickoff: match.kickoff,
+      }),
       render: (d) => renderer.render(match, d),
     };
   },
