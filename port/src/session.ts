@@ -152,7 +152,7 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
   const syncPlates = (time: number): void => {
     const people = o.people;
     const slot = link ? link.relay.slot() : -1;
-    if (!people || !link || !rollback || slot < 0) {
+    if (!people || !link || slot < 0) {
       for (let seat = 0; seat < 2; seat++)
         if (plates[seat].id !== "") {
           plates[seat] = { id: "", name: "" };
@@ -310,6 +310,7 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
           seat.coat = rival.player.coat;
           if (slot === 1 && rival.map !== "") g.options.map = rival.map;
         }
+        syncPlates(time);
         if (!lobbyReady && setupInput.poll(g, W, H)) {
           lobbyReady = true;
           o.prepare(g.options);

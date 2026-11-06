@@ -12,8 +12,16 @@ import {
   WORLD_MAPS,
   WORLD_WIDTH,
 } from "../../packages/shared/src";
+import { avatarKey, plates } from "./identity";
 import { DEFAULT_OPTIONS, type MatchOptions } from "./match";
-import { art, fillRound, HUD, SEAT_COLORS, strokeRound } from "./render";
+import {
+  art,
+  avatar,
+  fillRound,
+  HUD,
+  SEAT_COLORS,
+  strokeRound,
+} from "./render";
 
 const COAT_IDS = Object.keys(COATS) as CoatId[];
 type Row =
@@ -368,12 +376,17 @@ export function renderSetup(
     fillRound(d, x - 150, 126, 300, 340, 12, HUD.glass);
     d.setFillStyle(color);
     d.fillRect(x - 130, 463, 260, 3);
+    // Online, the seat's Discord name and avatar replace "PLAYER n" once they are known.
+    const index = seat === "one" ? 0 : 1;
+    const name = plates[index].name;
+    const heading =
+      name === "" ? title : name.length > 16 ? `${name.slice(0, 15)}…` : name;
+    const face = name !== "" && art.textures.has(avatarKey(index));
+    if (face) avatar(d, index, x - 138, 132, 36, color);
     label(
       d,
-      setup.tags[seat === "one" ? 0 : 1] === ""
-        ? title
-        : `${title} · ${setup.tags[seat === "one" ? 0 : 1]}`,
-      x,
+      setup.tags[index] === "" ? heading : `${heading} · ${setup.tags[index]}`,
+      face ? x + 14 : x,
       150,
       "14px Archivo Black",
       color,
