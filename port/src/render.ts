@@ -891,7 +891,7 @@ function fitText(
 }
 
 // A seat's Discord avatar in a circular ring in the seat's color (main.web.ts masks the image to a circle).
-function avatar(
+export function avatar(
   d: Draw2D,
   seat: number,
   x: number,
