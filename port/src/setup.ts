@@ -141,6 +141,18 @@ export function tap(
     press(setup, x < band.x ? "left" : "right");
     return null;
   }
+  // Tapping the map preview cycles the map, as tapping a critter cycles it.
+  const ph = previewHeight();
+  if (
+    setup.editMap &&
+    Math.abs(x - W / 2) <= PREVIEW.w / 2 &&
+    y >= PREVIEW.y &&
+    y <= PREVIEW.y + ph
+  ) {
+    setup.row = ROWS.indexOf("map");
+    press(setup, "right");
+    return null;
+  }
   // Tapping a seat's critter cycles it too.
   for (const seat of SEATS)
     if (
@@ -152,6 +164,12 @@ export function tap(
       press(setup, "right");
     }
   return null;
+}
+
+// Puts the cursor on the first row this player can change, so a confirm key does not land on START at once.
+export function focusFirst(setup: Setup): void {
+  setup.row = ROWS.length - 1;
+  press(setup, "down");
 }
 
 const cycle = <T>(list: readonly T[], value: T, step: number): T =>

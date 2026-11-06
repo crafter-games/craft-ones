@@ -74,18 +74,28 @@ export async function startDiscord(): Promise<DiscordSession> {
     clearTimeout(timer);
   }
   const known = new Map<string, Person>();
+  // Who is in the instance right now, by id.
+  let present: string[] = [];
   let me = "";
   const remember = (list: Raw[]): void => {
     for (const u of list) known.set(u.id, person(u));
   };
-  // The participant list is Discord's own data about everyone in the instance.
-  sdk.commands
-    .getInstanceConnectedParticipants()
-    .then((r) => remember(r.participants))
-    .catch(() => undefined);
+  const participants = (list: Raw[]): void => {
+    remember(list);
+    present = list.map((u) => u.id);
+  };
+  // The participant list is Discord's own data about everyone in the instance. Asked again after sign-in, in case
+  // the client only answers an authenticated app.
+  const askParticipants = (): void => {
+    sdk.commands
+      .getInstanceConnectedParticipants()
+      .then((r) => participants(r.participants))
+      .catch((error) => console.warn("Discord participants failed", error));
+  };
+  askParticipants();
   sdk
     .subscribe(Events.ACTIVITY_INSTANCE_PARTICIPANTS_UPDATE, (e) =>
-      remember(e.participants),
+      participants(e.participants),
     )
     .catch(() => undefined);
   // Who this player is takes an OAuth round trip: authorize gives a code, the server (deploy/token.ts) trades it for
@@ -109,9 +119,17 @@ export async function startDiscord(): Promise<DiscordSession> {
     const auth = await sdk.commands.authenticate({ access_token });
     remember([auth.user]);
     me = auth.user.id;
+    askParticipants();
   })().catch((error) => console.warn("Discord sign-in failed", error));
   return {
     instanceId: sdk.instanceId,
-    people: { me: (): string => me, find: (u: string) => known.get(u) ?? null },
+    people: {
+      me: (): string => me,
+      find: (u: string) => known.get(u) ?? null,
+      rival: (): string => {
+        const others = present.filter((u) => u !== me);
+        return others.length === 1 ? others[0] : "";
+      },
+    },
   };
 }

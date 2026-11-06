@@ -21,6 +21,8 @@ export interface SetupInput {
   poll: (setup: Setup, W: number, H: number) => SetupChoice | null;
   // A key that went down this frame (Escape and the like, outside setup).
   tapped: (keys: number[]) => boolean;
+  // Forget presses already under way, so a screen that just opened only reacts to new ones.
+  reset: () => void;
 }
 
 export function createSetupInput(input: Input): SetupInput {
@@ -41,6 +43,14 @@ export function createSetupInput(input: Input): SetupInput {
   };
   return {
     tapped,
+    reset: (): void => {
+      held.clear();
+      for (const [, keys] of SETUP_KEYS)
+        for (const k of keys) if (input.down(k)) held.add(k);
+      if (input.down(Key.Escape)) held.add(Key.Escape);
+      fingerWas = input.touches().length > 0;
+      mouseWas = (input.pointer().buttons & 1) !== 0;
+    },
     poll: (setup: Setup, W: number, H: number): SetupChoice | null => {
       for (const [key, keys] of SETUP_KEYS)
         if (tapped(keys)) {

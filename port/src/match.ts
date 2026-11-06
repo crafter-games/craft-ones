@@ -352,9 +352,7 @@ export function step(match: Match, inputs: number[]): void {
     }
     if (bits & Bit.Fire) match.charge[seat] += 1;
     const shoot = (pressed & SHOOT) !== 0 && !charging;
-    // A full charge fires on its own, through the same path as a release.
-    const full = match.charge[seat] > 0 && power01(match.charge[seat]) >= 1;
-    if ((released & Bit.Fire && charging) || shoot || full) {
+    if ((released & Bit.Fire && charging) || shoot) {
       const power = shoot
         ? ((bits >> POWER_SHIFT) & POWER_STEPS) / POWER_STEPS
         : power01(match.charge[seat]);
@@ -388,8 +386,13 @@ export function step(match: Match, inputs: number[]): void {
   );
 }
 
+// Frames for the meter to go from empty to full.
+const CHARGE_FRAMES = Math.round(ARENA.chargeMs / STEP_MS);
+// The power meter while fire is held: it climbs to full and comes back down, over and over, so the player can
+// let go on the way up or on the way down.
 export function power01(frames: number): number {
-  return Math.min(1, (frames * STEP_MS) / ARENA.chargeMs);
+  const t = frames % (2 * CHARGE_FRAMES);
+  return t <= CHARGE_FRAMES ? t / CHARGE_FRAMES : 2 - t / CHARGE_FRAMES;
 }
 
 export function view(match: Match): BattleView {
