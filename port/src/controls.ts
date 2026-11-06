@@ -1,8 +1,17 @@
 // Keyboard, mouse and touch turned into one encoded input word, shared by the web and native entries. Aim follows
 // the pointer only after it moves, so the keyboard keeps aiming when the mouse sits still. A press on the hotbar
-// picks a slot instead of charging a shot.
+// picks a slot instead of shooting. Mouse and touch shoot with a slingshot (press, pull back, let go); F and Enter
+// charge with the swinging meter.
 import { type Input, Key, type Touch } from "dotframe/src/input";
-import { aimBits, Bit, type Match, seatOf, shootBits, slotBits } from "./match";
+import {
+  aimBits,
+  Bit,
+  type Match,
+  power01,
+  seatOf,
+  shootBits,
+  slotBits,
+} from "./match";
 import { hotbarSlots, menuButton, screenToWorld, touchButtons } from "./render";
 
 const BINDINGS: [number, number[]][] = [
@@ -27,6 +36,16 @@ const SLOT_KEYS = [
   Key.Digit7,
 ];
 
+// A slingshot being pulled, in logical pixels: from where the press landed to where the pointer is now.
+export interface Drag {
+  active: boolean;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  power: number;
+}
+
 // Pull length, in logical pixels, below which a slingshot does nothing and beyond which it is at full power.
 const DEAD_ZONE = 18;
 const FULL_PULL = 220;
@@ -36,8 +55,12 @@ export interface Controls {
   bits: (match: Match) => number;
   // True once a finger has touched the screen, so the renderer shows touch buttons.
   touched: () => boolean;
-  // The slingshot's pending power while a finger pulls, for the renderer's preview.
+  // The slingshot's pending power while a finger or the mouse pulls, for the renderer's preview.
   preview: () => number;
+  // The slingshot being pulled right now, for the drag line.
+  drag: () => Drag;
+  // The power of a seat's last shot from this device (-1 before the first), for the marker on the power bar.
+  last: (seat: number) => number;
   // Ignore the pointer until it lifts (call while a menu owns it, so the tap that starts a match does not shoot).
   disarm: () => void;
   // True once after the MENU button on the results card was tapped or clicked.
@@ -58,7 +81,6 @@ function inside(
 export function createControls(input: Input, W: number, H: number): Controls {
   let lastX = -1;
   let lastY = -1;
-  let charging = false;
   let touched = false;
   let slingId = -1;
   let slingX = 0;
@@ -66,6 +88,25 @@ export function createControls(input: Input, W: number, H: number): Controls {
   let slingAngle = 0;
   let slingPower = 0;
   let menuTapped = false;
+  // The mouse slingshot: pressed on the field, dragged back, released to shoot.
+  let mouseDown = false;
+  let mouseX = 0;
+  let mouseY = 0;
+  let mouseAngle = 0;
+  let mousePower = 0;
+  const pulled: Drag = {
+    active: false,
+    fromX: 0,
+    fromY: 0,
+    toX: 0,
+    toY: 0,
+    power: 0,
+  };
+  const lastPower = [-1, -1];
+  let keyFire = false;
+  // Power from a pull of `length` logical pixels.
+  const pullPower = (length: number): number =>
+    length < DEAD_ZONE ? 0 : Math.min(1, (length - DEAD_ZONE) / FULL_PULL);
   // The click or tap that started the match is still held on its first frames; ignore the pointer until it lifts.
   let armed = false;
   const slotAt = (px: number, py: number): number => {
@@ -90,6 +131,7 @@ export function createControls(input: Input, W: number, H: number): Controls {
       return down && !onMenu ? Bit.Restart : 0;
     }
     const seat = seatOf(match);
+    pulled.active = false;
     if (seat < 0 || seat >= match.battle.state.players.length) return 0;
     const player = match.battle.state.players[seat];
     const aimAt = (px: number, py: number): number => {
@@ -132,13 +174,19 @@ export function createControls(input: Input, W: number, H: number): Controls {
         const dy = slingY - sling.y * H;
         const length = Math.hypot(dx, dy); // dotframe-allow-math
         slingAngle = Math.atan2(dy, dx); // dotframe-allow-math
-        slingPower =
-          length < DEAD_ZONE
-            ? 0
-            : Math.min(1, (length - DEAD_ZONE) / FULL_PULL);
+        slingPower = pullPower(length);
         if (slingPower > 0) bits |= aimBits(slingAngle);
+        pulled.active = true;
+        pulled.fromX = slingX;
+        pulled.fromY = slingY;
+        pulled.toX = sling.x * W;
+        pulled.toY = sling.y * H;
+        pulled.power = slingPower;
       } else {
-        if (slingPower > 0) bits |= shootBits(slingAngle, slingPower);
+        if (slingPower > 0) {
+          bits |= shootBits(slingAngle, slingPower);
+          lastPower[seat] = slingPower;
+        }
         slingId = -1;
         slingPower = 0;
       }
@@ -150,18 +198,48 @@ export function createControls(input: Input, W: number, H: number): Controls {
     const px = p.x * W;
     const py = p.y * H;
     const held = (p.buttons & 1) !== 0;
-    if (!held) charging = false;
-    else if (!charging) {
+    // Mouse slingshot, like the finger: press on the field, pull back away from where the shot should go, and
+    // let go. The pull length is the power, so moving back toward the press lowers it; letting go inside the dead
+    // zone cancels.
+    if (held && !mouseDown) {
       const slot = slotAt(px, py);
       if (slot > 0) return slotBits(slot);
-      charging = true;
+      mouseDown = true;
+      mouseX = px;
+      mouseY = py;
+      mousePower = 0;
     }
+    if (mouseDown && held) {
+      const dx = mouseX - px;
+      const dy = mouseY - py;
+      mouseAngle = Math.atan2(dy, dx); // dotframe-allow-math
+      mousePower = pullPower(Math.hypot(dx, dy)); // dotframe-allow-math
+      if (mousePower > 0) bits |= aimBits(mouseAngle);
+      pulled.active = true;
+      pulled.fromX = mouseX;
+      pulled.fromY = mouseY;
+      pulled.toX = px;
+      pulled.toY = py;
+      pulled.power = mousePower;
+      lastX = px;
+      lastY = py;
+      return bits;
+    }
+    if (mouseDown) {
+      mouseDown = false;
+      if (mousePower > 0) {
+        bits |= shootBits(mouseAngle, mousePower);
+        lastPower[seat] = mousePower;
+      }
+      mousePower = 0;
+      return bits;
+    }
+    // Not pulling: the barrel follows the pointer once it moves.
     const moved = px !== lastX || py !== lastY;
     lastX = px;
     lastY = py;
     if (moved && px >= 0 && px <= W && py >= 0 && py <= H)
       bits |= aimAt(px, py);
-    if (charging) bits |= Bit.Fire | aimAt(px, py);
     return bits;
   };
   return {
@@ -171,13 +249,22 @@ export function createControls(input: Input, W: number, H: number): Controls {
         for (const k of keys) if (input.down(k)) bits |= bit;
       for (let i = 0; i < SLOT_KEYS.length; i++)
         if (input.down(SLOT_KEYS[i])) bits |= slotBits(i + 1);
+      // A keyboard charge (F or Enter) lets go: remember its power for the marker.
+      const fire = (bits & Bit.Fire) !== 0;
+      const seat = seatOf(match);
+      if (keyFire && !fire && seat >= 0 && match.charge[seat] > 0)
+        lastPower[seat] = power01(match.charge[seat]);
+      keyFire = fire;
       if (!armed)
         armed =
           input.touches().length === 0 && (input.pointer().buttons & 1) === 0;
       return armed ? bits | pointerBits(match) : bits;
     },
     touched: (): boolean => touched,
-    preview: (): number => slingPower,
+    preview: (): number => slingPower || mousePower,
+    drag: (): Drag => pulled,
+    last: (seat: number): number =>
+      seat >= 0 && seat < 2 ? lastPower[seat] : -1,
     disarm: (): void => {
       armed = false;
     },

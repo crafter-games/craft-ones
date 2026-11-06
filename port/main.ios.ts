@@ -48,8 +48,13 @@ export function init(base: string): void {
   session = createSession({
     input: platform.input,
     draw,
-    render: (m: Match, d, touched: boolean, preview: number): void =>
-      renderer.render(m, d, touched, preview),
+    render: (
+      m: Match,
+      d,
+      touched: boolean,
+      preview: number,
+      last: number,
+    ): void => renderer.render(m, d, touched, preview, last),
     speakers: (): Speakers | null => speakers,
     online: true,
     connect: (code: string): OnlineLink =>

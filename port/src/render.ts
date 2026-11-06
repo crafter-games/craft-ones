@@ -424,12 +424,14 @@ export function createRenderer(
   };
 
   // touch: draw the on-screen walk and jump buttons (a finger has touched the screen).
-  // preview: a touch slingshot's pending power (0-1), shown like a charge.
+  // preview: a slingshot's pending power (0-1), shown like a charge.
+  // last: the power of the current seat's previous shot (-1 for none), marked on the power bar.
   const render = (
     match: Match,
     d: Draw2D,
     touch = false,
     preview = 0,
+    last = -1,
   ): void => {
     const W = window.width;
     const H = window.height;
@@ -744,7 +746,7 @@ export function createRenderer(
       d.setGlobalAlpha(1);
     }
     d.restore();
-    drawHud(d, match, state, W, window.height, touch, preview);
+    drawHud(d, match, state, W, window.height, touch, preview, last);
   };
 
   return { render };
@@ -1010,6 +1012,7 @@ function drawHud(
   H: number,
   touch: boolean,
   preview: number,
+  last: number,
 ): void {
   const seat = seatOf(match);
   const card = 380;
@@ -1263,6 +1266,12 @@ function drawHud(
         "right",
       );
       meter(d, px + 16, cy + 42, side - 32, 10, charge, HUD.power);
+      if (last >= 0) {
+        // The previous shot's power, so the next one can be "a bit less than last time".
+        const mx = px + 16 + Math.max(0, Math.min(1, last)) * (side - 32);
+        d.setFillStyle(HUD.cream);
+        d.fillRect(mx - 1, cy + 37, 2, 20);
+      }
       const used = Math.abs(current.x - current.originX);
       const range = Math.max(0, Math.round(ARENA.moveBudget - used));
       panel(d, 16, cy, side, 66);
@@ -1497,6 +1506,40 @@ export function drawBanner(
       "center",
     );
   });
+}
+
+// The slingshot while it is pulled: a line from the press to the pointer, and the power beside the pointer.
+export function drawDrag(
+  d: Draw2D,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  power: number,
+): void {
+  d.save();
+  d.setGlobalAlpha(power > 0 ? 0.9 : 0.45);
+  d.setStrokeStyle(power > 0 ? HUD.power : HUD.cream);
+  d.setLineWidth(3);
+  d.beginPath();
+  d.moveTo(fromX, fromY);
+  d.lineTo(toX, toY);
+  d.stroke();
+  d.setFillStyle(HUD.cream);
+  d.beginPath();
+  d.arc(fromX, fromY, 5, 0, Math.PI * 2, false);
+  d.fill();
+  d.setGlobalAlpha(1);
+  d.setFont("22px Bangers");
+  d.setTextAlign("left");
+  d.setTextBaseline("middle");
+  d.setLineWidth(4);
+  d.setStrokeStyle(HUD.ink);
+  const label = `${Math.round(power * 100)}%`;
+  d.strokeText(label, toX + 16, toY - 16);
+  d.setFillStyle(power > 0 ? HUD.cream : HUD.dim);
+  d.fillText(label, toX + 16, toY - 16);
+  d.restore();
 }
 
 // Ping and rollback numbers in a corner during online play.
