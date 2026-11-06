@@ -1,7 +1,7 @@
 // Keyboard, mouse and touch turned into one encoded input word, shared by the web and native entries. Aim follows
 // the pointer only after it moves, so the keyboard keeps aiming when the mouse sits still. A press on the hotbar
 // picks a slot instead of shooting. Mouse and touch shoot with a slingshot (press, pull back, let go); F and Enter
-// charge with the swinging meter.
+// charge with the swinging meter. The "aim" scheme leaves the mouse to aiming and charges with Shift, F or Enter.
 import { type Input, Key, type Touch } from "dotframe/src/input";
 import {
   aimBits,
@@ -20,7 +20,7 @@ const BINDINGS: [number, number[]][] = [
   [Bit.Jump, [Key.Space, Key.W]],
   [Bit.AimUp, [Key.Up, Key.Q]],
   [Bit.AimDown, [Key.Down, Key.E]],
-  [Bit.Fire, [Key.F, Key.Enter]],
+  [Bit.Fire, [Key.F, Key.Enter, Key.ShiftLeft, Key.ShiftRight]],
   [Bit.Weapon, [Key.Tab, Key.X]],
   [Bit.Ability, [Key.C]],
   [Bit.Map, [Key.M]],
@@ -65,6 +65,9 @@ export interface Controls {
   disarm: () => void;
   // True once after the MENU button on the results card was tapped or clicked.
   menu: () => boolean;
+  // How the mouse plays: "sling" (press, pull back, let go) or "aim" (the pointer only aims; Shift, F or Enter
+  // charge). Touch is always a slingshot.
+  setScheme: (scheme: string) => void;
 }
 
 function inside(
@@ -104,6 +107,7 @@ export function createControls(input: Input, W: number, H: number): Controls {
   };
   const lastPower = [-1, -1];
   let keyFire = false;
+  let scheme = "sling";
   // Power from a pull of `length` logical pixels.
   const pullPower = (length: number): number =>
     length < DEAD_ZONE ? 0 : Math.min(1, (length - DEAD_ZONE) / FULL_PULL);
@@ -198,6 +202,19 @@ export function createControls(input: Input, W: number, H: number): Controls {
     const px = p.x * W;
     const py = p.y * H;
     const held = (p.buttons & 1) !== 0;
+    if (scheme === "aim") {
+      // The pointer aims, pressed or not; a click only picks hotbar slots.
+      if (held) {
+        const slot = slotAt(px, py);
+        if (slot > 0) return slotBits(slot);
+      }
+      const moved = px !== lastX || py !== lastY;
+      lastX = px;
+      lastY = py;
+      if ((moved || held) && px >= 0 && px <= W && py >= 0 && py <= H)
+        bits |= aimAt(px, py);
+      return bits;
+    }
     // Mouse slingshot, like the finger: press on the field, pull back away from where the shot should go, and
     // let go. The pull length is the power, so moving back toward the press lowers it; letting go inside the dead
     // zone cancels.
@@ -263,6 +280,11 @@ export function createControls(input: Input, W: number, H: number): Controls {
     touched: (): boolean => touched,
     preview: (): number => slingPower || mousePower,
     drag: (): Drag => pulled,
+    setScheme: (next: string): void => {
+      scheme = next === "aim" ? "aim" : "sling";
+      mouseDown = false;
+      mousePower = 0;
+    },
     last: (seat: number): number =>
       seat >= 0 && seat < 2 ? lastPower[seat] : -1,
     disarm: (): void => {

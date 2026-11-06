@@ -59,6 +59,8 @@ export interface Setup {
   tags: string[];
   // Replaces the START button while a pick is sent and the peer has not answered.
   waiting: string;
+  // This device's control scheme (controls.ts): "sling" or "aim". The chip under START switches it.
+  controls: string;
 }
 
 export type SetupKey = "up" | "down" | "left" | "right" | "confirm";
@@ -79,6 +81,7 @@ export function createSetup(
     startLabel: "START DUEL",
     tags: ["", ""],
     waiting: "",
+    controls: "sling",
   };
 }
 
@@ -125,6 +128,18 @@ function rowBands(W: number): { row: Row; x: number; y: number; w: number }[] {
   return bands;
 }
 
+// The control scheme chip under the buttons.
+const CHIP = { w: 340, h: 26 };
+const chipY = (H: number): number => H - 70;
+export const CONTROL_LABELS: Record<string, string> = {
+  sling: "CONTROLS: SLINGSHOT",
+  aim: "CONTROLS: MOUSE AIM + SHIFT",
+};
+const CONTROL_HINTS: Record<string, string> = {
+  sling: "Press on the field, pull back and let go · the pull is the power",
+  aim: "The mouse aims · hold Shift to charge, let go to fire",
+};
+
 export type SetupChoice = { mode: "local" | "online"; options: MatchOptions };
 
 // A tap or click at (x, y) in logical pixels: arrows change a row, the buttons start.
@@ -135,6 +150,14 @@ export function tap(
   W: number,
   H: number,
 ): SetupChoice | null {
+  if (
+    Math.abs(x - W / 2) <= CHIP.w / 2 &&
+    y >= chipY(H) &&
+    y <= chipY(H) + CHIP.h
+  ) {
+    setup.controls = setup.controls === "aim" ? "sling" : "aim";
+    return null;
+  }
   if (setup.waiting !== "") return null;
   for (const b of buttons(setup, W, H))
     if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h)
@@ -434,12 +457,34 @@ export function renderSetup(
   }
   if (setup.waiting !== "")
     label(d, setup.waiting, W / 2, H - 104, "20px Bangers", HUD.gold);
+  const cy = chipY(H);
+  const scheme = setup.controls === "aim" ? "aim" : "sling";
+  fillRound(
+    d,
+    W / 2 - CHIP.w / 2,
+    cy,
+    CHIP.w,
+    CHIP.h,
+    CHIP.h / 2,
+    HUD.glassHot,
+  );
+  strokeRound(
+    d,
+    W / 2 - CHIP.w / 2,
+    cy,
+    CHIP.w,
+    CHIP.h,
+    CHIP.h / 2,
+    "rgba(255,255,255,0.22)",
+    1,
+  );
   label(
     d,
-    "Tap the arrows to pick · Keyboard: Up / Down, Left / Right, Enter",
+    `<  ${CONTROL_LABELS[scheme]}  >`,
     W / 2,
-    H - 50,
+    cy + CHIP.h / 2,
     "11px Archivo Black",
-    HUD.dim,
+    HUD.cream,
   );
+  label(d, CONTROL_HINTS[scheme], W / 2, H - 30, "11px Archivo Black", HUD.dim);
 }
