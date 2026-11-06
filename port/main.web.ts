@@ -172,6 +172,21 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
     probe,
     prepare: (): void => undefined,
     people,
+    // The control scheme is this browser's own choice.
+    scheme: ((): string => {
+      try {
+        return localStorage.getItem("craft-ones:controls") ?? "sling";
+      } catch {
+        return "sling";
+      }
+    })(),
+    saveScheme: (scheme: string): void => {
+      try {
+        localStorage.setItem("craft-ones:controls", scheme);
+      } catch {
+        // Storage can be blocked (private windows, some embeds); the choice then lasts for this visit.
+      }
+    },
     avatar: (seat: number, path: string): void => {
       const key = avatarKey(seat);
       art.textures.delete(key);

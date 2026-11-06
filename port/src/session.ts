@@ -76,14 +76,31 @@ export interface SessionOptions {
   // gets the avatar's path on the Discord CDN for a seat ("" clears it). Names and avatars are drawn, never simulated.
   people: People | null;
   avatar: (seat: number, path: string) => void;
+  // This device's control scheme ("sling" or "aim") at launch, and where a change is kept.
+  scheme: string;
+  saveScheme: (scheme: string) => void;
 }
 
 export function createSession(o: SessionOptions): (time: number) => boolean {
   const draw = o.draw;
   const input = o.input;
   const setup = createSetup(o.setupOptions, o.online && !o.embedded);
+  setup.controls = o.scheme === "aim" ? "aim" : "sling";
   const setupInput = createSetupInput(input);
   const controls = createControls(input, WINDOW.width, WINDOW.height);
+  let scheme = o.scheme === "aim" ? "aim" : "sling";
+  controls.setScheme(scheme);
+  // Every setup-like screen shows this device's scheme; a change on any of them applies at once and is kept.
+  const schemeOn = (s: Setup): Setup => {
+    s.controls = scheme;
+    return s;
+  };
+  const schemeFrom = (s: Setup): void => {
+    if (s.controls === scheme) return;
+    scheme = s.controls === "aim" ? "aim" : "sling";
+    controls.setScheme(scheme);
+    o.saveScheme(scheme);
+  };
   let link = o.link;
   let pending = o.autoHost;
   let match: Match | null = null;
@@ -194,7 +211,7 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
     }
   };
   const openRematch = (m: Match): void => {
-    const s = createSetup(m.lineup, false);
+    const s = schemeOn(createSetup(m.lineup, false));
     const picker = mapPicker(m);
     s.title = "REMATCH";
     s.startLabel = "READY";
@@ -242,7 +259,8 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       }
     }
     if (!rematchReady && rematchArmed) {
-      const choice = setupInput.poll(s, WINDOW.width, WINDOW.height);
+      const choice = setupInput.poll(schemeOn(s), WINDOW.width, WINDOW.height);
+      schemeFrom(s);
       if (choice) {
         rematchReady = true;
         if (mine >= 0) s.waiting = "Waiting for your rival...";
@@ -299,7 +317,7 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
           g.tags = slot === 0 ? ["YOU", "RIVAL"] : ["RIVAL", "YOU"];
           focusFirst(g);
           setupInput.reset();
-          lobbyScreen = g;
+          lobbyScreen = schemeOn(g);
           lobbyReady = o.mashing;
           lobbySent = "";
         }
@@ -312,7 +330,9 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
           if (slot === 1 && rival.map !== "") g.options.map = rival.map;
         }
         syncPlates(time);
-        if (!lobbyReady && setupInput.poll(g, W, H)) {
+        const lobbyChoice = !lobbyReady && setupInput.poll(schemeOn(g), W, H);
+        if (!lobbyReady) schemeFrom(g);
+        if (lobbyChoice) {
           lobbyReady = true;
           o.prepare(g.options);
         }
@@ -408,7 +428,8 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
     }
     if (!match) {
       controls.disarm();
-      const choice = setupInput.poll(setup, W, H);
+      const choice = setupInput.poll(schemeOn(setup), W, H);
+      schemeFrom(setup);
       if (choice && (link || choice.mode === "online") && o.online) {
         // PLAY ONLINE: open a room and show its invite.
         if (!link) {
