@@ -5,13 +5,14 @@ import type { Draw2D } from "dotframe/src/draw2d";
 import { type Input, Key } from "dotframe/src/input";
 import { createRollback, NOBODY, type Rollback } from "dotframe/src/netplay";
 import type { Probe } from "dotframe/src/probe";
-import type { BattleView, PlayerOptions } from "../../packages/shared/src";
+import type { BattleView } from "../../packages/shared/src";
 import type { Speakers } from "./audio";
 import { createControls } from "./controls";
 import { avatarPath, displayName, type People, plates } from "./identity";
 import {
   Bit,
   checksum,
+  cloneOptions,
   createMatch,
   type Match,
   type MatchOptions,
@@ -27,7 +28,7 @@ import {
 } from "./match";
 import type { OnlineLink } from "./online";
 import { drawBanner, drawNetStats } from "./render";
-import { createSetup, press, renderSetup, type Setup } from "./setup";
+import { createSetup, focusFirst, renderSetup, type Setup } from "./setup";
 import { createSetupInput } from "./setupInput";
 import { restoreMatch, snapshotMatch } from "./snapshot";
 
@@ -94,10 +95,12 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
   let lastTime = -1;
   let frameMs = 0;
   let mapHeld = 0;
-  // The guest's own critter screen (online), and whether its pick went out.
-  let guest: Setup | null = null;
-  let guestPick: PlayerOptions | null = null;
-  let guestSentAt = -1;
+  // The online lobby once both players are in: each edits its own critter (and the host the map), sees the rival's
+  // picks live, and presses READY; the host starts the match when both are ready.
+  let lobbyScreen: Setup | null = null;
+  let lobbyReady = false;
+  let lobbySent = "";
+  let lobbySentAt = -1;
   // The rematch screen after a finished match: the same screen as setup, with this player's rows (and the map, for
   // the loser) editable. `ready` latches once this player confirmed.
   let rematch: Setup | null = null;
@@ -163,15 +166,27 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       link.relay.status() === "paired" &&
       time - whoSentAt >= 1
     ) {
-      link.relay.send({ t: "who", id: me });
+      const self = people.find(me);
+      link.relay.send({
+        t: "who",
+        id: me,
+        username: self?.username ?? "",
+        discriminator: self?.discriminator ?? "0",
+        avatar: self?.avatar ?? "",
+      });
       whoSentAt = time;
     }
-    const seats = [me, link.who()];
+    // The rival is who they say they are; before that arrives, the one other person in the Activity.
+    const sent = link.who();
+    const rivalId = sent !== "" ? sent : me !== "" ? people.rival() : "";
+    const seats = [me, rivalId];
     for (let n = 0; n < 2; n++) {
       const seat = n === 0 ? slot : 1 - slot;
       const id = seats[n];
       if (plates[seat].id === id) continue;
-      const person = id === "" ? null : people.find(id);
+      const told = n === 1 ? link.whoPerson() : null;
+      const person =
+        id === "" ? null : (people.find(id) ?? (told?.id === id ? told : null));
       if (id !== "" && !person) continue;
       plates[seat] = { id, name: person ? displayName(person) : "" };
       o.avatar(seat, person ? avatarPath(person) : "");
@@ -194,6 +209,8 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
           ? "You lost: pick the next map"
           : "Your rival lost: they pick the next map";
     } else s.subtitle = `Player ${picker + 1} lost and picks the next map`;
+    focusFirst(s);
+    setupInput.reset();
     rematch = s;
     rematchArmed = false;
     rematchReady = false;
@@ -264,46 +281,84 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       const slot = l.relay.slot();
       const start = l.start();
       const rival = l.pick();
-      if (slot === 1 && start) startOnline(l, start.seed, start.options);
-      else if (slot === 1 && status === "paired") {
-        // Guest: pick this seat's critter, send it to the host, wait for the host's match.
-        if (!guestPick && o.mashing) guestPick = o.setupOptions.two;
-        if (!guestPick) {
-          if (!guest) {
-            const g = createSetup(o.setupOptions, false);
-            g.editMap = false;
-            g.editOne = false;
-            g.title = "PICK YOUR CRITTER";
-            g.subtitle = "The host picks the map";
-            g.startLabel = "READY";
-            g.tags = ["HOST", "YOU"];
-            // Land on the first row this player can change.
-            press(g, "down");
-            guest = g;
-          }
-          const choice = setupInput.poll(guest, W, H);
-          if (choice) {
-            guestPick = choice.options.two;
-            guest.waiting = "Waiting for the host to start...";
-            o.prepare(choice.options);
-          }
-          renderSetup(guest, draw, W, H);
-        } else if (guest) renderSetup(guest, draw, W, H);
-        else
-          drawBanner(draw, W, H, "Online", [
-            "Waiting for the host to start the match",
-            `Room ${l.room}`,
-          ]);
-        // Until the host answers with the match, say it again: the first message can reach an empty room.
-        if (guestPick && time - guestSentAt >= 1) {
-          l.relay.send({
-            t: "pick",
-            species: guestPick.species,
-            coat: guestPick.coat,
-          });
-          guestSentAt = time;
+      if (slot === 1 && start) {
+        startOnline(l, start.seed, start.options);
+        lobbyScreen = null;
+      } else if (status === "paired" && slot >= 0) {
+        if (!lobbyScreen) {
+          const g = createSetup(
+            slot === 0 ? (pending ?? setup.options) : o.setupOptions,
+            false,
+          );
+          g.editMap = slot === 0;
+          g.editOne = slot === 0;
+          g.editTwo = slot === 1;
+          g.title = "PICK YOUR CRITTER";
+          g.startLabel = "READY";
+          g.tags = slot === 0 ? ["YOU", "RIVAL"] : ["RIVAL", "YOU"];
+          focusFirst(g);
+          setupInput.reset();
+          lobbyScreen = g;
+          lobbyReady = o.mashing;
+          lobbySent = "";
         }
-        return finish();
+        const g = lobbyScreen;
+        // The rival's critter (and, for the guest, the host's map) as they have it on screen right now.
+        if (rival) {
+          const seat = slot === 0 ? g.options.two : g.options.one;
+          seat.species = rival.player.species;
+          seat.coat = rival.player.coat;
+          if (slot === 1 && rival.map !== "") g.options.map = rival.map;
+        }
+        if (!lobbyReady && setupInput.poll(g, W, H)) {
+          lobbyReady = true;
+          o.prepare(g.options);
+        }
+        const hostPicks =
+          slot === 0 ? "You pick the map" : "The host picks the map";
+        g.subtitle =
+          rival?.ready && !lobbyReady ? "Your rival is ready" : hostPicks;
+        g.waiting = lobbyReady ? "Waiting for your rival..." : "";
+        // Every change goes out at once; the same pick again each second, since the first can reach an empty room.
+        const own = slot === 0 ? g.options.one : g.options.two;
+        const message = {
+          t: "pick",
+          species: own.species,
+          coat: own.coat,
+          map: slot === 0 ? g.options.map : "",
+          ready: lobbyReady,
+        };
+        const said = JSON.stringify(message);
+        if (said !== lobbySent || time - lobbySentAt >= 1) {
+          l.relay.send(message);
+          lobbySent = said;
+          lobbySentAt = time;
+        }
+        if (slot === 0 && lobbyReady && rival?.ready) {
+          // The host decides the match: its own critter and the map, the guest's critter as the guest picked it.
+          const seed = Math.floor(Math.random() * 0x1_0000_0000);
+          const options: MatchOptions = {
+            ...cloneOptions(g.options),
+            two: rival.player,
+          };
+          l.relay.send({ t: "start", seed, options });
+          startOnline(l, seed, options);
+          lobbyScreen = null;
+        } else {
+          renderSetup(g, draw, W, H);
+          return finish();
+        }
+      }
+      if (rollback) {
+        // The match just started.
+      } else if (lobbyScreen && slot === 0) {
+        // The rival left the lobbyScreen: wait for the next one with these picks.
+        pending = cloneOptions(lobbyScreen.options);
+        lobbyScreen = null;
+        lobbyReady = false;
+      }
+      if (rollback) {
+        // Fall through to the match below.
       } else if (slot === 1 || status === "connecting" || status === "closed") {
         drawBanner(
           draw,
@@ -320,12 +375,6 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
           ],
         );
         return finish();
-      } else if (pending && status === "paired" && rival) {
-        // The host decides the match: its own critter and the map, the guest's critter as the guest picked it.
-        const seed = Math.floor(Math.random() * 0x1_0000_0000);
-        const options: MatchOptions = { ...pending, two: rival };
-        l.relay.send({ t: "start", seed, options });
-        startOnline(l, seed, options);
       } else if (pending && setupInput.tapped([Key.Escape])) {
         // Nobody came: play hot-seat on this screen instead.
         l.relay.close();
@@ -339,30 +388,19 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
         if (down && !bannerDown && !o.embedded && status !== "paired")
           shared = o.share(o.invite(l.room), touching);
         bannerDown = down;
-        drawBanner(
-          draw,
-          W,
-          H,
-          status === "paired" ? "Your rival is picking" : "Waiting for a rival",
-          status === "paired"
-            ? [
-                "The match starts when they pick their critter",
-                "Esc plays hot-seat on this screen",
-              ]
-            : [
-                o.embedded
-                  ? "Ask a friend to join this Activity"
-                  : "Send this link to the other player:",
-                o.invite(l.room),
-                o.embedded
-                  ? "Esc plays hot-seat on this screen"
-                  : shared === "copied"
-                    ? "Link copied"
-                    : shared === "shared"
-                      ? "Link shared"
-                      : "Tap to share the link · Esc plays hot-seat",
-              ],
-        );
+        drawBanner(draw, W, H, "Waiting for a rival", [
+          o.embedded
+            ? "Ask a friend to join this Activity"
+            : "Send this link to the other player:",
+          o.invite(l.room),
+          o.embedded
+            ? "Esc plays hot-seat on this screen"
+            : shared === "copied"
+              ? "Link copied"
+              : shared === "shared"
+                ? "Link shared"
+                : "Tap to share the link · Esc plays hot-seat",
+        ]);
         return finish();
       }
     }

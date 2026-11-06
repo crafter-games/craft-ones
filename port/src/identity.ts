@@ -30,6 +30,8 @@ export interface Person {
 export interface People {
   me: () => string;
   find: (id: string) => Person | null;
+  // The only other person in the Activity, or "" when there is none or more than one.
+  rival: () => string;
 }
 
 // Usernames as Discord shows them: legacy accounts keep their tag.
@@ -62,5 +64,12 @@ export function stubPeople(spec: string, me: string): People {
         avatar: "",
       });
   }
-  return { me: (): string => me, find: (id: string) => known.get(id) ?? null };
+  return {
+    me: (): string => me,
+    find: (id: string) => known.get(id) ?? null,
+    rival: (): string => {
+      const others = [...known.keys()].filter((id) => id !== me);
+      return others.length === 1 ? others[0] : "";
+    },
+  };
 }

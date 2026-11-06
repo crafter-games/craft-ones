@@ -7,6 +7,7 @@ import {
   KICKOFF_FRAMES,
   mapPicker,
   pickBits,
+  power01,
   randomInput,
   restore,
   STEP_MS,
@@ -223,20 +224,23 @@ test("a slingshot shot fires in one frame with its own angle and power", () => {
   expect(match.battle.state.projectile.vy).toBeLessThan(0);
 });
 
-test("a held charge fires by itself when it reaches full power", () => {
+test("the power meter climbs to full, comes back down, and fires on release", () => {
   const match = createMatch(1);
   for (let i = 0; i <= KICKOFF_FRAMES; i++) step(match, [0, 0]);
   const seat = seatOf(match);
   const inputs = [0, 0];
   inputs[seat] = Bit.Fire;
   const full = Math.round(ARENA.chargeMs / STEP_MS);
-  let frames = 0;
-  while (match.battle.state.phase === "aiming" && frames < full * 2) {
-    step(match, inputs);
-    frames++;
-  }
+  const held = full + full / 2;
+  for (let i = 0; i < held; i++) step(match, inputs);
+  // Past full the shot is still in the hand, and the meter is on its way down.
+  expect(match.battle.state.phase).toBe("aiming");
+  expect(power01(full)).toBe(1);
+  expect(power01(match.charge[seat])).toBeCloseTo(0.5, 2);
+  expect(power01(2 * full)).toBe(0);
+  inputs[seat] = 0;
+  step(match, inputs);
   expect(match.battle.state.phase).toBe("flying");
-  expect(frames).toBe(full);
   expect(match.charge[seat]).toBe(0);
 });
 
