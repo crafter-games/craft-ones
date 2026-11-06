@@ -77,7 +77,7 @@ export function createSetup(
     editOne: true,
     editTwo: true,
     title: "CRAFT ONES",
-    subtitle: "Seven critters, six tools and a power, fifteen-second turns.",
+    subtitle: "Nine critters, six tools and a power, fifteen-second turns.",
     startLabel: "START DUEL",
     tags: ["", ""],
     waiting: "",

@@ -93,8 +93,7 @@ export const SPECIES = [
   "michi",
   "railly",
 ] as const;
-// Freddy and Michi remain implemented for licensed/private builds, but are not
-// offered by the public setup flow until their usage rights are confirmed.
+// The critters the setup screen offers, in order. New ones go at the end: rematch picks travel as indexes here.
 export const SELECTABLE_SPECIES: Species[] = [
   "cuy",
   "llama",
@@ -103,6 +102,8 @@ export const SELECTABLE_SPECIES: Species[] = [
   "puma",
   "alpaca",
   "railly",
+  "freddy",
+  "michi",
 ];
 export const EXCLUSIVE_SPECIES = ["freddy", "michi", "railly"] as const;
 export function isExclusive(species: Species) {
