@@ -27,7 +27,7 @@ import {
   WINDOW,
 } from "./match";
 import type { OnlineLink } from "./online";
-import { drawBanner, drawNetStats } from "./render";
+import { drawBanner, drawDrag, drawNetStats } from "./render";
 import { createSetup, focusFirst, renderSetup, type Setup } from "./setup";
 import { createSetupInput } from "./setupInput";
 import { restoreMatch, snapshotMatch } from "./snapshot";
@@ -45,6 +45,7 @@ export interface SessionOptions {
     draw: Draw2D,
     touched: boolean,
     preview: number,
+    last: number,
   ) => void;
   speakers: () => Speakers | null;
   // Whether PLAY ONLINE is offered, and how to open a room. Plain functions, never null: scriptc compiles a
@@ -485,7 +486,16 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       simulated += STEP;
     }
     if (simulated < time - STEP * 5) simulated = time;
-    o.render(m, draw, controls.touched(), controls.preview());
+    o.render(
+      m,
+      draw,
+      controls.touched(),
+      controls.preview(),
+      controls.last(seatOf(m)),
+    );
+    const pull = controls.drag();
+    if (pull.active && !over)
+      drawDrag(draw, pull.fromX, pull.fromY, pull.toX, pull.toY, pull.power);
     if (rematch) renderSetup(rematch, draw, W, H);
     const r = rollback;
     if (link && r) {
