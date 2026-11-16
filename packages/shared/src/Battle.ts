@@ -35,7 +35,7 @@ import {
   type Projectile,
 } from "./schema";
 import { carveCrater, type MapId, makeTerrain, terrainHeight } from "./terrain";
-import { eraseCircle, grounded } from "./terrainGrid";
+import { eraseCircle, grounded, respawnPoint } from "./terrainGrid";
 import {
   moveHorizontal,
   movementRoom,
@@ -150,6 +150,7 @@ function loadPlayer(player: Player, view: PlayerView) {
   player.x = view.x;
   player.y = view.y;
   player.hp = view.hp;
+  player.lives = view.lives;
   player.connected = view.connected;
   player.movementLeft = view.movementLeft;
   player.originX = view.originX;
@@ -424,6 +425,7 @@ export class Battle {
       player.selectedWeapon = "rocket";
       player.abilityArmed = false;
       player.hp = 100;
+      player.lives = ARENA.lives;
       player.vy = 0;
       player.vx = 0;
       player.abilityReadyTurn = 0;
@@ -484,7 +486,7 @@ export class Battle {
     }
     this.state.players[index].connected = false;
     if (this.state.phase === "finished") return;
-    if (this.finishIfEliminated()) return;
+    if (this.settleKnockouts()) return;
     const opponent = this.state.players.find(
       (player) => player.sessionId !== sessionId && player.connected,
     );
@@ -597,14 +599,12 @@ export class Battle {
     if (this.state.phase === "aiming") {
       if (now >= this.turnDeadline) this.nextTurn(now);
       else this.state.remainingMs = Math.ceil(this.turnDeadline - now);
-      this.finishIfEliminated();
+      // A fall during a turn costs a life; the turn passes once the critter is back.
+      if (this.knockouts() && !this.finishIfOut()) this.nextTurn(now);
       return;
     }
     if (this.state.phase === "exploding") {
-      if (
-        now + EPSILON >= this.explosionDeadline &&
-        !this.finishIfEliminated()
-      ) {
+      if (now + EPSILON >= this.explosionDeadline && !this.settleKnockouts()) {
         if (this.continueVolley(now)) return;
         if (
           this.state.terrainRows.length &&
@@ -624,7 +624,7 @@ export class Battle {
           now >= this.resolveDeadline + 2500)
       ) {
         if (this.landStrike(now)) return;
-        if (!this.finishIfEliminated() && !this.continueVolley(now))
+        if (!this.settleKnockouts() && !this.continueVolley(now))
           this.nextTurn(now);
       }
       return;
@@ -1018,14 +1018,62 @@ export class Battle {
     right.x = left.x + radius * 2;
   }
 
-  private finishIfEliminated() {
-    const alive = this.state.players.filter((player) => player.hp > 0);
-    if (alive.length === this.state.players.length) return false;
+  // Each knocked-out critter loses a life and, while it has lives left, comes back on what is left of the map.
+  // Returns true when that ended the match.
+  private settleKnockouts() {
+    if (!this.knockouts()) return false;
+    return this.finishIfOut();
+  }
+
+  private knockouts() {
+    let any = false;
+    for (const player of this.state.players) {
+      if (player.hp > 0) continue;
+      any = true;
+      player.lives = Math.max(0, player.lives - 1);
+      if (player.lives > 0) this.respawn(player);
+    }
+    return any;
+  }
+
+  private finishIfOut() {
+    const standing = this.state.players.filter((player) => player.lives > 0);
+    if (standing.length === this.state.players.length) return false;
     this.finish(
-      alive[0]?.sessionId ?? "",
-      alive.length === 0 ? "draw" : "elimination",
+      standing[0]?.sessionId ?? "",
+      standing.length === 0 ? "draw" : "elimination",
     );
     return true;
+  }
+
+  private respawn(player: Player) {
+    this.controlledMotion.delete(player);
+    if (this.volley?.sessionId === player.sessionId) this.volley = null;
+    player.hp = 100;
+    player.shield = 0;
+    player.strike = 0;
+    player.abilityArmed = false;
+    player.vx = 0;
+    player.vy = 0;
+    if (this.state.terrainRows.length) {
+      const spawn =
+        WORLD_MAPS[this.state.mapId as PlayableMapId]?.spawns[
+          player.number - 1
+        ];
+      const foe = this.state.players.find((p) => p !== player);
+      const at = respawnPoint(
+        this.state,
+        spawn ? spawn[0] : player.x,
+        foe && foe.hp > 0 ? foe.x : -1,
+      );
+      player.x = at.x;
+      player.y = at.y;
+    } else {
+      player.x = ARENA.width * (player.number === 1 ? 0.25 : 0.75);
+      player.y =
+        terrainHeight(this.state.terrain, player.x) - ARENA.playerRadius;
+    }
+    resetMovement(player);
   }
 
   private finish(winner: string, reason: string) {

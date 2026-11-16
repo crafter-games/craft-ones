@@ -316,6 +316,7 @@ test.each(NEW_MAP_IDS)(
     const { battle, tick, until } = fixture(id);
     const s = battle.state;
     const before = [...s.terrainRows];
+    for (const p of battle.state.players) p.lives = 1;
     const startY = s.players[0].y;
     expect(
       battle.fire("one", {

@@ -211,6 +211,7 @@ test("unsupported weapons, forged character fields and stale ability intents can
 test("a void fall eliminates a player and restart regenerates pristine terrain and cooldowns", () => {
   const { battle, tick } = fixture(),
     s = battle.state;
+  for (const p of battle.state.players) p.lives = 1;
   s.players[0].y = s.worldHeight + 80;
   tick();
   expect(s.phase).toBe("finished");

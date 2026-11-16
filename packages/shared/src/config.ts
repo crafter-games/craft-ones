@@ -15,6 +15,8 @@ export const ARENA = {
   moveIntervalMs: 80,
   terrainStep: 8,
   turnMs: 15_000,
+  // Knockouts a seat can take before it loses the match; the map keeps its craters between lives.
+  lives: 3,
   explosionMs: 650,
   maxFlightMs: 8_000,
   stepMs: 1000 / 60,

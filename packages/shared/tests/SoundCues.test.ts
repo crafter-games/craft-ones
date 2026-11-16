@@ -221,6 +221,7 @@ test("only the player waiting on the other seat hears someone else's turn", () =
 
 test("the end of the match sounds different on each side", () => {
   const f = fixture();
+  for (const p of f.battle.state.players) p.lives = 1;
   const s = f.battle.state;
   s.players[1].hp = 0;
   const winner = f.until(() => s.phase === "finished", "one");
@@ -231,6 +232,7 @@ test("the end of the match sounds different on each side", () => {
   expect(kinds(f.heard())).not.toContain("win");
 
   const g = fixture();
+  for (const p of g.battle.state.players) p.lives = 1;
   g.battle.state.players[1].hp = 0;
   const loser = g.until(() => g.battle.state.phase === "finished", "two");
   expect(kinds(loser)).toContain("lose");

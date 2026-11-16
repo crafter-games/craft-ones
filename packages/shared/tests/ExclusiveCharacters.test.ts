@@ -106,6 +106,7 @@ test.each([...guests])(
 
 test("Railly's volley stops on elimination and cannot leak into a rematch", () => {
   const { battle, tick } = fixture("railly");
+  for (const p of battle.state.players) p.lives = 1;
   const s = battle.state;
   s.players[1].hp = 1;
   s.players[1].x = s.players[0].x + 96;

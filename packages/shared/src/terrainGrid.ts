@@ -115,3 +115,28 @@ export function gridHit(
   }
   return Infinity;
 }
+
+/**
+ * Where a knocked-out critter comes back: the first standable surface, from the top, of the column nearest its
+ * spawn that still has ground and is clear of the foe. Craters stay, so the old spot may be gone.
+ */
+export function respawnPoint(
+  world: Geometry,
+  preferredX: number,
+  foeX: number,
+): { x: number; y: number } {
+  const radius = ARENA.playerRadius;
+  const stride = CELL * 2;
+  const limit = Math.ceil(world.worldWidth / stride);
+  for (let n = 0; n <= limit * 2; n++) {
+    const offset = (n % 2 === 0 ? 1 : -1) * Math.ceil(n / 2) * stride;
+    const x = preferredX + offset;
+    if (x < radius || x > world.worldWidth - radius) continue;
+    if (foeX >= 0 && Math.abs(x - foeX) < radius * 4) continue;
+    for (let y = radius; y < world.worldHeight - radius; y++) {
+      if (!bodyBlocked(world, x, y) && bodyBlocked(world, x, y + 1))
+        return { x, y };
+    }
+  }
+  return { x: preferredX, y: radius };
+}

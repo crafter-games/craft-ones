@@ -78,8 +78,10 @@ export function updateEffects(
     });
   }
   state.players.forEach((player, i) => {
-    const damage = (fx.hp[i] ?? 100) - player.hp;
-    if (damage !== 0)
+    const was = fx.hp[i] ?? 100;
+    const damage = was - player.hp;
+    // A respawn refills hp; it is not a heal to show.
+    if (damage !== 0 && was > 0)
       fx.popups.push({ x: player.x, y: player.y - 68, amount: damage, frame });
     fx.hp[i] = player.hp;
   });

@@ -45,6 +45,7 @@ import {
   drawMovePreview,
   drawShield,
 } from "./powers";
+import { replayCount } from "./replays";
 
 const PARTS = [
   "body",
@@ -1037,11 +1038,20 @@ function drawHud(
       plate !== "" ? plate : critter,
       tx,
       31,
-      220,
+      176,
       16,
       HUD.cream,
       align,
     );
+    // Lives at the far end of the name line: filled while left, hollow once lost.
+    for (let n = 0; n < ARENA.lives; n++) {
+      const step = ARENA.lives - 1 - n;
+      const cx = left ? tx + 224 - step * 16 : tx - 224 + step * 16;
+      d.beginPath();
+      d.arc(cx, 31, 5.5, 0, Math.PI * 2, false); // dotframe-allow-math
+      d.setFillStyle(n < p.lives ? color : HUD.track);
+      d.fill();
+    }
     if (plate !== "")
       text(d, critter, tx, 47, "10px Archivo Black", HUD.dim, align);
     const hp = Math.max(0, p.hp);
@@ -1344,7 +1354,7 @@ function drawHud(
     );
     text(
       d,
-      `${ARENA.turnMs / 1000}S TURNS · 100 HP`,
+      `${ARENA.turnMs / 1000}S TURNS · 100 HP · ${ARENA.lives} LIVES`,
       W / 2,
       H / 2 + 42,
       "11px Archivo Black",
@@ -1377,7 +1387,7 @@ function drawHud(
     text(
       d,
       winner
-        ? `${CHARACTERS[winner.species].name.toUpperCase()} TAKES THE DUEL`
+        ? `${CHARACTERS[winner.species].name.toUpperCase()} TAKES THE DUEL · ${ARENA.lives - (state.players.find((p) => p !== winner)?.lives ?? 0)} KOS`
         : state.finishReason.toUpperCase(),
       W / 2,
       H / 2 + 58,
@@ -1387,28 +1397,82 @@ function drawHud(
     );
     text(
       d,
-      touch
-        ? "TAP TO SET UP THE REMATCH"
-        : "CLICK OR PRESS R TO SET UP THE REMATCH",
+      replayMode.on
+        ? touch
+          ? "REPLAY OVER · TAP TO CLOSE"
+          : "REPLAY OVER · CLICK OR ESC TO CLOSE"
+        : touch
+          ? "TAP TO SET UP THE REMATCH"
+          : "CLICK OR PRESS R TO SET UP THE REMATCH",
       W / 2,
       H / 2 + 90,
       "11px Archivo Black",
       HUD.gold,
       "center",
     );
-    const b = menuButton(W);
-    panel(d, b.x, b.y, b.w, b.h);
-    strokeRound(d, b.x, b.y, b.w, b.h, 10, "rgba(255,255,255,0.14)", 2);
-    text(
-      d,
-      "MENU",
-      b.x + b.w / 2,
-      b.y + b.h / 2,
-      "15px Archivo Black",
-      HUD.cream,
-      "center",
-    );
+    if (!replayMode.on) {
+      drawButton(d, menuButton(W), "MENU");
+      if (replayCount() > 0)
+        drawButton(d, replayButton(W), touch ? "REPLAY" : "REPLAY · V");
+    }
   }
+}
+
+// Set by the session while a saved replay plays, so the results card offers no rematch inside it.
+export const replayMode = { on: false };
+
+function drawButton(
+  d: Draw2D,
+  b: { x: number; y: number; w: number; h: number },
+  label: string,
+): void {
+  panel(d, b.x, b.y, b.w, b.h);
+  strokeRound(d, b.x, b.y, b.w, b.h, 10, "rgba(255,255,255,0.14)", 2);
+  text(
+    d,
+    label,
+    b.x + b.w / 2,
+    b.y + b.h / 2,
+    "15px Archivo Black",
+    HUD.cream,
+    "center",
+  );
+}
+
+// The strip over a playing replay: which one of the saved matches, and how to move around.
+export function drawReplayBar(
+  d: Draw2D,
+  W: number,
+  index: number,
+  count: number,
+  fast: boolean,
+  touch: boolean,
+): void {
+  const line = touch
+    ? `REPLAY ${index + 1}/${count} · HOLD TO SPEED UP · TAP THE TAG TO CLOSE`
+    : `REPLAY ${index + 1}/${count} · Q/E OTHER MATCHES · ${fast ? "4X SPEED" : "HOLD SPACE OR CLICK TO SPEED UP"} · ESC CLOSE`;
+  d.setFont("12px Archivo Black");
+  const w = Math.min(W - 40, d.measureText(line).width + 40);
+  panel(d, W / 2 - w / 2, 168, w, 30, HUD.glassHot);
+  d.setFillStyle(HUD.danger);
+  d.fillRect(W / 2 - w / 2 + 10, 195, w - 20, 3);
+  fitText(d, line, W / 2, 183, w - 24, 12, HUD.cream, "center");
+  // The tag doubles as the close button on touch.
+  const b = replayButton(W);
+  panel(d, b.x + 136, b.y, b.w, b.h, HUD.glassHot);
+  d.beginPath();
+  d.arc(b.x + 136 + 30, b.y + b.h / 2, 6, 0, Math.PI * 2, false); // dotframe-allow-math
+  d.setFillStyle(HUD.danger);
+  d.fill();
+  text(
+    d,
+    "REPLAY",
+    b.x + 136 + b.w / 2 + 10,
+    b.y + b.h / 2,
+    "15px Archivo Black",
+    HUD.danger,
+    "center",
+  );
 }
 type Point = { x: number; y: number };
 
@@ -1553,6 +1617,36 @@ export function drawNetStats(
 }
 
 // The results card's way back to setup.
+// Bottom left of the setup screen, once a match has been played.
+export function setupReplaysButton(H: number): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} {
+  return { x: 16, y: H - 64, w: 200, h: 48 };
+}
+
+export function drawSetupReplays(
+  d: Draw2D,
+  H: number,
+  count: number,
+  touch: boolean,
+): void {
+  const label = touch ? `REPLAYS (${count})` : `REPLAYS (${count}) · V`;
+  drawButton(d, setupReplaysButton(H), label);
+}
+
+// Left of MENU on the results card.
+export function replayButton(W: number): {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} {
+  return { x: W - 296, y: 96, w: 148, h: 48 };
+}
+
 export function menuButton(W: number): {
   x: number;
   y: number;
