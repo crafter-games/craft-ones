@@ -186,6 +186,7 @@ test("Ronsoco shield survives turns, cannot stack and absorbs exactly 30 damage"
 test("shield does not prevent void death and is cleared on rematch", () => {
   const { battle, s, p, tick, until } = fixture("ronsoco");
   battle.ability("one", { turnNumber: 1 });
+  for (const p of battle.state.players) p.lives = 1;
   p.y = s.worldHeight + 80;
   tick();
   expect(p.hp).toBe(0);

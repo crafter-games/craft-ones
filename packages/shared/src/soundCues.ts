@@ -87,7 +87,8 @@ export function soundCues(
         amount: was.hp - player.hp,
         mine: mine(before.currentPlayer),
       });
-    if (player.hp > was.hp)
+    // Coming back from a knockout is not a heal.
+    if (player.hp > was.hp && was.hp > 0)
       cues.push({ kind: "heal", amount: player.hp - was.hp });
     if (player.jumps > was.jumps) cues.push({ kind: "jump" });
     if (

@@ -12,7 +12,13 @@ import {
   shootBits,
   slotBits,
 } from "./match";
-import { hotbarSlots, menuButton, screenToWorld, touchButtons } from "./render";
+import {
+  hotbarSlots,
+  menuButton,
+  replayButton,
+  screenToWorld,
+  touchButtons,
+} from "./render";
 
 const BINDINGS: [number, number[]][] = [
   [Bit.Left, [Key.Left, Key.A]],
@@ -65,6 +71,8 @@ export interface Controls {
   disarm: () => void;
   // True once after the MENU button on the results card was tapped or clicked.
   menu: () => boolean;
+  // True once after the REPLAY button on the results card was tapped or clicked.
+  replay: () => boolean;
   // How the mouse plays: "sling" (press, pull back, let go) or "aim" (the pointer only aims; Shift, F or Enter
   // charge). Touch is always a slingshot.
   setScheme: (scheme: string) => void;
@@ -91,6 +99,7 @@ export function createControls(input: Input, W: number, H: number): Controls {
   let slingAngle = 0;
   let slingPower = 0;
   let menuTapped = false;
+  let replayTapped = false;
   // The mouse slingshot: pressed on the field, dragged back, released to shoot.
   let mouseDown = false;
   let mouseX = 0;
@@ -131,8 +140,11 @@ export function createControls(input: Input, W: number, H: number): Controls {
       const y = (t.length > 0 ? t[0].y : p.y) * H;
       const b = menuButton(W);
       const onMenu = x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+      const r = replayButton(W);
+      const onReplay = x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
       if (down && onMenu) menuTapped = true;
-      return down && !onMenu ? Bit.Restart : 0;
+      if (down && onReplay) replayTapped = true;
+      return down && !onMenu && !onReplay ? Bit.Restart : 0;
     }
     const seat = seatOf(match);
     pulled.active = false;
@@ -293,6 +305,11 @@ export function createControls(input: Input, W: number, H: number): Controls {
     menu: (): boolean => {
       const tapped = menuTapped;
       menuTapped = false;
+      return tapped;
+    },
+    replay: (): boolean => {
+      const tapped = replayTapped;
+      replayTapped = false;
       return tapped;
     },
   };

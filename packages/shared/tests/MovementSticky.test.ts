@@ -161,6 +161,7 @@ test("sticky attaches to terrain, holds still until its fuse, then blasts once",
 
 test("sticky attachment follows a falling character and resets on rematch", () => {
   const { battle, tick } = fixture();
+  for (const p of battle.state.players) p.lives = 1;
   const s = battle.state,
     target = s.players[1];
   target.x = s.players[0].x + 48;

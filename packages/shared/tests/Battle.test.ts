@@ -307,6 +307,7 @@ describe("monotonic turn deadlines", () => {
         (player) => player.sessionId !== battle.state.currentPlayer,
       );
       if (!target) throw new Error("Missing target");
+      target.lives = 1;
       target.hp = 1;
       placeProjectile(battle, target.x, target.y);
       frames(1);
@@ -551,6 +552,7 @@ describe("explosion, damage and knockback", () => {
 
   test("a disconnect mid-explosion keeps the resolved elimination and freezes it", () => {
     const { battle, frames, advance } = setup();
+    for (const p of battle.state.players) p.lives = 1;
     const target = battle.state.players[1];
     target.hp = 5;
     placeProjectile(battle, target.x, target.y);
@@ -583,6 +585,7 @@ describe("explosion, damage and knockback", () => {
 
   test("lethal damage clamps HP to zero and ends after the explosion", () => {
     const { battle, frames, advance } = setup();
+    for (const p of battle.state.players) p.lives = 1;
     const target = battle.state.players[1];
     target.hp = 10;
     placeProjectile(battle, target.x, target.y);
@@ -598,6 +601,7 @@ describe("explosion, damage and knockback", () => {
 
   test("simultaneous lethal splash is a draw, including the shooter", () => {
     const { battle, frames, advance } = setup();
+    for (const p of battle.state.players) p.lives = 1;
     const [one, two] = battle.state.players;
     one.x = 400;
     two.x = 436;
@@ -614,6 +618,7 @@ describe("explosion, damage and knockback", () => {
 
   test("self-elimination awards the opponent", () => {
     const { battle, frames, advance } = setup();
+    for (const p of battle.state.players) p.lives = 1;
     const shooter = battle.state.players[0];
     shooter.hp = 1;
     placeProjectile(battle, shooter.x, shooter.y);

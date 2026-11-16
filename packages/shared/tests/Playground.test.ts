@@ -79,7 +79,7 @@ test.each(["andes", "coast"] as const)(
     const { battle, tick } = fixture(mapId);
     for (
       let frame = 0;
-      frame < 6000 && battle.state.phase !== "finished";
+      frame < 18000 && battle.state.phase !== "finished";
       frame++
     ) {
       if (battle.state.phase === "aiming") {

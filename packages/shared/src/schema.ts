@@ -46,6 +46,7 @@ export class Player {
   x = 0;
   y: number = ARENA.groundY - ARENA.playerRadius;
   hp = 100;
+  lives: number = ARENA.lives;
   connected = true;
   movementLeft: number = ARENA.moveBudget;
   originX = 0;
@@ -69,6 +70,7 @@ export class Player {
       x: this.x,
       y: this.y,
       hp: this.hp,
+      lives: this.lives,
       connected: this.connected,
       movementLeft: this.movementLeft,
       originX: this.originX,
@@ -189,6 +191,7 @@ export type PlayerView = Pick<
   | "x"
   | "y"
   | "hp"
+  | "lives"
   | "connected"
   | "movementLeft"
   | "originX"

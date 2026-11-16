@@ -374,7 +374,14 @@ export function step(match: Match, inputs: number[]): void {
   }
   match.previous = [inputs[0] ?? 0, inputs[1] ?? 0];
   match.elapsed += STEP_MS;
+  const lives = state.players.map((p) => p.lives);
   battle.step(STEP_MS);
+  if (state.phase !== "finished")
+    state.players.forEach((p, i) => {
+      if (p.lives >= lives[i]) return;
+      match.notice = `P${p.number} KNOCKED OUT · ${p.lives} ${p.lives === 1 ? "LIFE" : "LIVES"} LEFT`;
+      match.noticeUntil = match.frame + NOTICE_FRAMES;
+    });
   const after = view(match);
   updateEffects(match.fx, after, match.frame);
   updateCamera(
@@ -428,6 +435,7 @@ export function checksum(match: Match): number {
       .add(p.vx)
       .add(p.vy)
       .add(p.hp)
+      .add(p.lives)
       .add(p.shield)
       .add(p.jumps)
       .add(p.movementLeft)
@@ -486,6 +494,7 @@ export function summary(match: Match): unknown {
       id: p.sessionId,
       species: p.species,
       hp: p.hp,
+      lives: p.lives,
       x: Math.round(p.x),
       y: Math.round(p.y),
       weapon: p.abilityArmed ? "ability" : p.selectedWeapon,

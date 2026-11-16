@@ -14,6 +14,7 @@ import {
   checksum,
   cloneOptions,
   createMatch,
+  KICKOFF_FRAMES,
   type Match,
   type MatchOptions,
   mapPicker,
@@ -27,7 +28,24 @@ import {
   WINDOW,
 } from "./match";
 import type { OnlineLink } from "./online";
-import { drawBanner, drawDrag, drawNetStats } from "./render";
+import {
+  drawBanner,
+  drawDrag,
+  drawNetStats,
+  drawReplayBar,
+  drawSetupReplays,
+  replayButton,
+  replayMode,
+  setupReplaysButton,
+} from "./render";
+import {
+  advanceReplay,
+  openReplay,
+  recordReplay,
+  replayCount,
+  replayEnded,
+  type Viewer,
+} from "./replays";
 import { createSetup, focusFirst, renderSetup, type Setup } from "./setup";
 import { createSetupInput } from "./setupInput";
 import { restoreMatch, snapshotMatch } from "./snapshot";
@@ -126,10 +144,23 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
   let rematchReady = false;
   let seenRematches = 0;
   let whoSentAt = -1;
+  // Where the battle on screen starts in the match's input log, and whether its replay is saved yet.
+  let battleFrom = 0;
+  let saved = false;
+  // A saved replay playing over everything else; the live match (and the relay) keep running underneath.
+  let viewer: Viewer | null = null;
+  let viewerHeard: BattleView | null = null;
+  let viewerArmed = false;
+  let viewerClock = -1;
+  // The press that closed a replay is still down; the results card ignores the pointer until it lifts.
+  let pointerWait = false;
+  let setupPointerWas = false;
   const begin = (options: MatchOptions, seed: number): Match => {
     o.prepare(options);
     const m = createMatch(seed, options);
     match = m;
+    battleFrom = 0;
+    saved = false;
     seenRematches = 0;
     rematch = null;
     rematchReady = false;
@@ -288,6 +319,67 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
     draw.end({ r: 0, g: 0, b: 0 });
     return true;
   };
+  const watch = (index: number, time: number): void => {
+    viewer = openReplay(index);
+    viewerHeard = null;
+    viewerArmed = false;
+    viewerClock = time;
+    replayMode.on = true;
+    setupInput.reset();
+  };
+  const closeViewer = (): void => {
+    viewer = null;
+    replayMode.on = false;
+    pointerWait = true;
+    setupInput.reset();
+    controls.disarm();
+  };
+  // Plays the open replay at the display's pace (4x while held) and reads its keys. Returns false once closed.
+  const showReplay = (time: number, W: number, H: number): boolean => {
+    const v = viewer;
+    if (!v) return false;
+    const fingers = input.touches();
+    const p = input.pointer();
+    const down = fingers.length > 0 || (p.buttons & 1) !== 0;
+    if (!viewerArmed) viewerArmed = !down;
+    const px = (fingers.length > 0 ? fingers[0].x : p.x) * W;
+    const py = (fingers.length > 0 ? fingers[0].y : p.y) * H;
+    const b = replayButton(W);
+    const onTag =
+      px >= b.x + 136 && px <= b.x + 136 + b.w && py >= b.y && py <= b.y + b.h;
+    const pressed = viewerArmed && down;
+    if (pressed) viewerArmed = false;
+    if (
+      setupInput.tapped([Key.Escape]) ||
+      (pressed && (onTag || replayEnded(v)))
+    ) {
+      closeViewer();
+      return false;
+    }
+    const count = replayCount();
+    const back = setupInput.tapped([Key.Q, Key.Left]) && v.index > 0;
+    const next = setupInput.tapped([Key.E, Key.Right]) && v.index < count - 1;
+    if (back || next) {
+      watch(v.index + (back ? -1 : 1), time);
+      return showReplay(time, W, H);
+    }
+    const fast = input.down(Key.Space) || (down && !onTag && !replayEnded(v));
+    const speakers = o.speakers();
+    if (viewerClock < 0 || time - viewerClock > STEP * 5) viewerClock = time;
+    for (let n = 0; viewerClock + STEP <= time && n < 5; n++) {
+      for (let k = 0; k < (fast ? 4 : 1); k++) {
+        const listener = v.match.battle.state.currentPlayer;
+        advanceReplay(v);
+        const now = view(v.match);
+        if (speakers) speakers.hear(viewerHeard, now, listener);
+        viewerHeard = now;
+      }
+      viewerClock += STEP;
+    }
+    o.render(v.match, draw, fingers.length > 0, 0, -1);
+    drawReplayBar(draw, W, v.index, count, fast, fingers.length > 0);
+    return true;
+  };
 
   return (time: number): boolean => {
     draw.begin();
@@ -427,6 +519,23 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       }
     }
     if (!match) {
+      if (viewer && showReplay(time, W, H)) return finish();
+      if (replayCount() > 0) {
+        const fingers = input.touches();
+        const p = input.pointer();
+        const down = fingers.length > 0 || (p.buttons & 1) !== 0;
+        const px = (fingers.length > 0 ? fingers[0].x : p.x) * W;
+        const py = (fingers.length > 0 ? fingers[0].y : p.y) * H;
+        const b = setupReplaysButton(H);
+        const onButton =
+          px >= b.x && px <= b.x + b.w && py >= b.y && py <= b.y + b.h;
+        const clicked = down && !setupPointerWas && onButton;
+        setupPointerWas = down;
+        if (setupInput.tapped([Key.V]) || clicked) {
+          watch(replayCount() - 1, time);
+          return finish();
+        }
+      }
       controls.disarm();
       const choice = setupInput.poll(schemeOn(setup), W, H);
       schemeFrom(setup);
@@ -440,6 +549,8 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       } else if (choice)
         begin(choice.options, Math.floor(Math.random() * 0x1_0000_0000));
       renderSetup(setup, draw, W, H);
+      if (replayCount() > 0)
+        drawSetupReplays(draw, H, replayCount(), input.touches().length > 0);
       simulated = -1;
       return finish();
     }
@@ -449,13 +560,24 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       rematch = null;
       rematchReady = false;
     }
-    if (over) {
+    if (over && !saved) {
+      recordReplay(m, battleFrom);
+      saved = true;
+    }
+    if (over && !viewer && !rematch) {
+      if (setupInput.tapped([Key.V]) || controls.replay()) {
+        recordReplay(m, battleFrom);
+        watch(replayCount() - 1, time);
+      }
+    }
+    if (over && !viewer) {
       // Escape closes the rematch screen; without it, Escape or MENU goes back to setup (local play only; online,
       // rematches only).
       const esc = setupInput.tapped([Key.Escape]);
       if (rematch) {
         if (esc && !rematchReady) rematch = null;
       } else if (!link && (esc || controls.menu())) {
+        recordReplay(m, battleFrom);
         match = null;
         heard = null;
         return finish();
@@ -463,6 +585,9 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
     }
     if (m.rematches !== seenRematches) {
       seenRematches = m.rematches;
+      // The new battle began when its kickoff did; up to five steps ran since.
+      battleFrom = m.frame - (KICKOFF_FRAMES - m.kickoff);
+      saved = false;
       o.prepare(m.lineup);
     }
     syncPlates(time);
@@ -474,8 +599,13 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
     if (rollback && rollback.stats().ahead < -1) simulated -= STEP;
     const speakers = o.speakers();
     // Once the match is over the players' input is their rematch picks, not aim and buttons.
+    if (pointerWait)
+      pointerWait =
+        input.touches().length > 0 || (input.pointer().buttons & 1) !== 0;
     const lobby =
-      over && !o.mashing ? rematchWords(m, controls.bits(m)) : [0, 0];
+      over && !o.mashing && !viewer && !pointerWait
+        ? rematchWords(m, controls.bits(m))
+        : [0, 0];
     for (let n = 0; simulated + STEP <= time && n < 5; n++) {
       const bits = o.mashing ? o.masher() : over ? 0 : controls.bits(m);
       const seat = seatOf(m);
@@ -507,6 +637,7 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       simulated += STEP;
     }
     if (simulated < time - STEP * 5) simulated = time;
+    if (viewer && showReplay(time, W, H)) return finish();
     o.render(
       m,
       draw,
