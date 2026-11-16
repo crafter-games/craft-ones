@@ -46,6 +46,12 @@ const fromUrl: MatchOptions = {
     species: (params.get("species2") ?? DEFAULT_OPTIONS.two.species) as Species,
     coat: (params.get("coat2") ?? DEFAULT_OPTIONS.two.coat) as CoatId,
   },
+  // Rules: ?lives=1|3|5 and ?modes=tide,roulette,moon,bigBoom.
+  lives: Number(params.get("lives") ?? DEFAULT_OPTIONS.lives),
+  tide: (params.get("modes") ?? "").split(",").includes("tide"),
+  roulette: (params.get("modes") ?? "").split(",").includes("roulette"),
+  moon: (params.get("modes") ?? "").split(",").includes("moon"),
+  bigBoom: (params.get("modes") ?? "").split(",").includes("bigBoom"),
 };
 // Online: ?online creates a room, ?room=<code> joins one. ?relay= overrides the relay.
 // In Discord the room is the Activity instance.

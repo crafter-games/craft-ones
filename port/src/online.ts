@@ -28,6 +28,8 @@ export interface GameMessage {
   // "pick": the map the sender wants (host, or the loser in a rematch) and whether they confirmed.
   map?: string;
   ready?: boolean;
+  // "pick" from the host: the rules on its lobby screen, lives then modes as 0/1 (tide, roulette, moon, big boom).
+  rules?: number[];
 }
 
 // What the peer has on its lobby screen right now: its critter, the map it wants ("" when it does not pick the
@@ -36,6 +38,8 @@ export interface LobbyPick {
   player: PlayerOptions;
   map: PlayableMapId | "";
   ready: boolean;
+  // The host's rules, when the peer is the host: [lives, tide, roulette, moon, bigBoom].
+  rules: number[];
 }
 
 export interface StartMessage {
@@ -74,7 +78,14 @@ export function wrapLink(
         const player = { species: message.species, coat: message.coat };
         const map = PLAYABLE_MAP_IDS.find((id) => id === message.map) ?? "";
         if (validPlayerOptions(player))
-          pick = { player, map, ready: message.ready === true };
+          pick = {
+            player,
+            map,
+            ready: message.ready === true,
+            rules: Array.isArray(message.rules)
+              ? message.rules.filter((n) => typeof n === "number").slice(0, 5)
+              : [],
+          };
       } else if (message.t === "who" && message.id) {
         who = message.id;
         if (typeof message.username === "string" && message.username !== "")

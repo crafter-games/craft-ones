@@ -16,6 +16,7 @@ import {
   type ProjectileKind,
   shotTrajectory,
   terrainContours,
+  WEAPONS,
   WORLD_HEIGHT,
   WORLD_MAPS,
   WORLD_WIDTH,
@@ -84,6 +85,7 @@ function artImages(): { key: string; path: string }[] {
       key: `map-${id}`,
       path: WORLD_MAPS[id].background.replace(/\.svg$/, ""),
     });
+  list.push({ key: "condor-bird", path: "weapons/condor-bird" });
   for (const kind of Object.keys(PROJECTILES)) {
     list.push({ key: `weapon-${kind}`, path: `weapons/${kind}` });
     list.push({
@@ -485,6 +487,21 @@ export function createRenderer(
         terrain.width * TEXEL,
         terrain.height * TEXEL,
       );
+    // Tide: the water over everything below its line, with a rolling crest.
+    if (state.water < coverBottom) {
+      d.setFillStyle("rgba(58,128,176,0.62)");
+      d.fillRect(
+        coverLeft,
+        state.water,
+        coverRight - coverLeft,
+        coverBottom - state.water,
+      );
+      d.setFillStyle("rgba(214,240,250,0.75)");
+      for (let x = Math.floor(coverLeft / 24) * 24; x < coverRight; x += 24) {
+        const crest = Math.sin(x / 40 + match.frame / 14) * 3; // dotframe-allow-math
+        d.fillRect(x, state.water - 3 + crest, 16, 3);
+      }
+    }
 
     const seat = seatOf(match);
     const aiming = state.phase === "aiming";
@@ -619,7 +636,17 @@ export function createRenderer(
             ? "196,194,210"
             : shot.kind === "papa"
               ? "224,176,104"
-              : "255,245,216";
+              : shot.kind === "spit"
+                ? "214,240,200"
+                : shot.kind === "condor"
+                  ? "255,120,80"
+                  : shot.kind === "choclo" || shot.kind === "kernel"
+                    ? "250,224,120"
+                    : shot.kind === "totora"
+                      ? "214,200,120"
+                      : shot.kind === "drill"
+                        ? "150,138,124"
+                        : "255,245,216";
     const trail = match.fx.trail;
     trail.forEach((point, n) => {
       d.setFillStyle(
@@ -640,17 +667,21 @@ export function createRenderer(
       const size = WEAPON_ART[shot.kind as ProjectileKind]?.shotSize ?? [
         28, 22,
       ];
+      const bored = shot.kind === "drill" && shot.bounces > 0;
       const timed =
         shot.kind === "grenade" ||
         shot.kind === "dynamite" ||
-        shot.kind === "sticky";
+        shot.kind === "sticky" ||
+        bored;
       const spin =
         shot.kind === "shuriken" || shot.kind === "rift"
           ? shot.elapsedMs / (shot.kind === "shuriken" ? 70 : 400)
           : timed
             ? shot.stuck
               ? 0
-              : shot.elapsedMs / 180
+              : bored
+                ? Math.atan2(shot.vy, shot.vx) // dotframe-allow-math
+                : shot.elapsedMs / 180
             : Math.atan2(shot.vy, shot.vx); // dotframe-allow-math
       d.save();
       d.translate(shot.x, shot.y);
@@ -667,7 +698,10 @@ export function createRenderer(
       if (timed) {
         const fuse = Math.max(
           0,
-          (PROJECTILES[shot.kind as ProjectileKind].fuse - shot.elapsedMs) /
+          ((bored
+            ? shot.offsetX
+            : PROJECTILES[shot.kind as ProjectileKind].fuse) -
+            shot.elapsedMs) /
             1000,
         ).toFixed(1);
         d.setFont("16px Archivo Black");
@@ -679,6 +713,22 @@ export function createRenderer(
         d.setFillStyle("#fff4c8");
         d.fillText(`${fuse}s`, shot.x, shot.y - 29);
       }
+    }
+    // The condor glides over the marked column while its eggs fall.
+    if (shot.active && shot.kind === "egg" && shot.elapsedMs < 1400) {
+      const bird = art.textures.get("condor-bird");
+      if (bird)
+        d.drawImage(
+          bird,
+          0,
+          0,
+          bird.width,
+          bird.height,
+          shot.x - 140 + shot.elapsedMs * 0.22,
+          Math.max(top + 8, shot.y - 150),
+          120,
+          60,
+        );
     }
     // Bursts: an expanding ring and twenty sparks per explosion, as the web arena tweens them.
     for (const b of match.fx.bursts) {
@@ -692,7 +742,15 @@ export function createRenderer(
               ? ["#484954", "#b2b5cc", "#f0edf8"]
               : b.kind === "papa"
                 ? ["#6b4724", "#d8a85c", "#fff0c4"]
-                : ["#786362", "#ffb35f", "#ffedac"];
+                : b.kind === "spit"
+                  ? ["#8fb58a", "#d8f0c8", "#ffffff"]
+                  : b.kind === "totora"
+                    ? ["#7d8a3c", "#c9b45a", "#f3e6a4"]
+                    : b.kind === "choclo" || b.kind === "kernel"
+                      ? ["#c79a2e", "#f7d86a", "#fff8d8"]
+                      : b.kind === "condor"
+                        ? ["#9c3b2b", "#ff7a50", "#ffd4a8"]
+                        : ["#786362", "#ffb35f", "#ffedac"];
       const ease = (t: number): number => 1 - (1 - Math.min(1, t)) ** 3; // dotframe-allow-math
       if (age < 420) {
         const t = ease(age / 420);
@@ -935,13 +993,44 @@ function portrait(
       );
 }
 
-// Screen rectangles of hotbar slots 1-7, shared by drawing and pointer hit tests.
+// Keys for each hotbar slot: 1-9, 0 and minus for the tools, C for the power.
+const SLOT_LABELS = [
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "0",
+  "-",
+  "C",
+];
+
+// The modes a lineup plays with, for the kickoff card ("" for none).
+export function modeNames(o: {
+  tide: boolean;
+  roulette: boolean;
+  moon: boolean;
+  bigBoom: boolean;
+}): string {
+  const names: string[] = [];
+  if (o.tide) names.push("TIDE");
+  if (o.roulette) names.push("ROULETTE");
+  if (o.moon) names.push("MOON");
+  if (o.bigBoom) names.push("BIG BOOM");
+  return names.join(" · ");
+}
+
+// Screen rectangles of the hotbar slots, shared by drawing and pointer hit tests.
 export function hotbarSlots(
   W: number,
   H: number,
 ): { x: number; y: number; size: number }[] {
-  const size = 54;
-  const gap = 8;
+  const size = 42;
+  const gap = 5;
   const count = WEAPON_IDS.length + 1;
   const total = count * size + (count - 1) * gap + 14;
   const left = W / 2 - total / 2;
@@ -1044,8 +1133,8 @@ function drawHud(
       align,
     );
     // Lives at the far end of the name line: filled while left, hollow once lost.
-    for (let n = 0; n < ARENA.lives; n++) {
-      const step = ARENA.lives - 1 - n;
+    for (let n = 0; n < state.maxLives; n++) {
+      const step = state.maxLives - 1 - n;
       const cx = left ? tx + 224 - step * 16 : tx - 224 + step * 16;
       d.beginPath();
       d.arc(cx, 31, 5.5, 0, Math.PI * 2, false); // dotframe-allow-math
@@ -1231,12 +1320,22 @@ function drawHud(
       }
       text(
         d,
-        String(n + 1),
-        x + 6,
-        y + 9,
+        SLOT_LABELS[n] ?? "",
+        x + 5,
+        y + 8,
         "9px Archivo Black",
         selected ? HUD.gold : HUD.dim,
       );
+    }
+    // The selected tool's name and what it does, over the left end of the bar.
+    if (!current.abilityArmed) {
+      const spec = WEAPONS[current.selectedWeapon];
+      const lead = match.lineup.roulette ? "ROULETTE · " : "";
+      const label = `${lead}${spec.name.toUpperCase()} · ${spec.description}`;
+      d.setFont("10px Archivo Black");
+      const w = Math.min(W / 2 - 40, d.measureText(label).width + 20);
+      panel(d, slots[0].x - 10, y - 38, w, 22);
+      fitText(d, label, slots[0].x, y - 27, w - 20, 10, HUD.cream, "left");
     }
     // The power's name and state, over slot 7.
     if (hasAbility) {
@@ -1354,13 +1453,24 @@ function drawHud(
     );
     text(
       d,
-      `${ARENA.turnMs / 1000}S TURNS · 100 HP · ${ARENA.lives} LIVES`,
+      `${ARENA.turnMs / 1000}S TURNS · 100 HP · ${state.maxLives} ${state.maxLives === 1 ? "LIFE" : "LIVES"}`,
       W / 2,
       H / 2 + 42,
       "11px Archivo Black",
       HUD.cream,
       "center",
     );
+    const modes = modeNames(match.lineup);
+    if (modes !== "")
+      text(
+        d,
+        modes,
+        W / 2,
+        H / 2 + 57,
+        "11px Archivo Black",
+        HUD.gold,
+        "center",
+      );
   }
   if (state.phase === "finished") {
     const winner = state.players.find((p) => p.sessionId === state.winner);
@@ -1387,7 +1497,7 @@ function drawHud(
     text(
       d,
       winner
-        ? `${CHARACTERS[winner.species].name.toUpperCase()} TAKES THE DUEL · ${ARENA.lives - (state.players.find((p) => p !== winner)?.lives ?? 0)} KOS`
+        ? `${CHARACTERS[winner.species].name.toUpperCase()} TAKES THE DUEL · ${state.maxLives - (state.players.find((p) => p !== winner)?.lives ?? 0)} KOS`
         : state.finishReason.toUpperCase(),
       W / 2,
       H / 2 + 58,

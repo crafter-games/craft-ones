@@ -245,6 +245,8 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
     const s = schemeOn(createSetup(m.lineup, false));
     const picker = mapPicker(m);
     s.title = "REMATCH";
+    // Rules stay for the rematch: picks carry only map and critters.
+    s.editRules = false;
     s.startLabel = "READY";
     s.waiting = "";
     if (rollback && link) {
@@ -405,6 +407,7 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
           g.editOne = slot === 0;
           g.editTwo = slot === 1;
           g.title = "PICK YOUR CRITTER";
+          g.editRules = slot === 0;
           g.startLabel = "READY";
           g.tags = slot === 0 ? ["YOU", "RIVAL"] : ["RIVAL", "YOU"];
           focusFirst(g);
@@ -420,6 +423,14 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
           seat.species = rival.player.species;
           seat.coat = rival.player.coat;
           if (slot === 1 && rival.map !== "") g.options.map = rival.map;
+          // The guest sees the host's rules as the host sets them.
+          if (slot === 1 && rival.rules.length === 5) {
+            g.options.lives = rival.rules[0];
+            g.options.tide = rival.rules[1] === 1;
+            g.options.roulette = rival.rules[2] === 1;
+            g.options.moon = rival.rules[3] === 1;
+            g.options.bigBoom = rival.rules[4] === 1;
+          }
         }
         syncPlates(time);
         const lobbyChoice = !lobbyReady && setupInput.poll(schemeOn(g), W, H);
@@ -441,6 +452,16 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
           coat: own.coat,
           map: slot === 0 ? g.options.map : "",
           ready: lobbyReady,
+          rules:
+            slot === 0
+              ? [
+                  g.options.lives,
+                  g.options.tide ? 1 : 0,
+                  g.options.roulette ? 1 : 0,
+                  g.options.moon ? 1 : 0,
+                  g.options.bigBoom ? 1 : 0,
+                ]
+              : [],
         };
         const said = JSON.stringify(message);
         if (said !== lobbySent || time - lobbySentAt >= 1) {

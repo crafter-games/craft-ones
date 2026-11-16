@@ -147,6 +147,12 @@ export class BattleState {
   winner = "";
   finishReason = "";
   openingSeat = "host";
+  // Lives each seat started with (setup picks 1, 3 or 5).
+  maxLives: number = ARENA.lives;
+  // Tide mode: critters below this world y drown. Past the bottom of the world when the water is out.
+  water: number = ARENA.height + 1000;
+  // Gravity multiplier for critters and shots; under 1 on the moon.
+  gravity = 1;
 
   // Same key order as the Schema definition, so JSON snapshots and checksums are unchanged.
   toJSON(): BattleView {
@@ -172,6 +178,9 @@ export class BattleState {
       finishReason: this.finishReason,
       roundNumber: this.roundNumber,
       openingSeat: this.openingSeat,
+      maxLives: this.maxLives,
+      water: this.water,
+      gravity: this.gravity,
     };
   }
 }
@@ -235,4 +244,7 @@ export type BattleView = {
   finishReason: string;
   roundNumber: number;
   openingSeat: string;
+  maxLives: number;
+  water: number;
+  gravity: number;
 };

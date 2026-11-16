@@ -29,7 +29,9 @@ function fixture(species: (typeof guests)[number]) {
 
 test("exclusive guests are playable in either seat without adding public weapons", () => {
   expect(SPECIES).toHaveLength(9);
-  expect(Object.keys(WEAPONS)).toHaveLength(6);
+  expect(Object.keys(WEAPONS)).toHaveLength(11);
+  for (const power of ["rift", "meow", "shuriken", "papa", "egg", "kernel"])
+    expect(Object.keys(WEAPONS)).not.toContain(power);
   for (const species of guests) {
     expect(CHARACTERS[species].name.length).toBeGreaterThan(3);
     expect(validPlayerOptions({ species, coat: "cream" })).toBe(true);

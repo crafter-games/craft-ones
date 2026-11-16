@@ -1,7 +1,7 @@
 import { PROJECTILES, type ProjectileKind } from "./arsenal";
 import { advanceRocket, clamp } from "./ballistics";
 import { ARENA } from "./config";
-import { dcos, dsin, sq } from "./detmath";
+import { dcos, dhypot, dsin, sq } from "./detmath";
 import { bodiesHit, type HitBody } from "./hitbox";
 import type { PlayerView } from "./schema";
 import { type Geometry, gridHit, solidAt } from "./terrainGrid";
@@ -20,6 +20,14 @@ export type Shot = {
   offsetY: number;
 };
 export type Impact = "flying" | "blast" | "anchor" | "miss";
+
+// A drill bores through rock at this speed, then detonates DRILL_MS after it first bit in.
+const DRILL_SPEED = 240;
+export const DRILL_MS = 1400;
+// While boring, a drill keeps bounces at 1 and its detonation time in offsetX.
+export function drilling(shot: Shot) {
+  return shot.kind === "drill" && shot.bounces > 0;
+}
 
 export function launchShot(
   world: Geometry,
@@ -67,6 +75,26 @@ export function advanceShot(
     }
     return shot.elapsedMs + 0.001 >= spec.fuse ? "blast" : "flying";
   }
+  if (drilling(shot)) {
+    const dx = shot.vx * dt,
+      dy = shot.vy * dt;
+    const body = bodiesHit(bodies, shot.x, shot.y, dx, dy, shooter);
+    if (body.t <= 1) {
+      shot.x += dx * Math.max(0, body.t - 0.001);
+      shot.y += dy * Math.max(0, body.t - 0.001);
+      return "blast";
+    }
+    shot.x += dx;
+    shot.y += dy;
+    if (
+      shot.elapsedMs + 0.001 >= shot.offsetX ||
+      shot.x < 0 ||
+      shot.x > world.worldWidth ||
+      shot.y > world.worldHeight
+    )
+      return "blast";
+    return "flying";
+  }
   if (!world.terrainRows.length && shot.kind === "rocket") {
     // A plain Rocket, not the Shot itself: scriptc copies a record passed as a narrower type.
     const rocket = { x: shot.x, y: shot.y, vx: shot.vx, vy: shot.vy };
@@ -78,7 +106,8 @@ export function advanceShot(
     return hit ? "blast" : "flying";
   }
   const dx = shot.vx * dt + 0.5 * wind * sq(dt),
-    dy = shot.vy * dt + 0.5 * ARENA.gravity * spec.gravity * sq(dt);
+    gravity = ARENA.gravity * spec.gravity * (world.gravity ?? 1),
+    dy = shot.vy * dt + 0.5 * gravity * sq(dt);
   const terrain = gridHit(world, shot.x, shot.y, dx, dy);
   const body =
     shot.kind === "grapple" || spec.bounce
@@ -93,6 +122,15 @@ export function advanceShot(
     shot.vx += wind * dt * travel;
     if (shot.kind === "grapple")
       return shot.x <= 2 || shot.x >= world.worldWidth - 2 ? "miss" : "anchor";
+    if (shot.kind === "drill" && terrain < player) {
+      // Bite in: keep the heading, drop gravity and bore on.
+      const speed = Math.max(1, dhypot(shot.vx, shot.vy));
+      shot.vx = (shot.vx / speed) * DRILL_SPEED;
+      shot.vy = (shot.vy / speed) * DRILL_SPEED;
+      shot.bounces = 1;
+      shot.offsetX = shot.elapsedMs + DRILL_MS;
+      return "flying";
+    }
     if (shot.kind === "sticky") {
       shot.stuck = true;
       shot.vx = 0;
@@ -119,7 +157,7 @@ export function advanceShot(
     shot.x += dx;
     shot.y += dy;
     shot.vx += wind * dt;
-    shot.vy += ARENA.gravity * spec.gravity * dt;
+    shot.vy += gravity * dt;
   }
   if (
     shot.y > world.worldHeight + 80 ||

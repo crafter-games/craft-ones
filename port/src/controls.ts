@@ -40,6 +40,10 @@ const SLOT_KEYS = [
   Key.Digit5,
   Key.Digit6,
   Key.Digit7,
+  Key.Digit8,
+  Key.Digit9,
+  Key.Digit0,
+  Key.Minus,
 ];
 
 // A slingshot being pulled, in logical pixels: from where the press landed to where the pointer is now.

@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { ARENA, PROJECTILES, type SoundCue } from "../../packages/shared/src";
 import {
+  ABILITY_SLOT,
   aimBits,
   Bit,
   createMatch,
@@ -48,20 +49,12 @@ test("slot keys pick tools and the ability", () => {
   step(match, [slotBits(4), 0]);
   expect(match.battle.state.players[0].selectedWeapon).toBe("mortar");
   step(match, [0, 0]);
-  step(match, [slotBits(7), 0]);
+  step(match, [slotBits(ABILITY_SLOT), 0]);
   expect(match.battle.state.players[0].abilityArmed).toBe(true);
 });
 
 test("a finished match starts a fresh one once both seats are ready", () => {
-  const next = mash(3);
-  const match = createMatch(1);
-  let frames = 0;
-  while (match.battle.state.phase !== "finished" && frames++ < 30000)
-    step(match, [
-      randomInput(next) & ~Bit.Restart,
-      randomInput(next) & ~Bit.Restart,
-    ]);
-  expect(match.battle.state.phase).toBe("finished");
+  const match = finished(3);
   step(match, [0, 0]);
   step(match, [0, Bit.Restart]);
   expect(match.rematches).toBe(0);
@@ -80,9 +73,10 @@ test("a finished match starts a fresh one once both seats are ready", () => {
   ).toBe(1);
 });
 
+// One life each, so random seats finish quickly through inputs alone (save/restore replays the input log).
 function finished(seed: number): ReturnType<typeof createMatch> {
   const next = mash(seed);
-  const match = createMatch(1);
+  const match = createMatch(1, { lives: 1 });
   let frames = 0;
   while (match.battle.state.phase !== "finished" && frames++ < 30000)
     step(match, [

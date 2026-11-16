@@ -8,9 +8,11 @@ import {
   abilityNeedsAim,
   Battle,
   type BattleView,
+  BIG_BOOM,
   COATS,
   type CoatId,
   dcos,
+  MOON_GRAVITY,
   PLAYABLE_MAP_IDS,
   type PlayableMapId,
   type PlayerOptions,
@@ -45,10 +47,13 @@ export const Bit = {
   Map: 256,
   Restart: 512,
 };
-// Bits 10-12 carry a hotbar slot: 1-6 the weapons in order, 7 the ability, 0 none.
+// A hotbar slot takes four bits, 10-12 and 31: 1-11 the weapons in order, ABILITY_SLOT the power, 0 none.
 const SLOT_SHIFT = 10;
-export const slotBits = (slot: number): number => (slot & 7) << SLOT_SHIFT;
-const slotOf = (bits: number): number => (bits >> SLOT_SHIFT) & 7;
+export const ABILITY_SLOT = WEAPON_IDS.length + 1;
+export const slotBits = (slot: number): number =>
+  ((slot & 7) << SLOT_SHIFT) | ((slot & 8) << 28);
+const slotOf = (bits: number): number =>
+  ((bits >> SLOT_SHIFT) & 7) | ((bits >>> 28) & 8);
 // Bit 13 says bits 14-23 hold an absolute aim angle (pointer and touch aim), quantized to 1024 steps.
 const AIM_SET = 1 << 13;
 const AIM_SHIFT = 14;
@@ -114,7 +119,15 @@ export interface MatchOptions {
   // The /playground?lab toggles.
   infiniteHp: boolean;
   destructible: boolean;
+  // Rules picked in setup: lives per seat (1, 3 or 5) and the modes, which combine.
+  lives: number;
+  tide: boolean;
+  roulette: boolean;
+  moon: boolean;
+  bigBoom: boolean;
 }
+
+export const LIFE_CHOICES = [1, 3, 5];
 
 export const DEFAULT_OPTIONS: MatchOptions = {
   map: "andes",
@@ -123,6 +136,11 @@ export const DEFAULT_OPTIONS: MatchOptions = {
   opening: "host",
   infiniteHp: false,
   destructible: true,
+  lives: ARENA.lives,
+  tide: false,
+  roulette: false,
+  moon: false,
+  bigBoom: false,
 };
 
 export function cloneOptions(o: MatchOptions): MatchOptions {
@@ -133,6 +151,11 @@ export function cloneOptions(o: MatchOptions): MatchOptions {
     opening: o.opening,
     infiniteHp: o.infiniteHp,
     destructible: o.destructible,
+    lives: o.lives,
+    tide: o.tide,
+    roulette: o.roulette,
+    moon: o.moon,
+    bigBoom: o.bigBoom,
   };
 }
 
@@ -178,6 +201,13 @@ function newBattle(match: Match): void {
   );
   match.battle.destructible = options.destructible;
   match.battle.infiniteHp = options.infiniteHp;
+  match.battle.lives = LIFE_CHOICES.includes(options.lives)
+    ? options.lives
+    : ARENA.lives;
+  match.battle.tide = options.tide;
+  match.battle.roulette = options.roulette;
+  match.battle.blastScale = options.bigBoom ? BIG_BOOM : 1;
+  match.battle.state.gravity = options.moon ? MOON_GRAVITY : 1;
   match.battle.addPlayer("p1", options.one);
   match.battle.addPlayer("p2", options.two);
   match.angle = [-Math.PI / 4, (-3 * Math.PI) / 4];
@@ -336,7 +366,7 @@ export function step(match: Match, inputs: number[]): void {
           match,
           battle.select(id, { selection: WEAPON_IDS[slot - 1], turnNumber }),
         );
-      if (pressed & Bit.Ability || slot === 7) {
+      if (pressed & Bit.Ability || slot === ABILITY_SLOT) {
         const aimDirection = dcos(match.angle[seat]) >= 0 ? 1 : -1;
         if (abilityNeedsAim(player.species)) {
           const selection = player.abilityArmed
@@ -421,7 +451,10 @@ export function checksum(match: Match): number {
     .add(state.turnNumber)
     .add(state.roundNumber)
     .add(state.remainingMs)
-    .add(state.waitingRemainingMs);
+    .add(state.waitingRemainingMs)
+    .add(state.maxLives)
+    .add(state.water)
+    .add(state.gravity);
   text(state.phase);
   text(state.currentPlayer);
   text(state.winner);
@@ -555,7 +588,7 @@ export function randomInput(next: () => number): number {
   else if (r < 0.3) bits |= Bit.Right;
   if (next() < 0.25) bits |= next() < 0.5 ? Bit.AimUp : Bit.AimDown;
   if (next() < 0.03) bits |= Bit.Jump;
-  if (next() < 0.04) bits |= slotBits(1 + Math.floor(next() * 7));
+  if (next() < 0.04) bits |= slotBits(1 + Math.floor(next() * ABILITY_SLOT));
   if (next() < 0.02) bits |= Bit.Restart;
   return bits;
 }
