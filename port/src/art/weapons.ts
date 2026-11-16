@@ -12,6 +12,13 @@ export const WEAPON_ART = {
   dynamite: { backGrip: [-3, 7], frontGrip: [12, 7], shotSize: [27, 23] },
   grapple: { backGrip: [-7, 8], frontGrip: [10, 7], shotSize: [28, 22] },
   papa: { backGrip: [0, 7], frontGrip: [0, 9], shotSize: [38, 30] },
+  choclo: { backGrip: [-3, 8], frontGrip: [8, 8], shotSize: [34, 24] },
+  kernel: { backGrip: [0, 6], frontGrip: [0, 8], shotSize: [24, 21] },
+  condor: { backGrip: [-3, 8], frontGrip: [9, 8], shotSize: [28, 18] },
+  egg: { backGrip: [0, 6], frontGrip: [0, 8], shotSize: [24, 28] },
+  drill: { backGrip: [-3, 8], frontGrip: [10, 8], shotSize: [32, 18] },
+  spit: { backGrip: [-2, 8], frontGrip: [8, 8], shotSize: [26, 18] },
+  totora: { backGrip: [-3, 8], frontGrip: [9, 8], shotSize: [34, 18] },
 } as const;
 /** Original toy-like silhouettes, flat shadow planes and warm metal highlights. */
 export function weaponMarkup(kind: ProjectileKind, projectile = false): string {

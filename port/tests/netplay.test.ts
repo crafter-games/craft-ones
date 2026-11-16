@@ -154,3 +154,44 @@ test("on a 2-second round trip the seat with the turn never waits, and both peer
   expect(checksum(peers[0].match)).toBe(checksum(peers[1].match));
   expect(peers[0].match.log).toEqual(peers[1].match.log);
 }, 60000);
+
+test("with every mode on, a restore from any frame re-simulates to the same checksums", () => {
+  const options = {
+    map: "andes" as const,
+    roulette: true,
+    tide: true,
+    moon: true,
+    bigBoom: true,
+    lives: 5,
+  };
+  const next = rng(4);
+  const inputs: number[][] = [];
+  for (let f = 0; f < 9000; f++)
+    inputs.push([randomInput(next) & ~512, randomInput(next) & ~512]);
+  const direct = createMatch(4, options);
+  const sums: number[] = [];
+  const kinds = new Set<string>();
+  for (const frame of inputs) {
+    step(direct, frame);
+    sums.push(checksum(direct));
+    if (direct.battle.state.projectile.active)
+      kinds.add(direct.battle.state.projectile.kind);
+  }
+  // The run has to go through the new tools for the check to mean anything.
+  for (const kind of ["egg", "kernel", "drill"]) expect(kinds).toContain(kind);
+  // Rewind every 97 frames, a few frames back, the way a misprediction does.
+  const match = createMatch(4, options);
+  const saves = new Map<number, ReturnType<typeof snapshotMatch>>();
+  for (let f = 0; f < inputs.length; f++) {
+    saves.set(f, snapshotMatch(match));
+    step(match, inputs[f]);
+    if (f % 97 === 96 && f > 20) {
+      const back = f - 17;
+      const snap = saves.get(back);
+      if (!snap) throw new Error("missing save");
+      restoreMatch(match, snap);
+      for (let g = back; g <= f; g++) step(match, inputs[g]);
+    }
+    expect(checksum(match)).toBe(sums[f]);
+  }
+});

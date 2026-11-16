@@ -85,6 +85,49 @@ function fire(weapon: string): Op[] {
         tone({ from: 900, to: 1800, type: "square", decay: 0.12, gain: 0.08 }),
         hiss({ decay: 0.18, from: 1800, to: 600, gain: 0.06, q: 6 }),
       ];
+    case "condor":
+      // A high falling cry.
+      return [
+        tone({
+          from: 1800,
+          to: 1100,
+          type: "triangle",
+          decay: 0.22,
+          gain: 0.1,
+        }),
+        tone({ from: 1500, to: 900, decay: 0.18, gain: 0.06, delay: 0.12 }),
+      ];
+    case "egg":
+      return [
+        tone({ from: 1400, to: 500, decay: 0.35, gain: 0.07 }),
+        hiss({ decay: 0.2, from: 2400, to: 1200, gain: 0.04, q: 4 }),
+      ];
+    case "drill":
+      return [
+        tone({ from: 110, to: 220, type: "sawtooth", decay: 0.3, gain: 0.12 }),
+        hiss({ decay: 0.3, from: 1200, to: 2400, gain: 0.06, q: 3 }),
+      ];
+    case "spit":
+      return [
+        hiss({ decay: 0.12, from: 2600, to: 700, gain: 0.16, q: 1.2 }),
+        tone({ from: 520, to: 260, type: "triangle", decay: 0.08, gain: 0.08 }),
+      ];
+    case "totora":
+      return [
+        hiss({ decay: 0.18, from: 900, to: 400, gain: 0.1, q: 0.8 }),
+        tone({ from: 260, to: 200, type: "triangle", decay: 0.12, gain: 0.08 }),
+      ];
+    case "choclo":
+      return [
+        tone({ from: 330, to: 180, type: "triangle", decay: 0.14, gain: 0.14 }),
+        hiss({ decay: 0.1, from: 800, to: 300, gain: 0.07 }),
+      ];
+    case "kernel":
+      // Popcorn.
+      return [
+        tone({ from: 900, to: 1500, type: "square", decay: 0.04, gain: 0.08 }),
+        hiss({ decay: 0.05, from: 3000, to: 1500, gain: 0.06, q: 2 }),
+      ];
     case "sticky":
       return [
         tone({ from: 300, to: 140, decay: 0.16, gain: 0.16 }),

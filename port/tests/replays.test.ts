@@ -60,7 +60,7 @@ test("a saved replay ends on the exact state the match finished in", () => {
 
 test("a rematch is its own replay, starting at its kickoff", () => {
   const match = createMatch(11);
-  const next = mash(5);
+  const next = mash(6);
   playOut(match, next);
   const first = replayCount();
   recordReplay(match, 0);

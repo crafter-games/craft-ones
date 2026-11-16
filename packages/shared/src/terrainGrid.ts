@@ -10,6 +10,8 @@ export type Geometry = {
   terrainRows: string[];
   /** Horizontal projectile acceleration in world units per second squared. */
   wind?: number;
+  /** Gravity multiplier; 1 when absent. */
+  gravity?: number;
 };
 
 /** Compact replicated occupancy rows support islands, caves and circular holes. */
@@ -124,6 +126,8 @@ export function respawnPoint(
   world: Geometry,
   preferredX: number,
   foeX: number,
+  // Deepest standing y allowed (above the tide).
+  maxY: number = world.worldHeight,
 ): { x: number; y: number } {
   const radius = ARENA.playerRadius;
   const stride = CELL * 2;
@@ -133,10 +137,55 @@ export function respawnPoint(
     const x = preferredX + offset;
     if (x < radius || x > world.worldWidth - radius) continue;
     if (foeX >= 0 && Math.abs(x - foeX) < radius * 4) continue;
-    for (let y = radius; y < world.worldHeight - radius; y++) {
+    for (let y = radius; y < Math.min(maxY, world.worldHeight - radius); y++) {
       if (!bodyBlocked(world, x, y) && bodyBlocked(world, x, y + 1))
         return { x, y };
     }
   }
   return { x: preferredX, y: radius };
+}
+
+/**
+ * Fills a reed slab centered on (x, y): rows of cells, leaving out any cell a critter overlaps so nobody is
+ * buried. Returns whether any cell changed.
+ */
+export function buildSlab(
+  rows: string[],
+  x: number,
+  y: number,
+  halfWidth: number,
+  halfHeight: number,
+  bodies: { x: number; y: number }[],
+): boolean {
+  let changed = false;
+  const clear = ARENA.playerRadius + CELL;
+  for (
+    let row = Math.max(0, Math.floor((y - halfHeight) / CELL));
+    row <= Math.min(rows.length - 1, Math.floor((y + halfHeight) / CELL));
+    row++
+  ) {
+    const cells = rows[row].split("");
+    let rowChanged = false;
+    for (
+      let col = Math.max(0, Math.floor((x - halfWidth) / CELL));
+      col <= Math.min(cells.length - 1, Math.floor((x + halfWidth) / CELL));
+      col++
+    ) {
+      if (cells[col] === "1") continue;
+      const cx = (col + 0.5) * CELL;
+      const cy = (row + 0.5) * CELL;
+      let free = true;
+      for (const body of bodies)
+        if (Math.abs(body.x - cx) < clear && Math.abs(body.y - cy) < clear)
+          free = false;
+      if (!free) continue;
+      cells[col] = "1";
+      rowChanged = true;
+    }
+    if (rowChanged) {
+      rows[row] = cells.join("");
+      changed = true;
+    }
+  }
+  return changed;
 }

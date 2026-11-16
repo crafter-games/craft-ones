@@ -2,8 +2,12 @@ import {
   ABILITY_STRIKES,
   abilityNeedsAim,
   abilityProjectile,
+  blastMsOf,
   isWeapon,
+  knockbackOf,
   PROJECTILES,
+  type ProjectileKind,
+  ROULETTE_WEAPONS,
   type StrikeKind,
   volleySpread,
   WEAPONS,
@@ -17,7 +21,7 @@ import {
   worldMove,
 } from "./battleActions";
 import { ARENA } from "./config";
-import { dcos, dhypot } from "./detmath";
+import { dcos, dhypot, dsin } from "./detmath";
 import { distanceToBody } from "./hitbox";
 import {
   isOpeningSeat,
@@ -25,7 +29,7 @@ import {
   resolveOpeningIndex,
 } from "./matchOptions";
 import { settlePlayers } from "./playerMotion";
-import { advanceShot, launchShot, type Shot } from "./projectiles";
+import { advanceShot, drilling, launchShot, type Shot } from "./projectiles";
 import {
   BattleState,
   type BattleView,
@@ -35,7 +39,7 @@ import {
   type Projectile,
 } from "./schema";
 import { carveCrater, type MapId, makeTerrain, terrainHeight } from "./terrain";
-import { eraseCircle, grounded, respawnPoint } from "./terrainGrid";
+import { buildSlab, eraseCircle, grounded, respawnPoint } from "./terrainGrid";
 import {
   moveHorizontal,
   movementRoom,
@@ -52,6 +56,11 @@ import {
 } from "./worlds";
 
 const MAX_CATCH_UP_STEPS = 6;
+// Tide mode: the water starts rising on this round, this much per round, and stops at this share of the world.
+export const TIDE = { round: 8, step: 32, floor: 0.42 } as const;
+// Moon mode's gravity and Big Boom's blast and crater scale.
+export const MOON_GRAVITY = 0.45;
+export const BIG_BOOM = 1.6;
 
 function shotOf(projectile: Projectile): Shot {
   return {
@@ -134,6 +143,13 @@ export type BattleSnapshot = {
   openingIndex: number;
   matchOriginTurn: number;
   windSeed: number;
+  lives: number;
+  tide: boolean;
+  roulette: boolean;
+  blastScale: number;
+  // Queued follow-up shots (condor eggs, popcorn): x, y, vx, vy per shot.
+  drops: number[];
+  dropKind: ProjectileKind;
 };
 
 function loadPlayer(player: Player, view: PlayerView) {
@@ -185,6 +201,13 @@ export class Battle {
   private openingSeat: OpeningSeat = "host";
   private openingIndex = 0;
   private matchOriginTurn = 0;
+  // Match modes, set before the players join.
+  lives: number = ARENA.lives;
+  tide = false;
+  roulette = false;
+  blastScale = 1;
+  private drops: number[] = [];
+  private dropKind: ProjectileKind = "egg";
 
   snapshot(): BattleSnapshot {
     const controlled: number[] = [];
@@ -218,6 +241,12 @@ export class Battle {
       openingIndex: this.openingIndex,
       matchOriginTurn: this.matchOriginTurn,
       windSeed: this.windSeed,
+      lives: this.lives,
+      tide: this.tide,
+      roulette: this.roulette,
+      blastScale: this.blastScale,
+      drops: this.drops.slice(),
+      dropKind: this.dropKind,
     };
   }
 
@@ -265,6 +294,9 @@ export class Battle {
     state.winner = view.winner;
     state.finishReason = view.finishReason;
     state.openingSeat = view.openingSeat;
+    state.maxLives = view.maxLives;
+    state.water = view.water;
+    state.gravity = view.gravity;
     const volley = snap.volley;
     this.volley = volley
       ? {
@@ -293,6 +325,12 @@ export class Battle {
     this.openingIndex = snap.openingIndex;
     this.matchOriginTurn = snap.matchOriginTurn;
     this.windSeed = snap.windSeed;
+    this.lives = snap.lives;
+    this.tide = snap.tide;
+    this.roulette = snap.roulette;
+    this.blastScale = snap.blastScale;
+    this.drops = snap.drops.slice();
+    this.dropKind = snap.dropKind;
   }
 
   constructor(
@@ -425,7 +463,7 @@ export class Battle {
       player.selectedWeapon = "rocket";
       player.abilityArmed = false;
       player.hp = 100;
-      player.lives = ARENA.lives;
+      player.lives = this.lives;
       player.vy = 0;
       player.vx = 0;
       player.abilityReadyTurn = 0;
@@ -441,6 +479,8 @@ export class Battle {
     this.state.finishReason = "";
     this.state.projectile.active = false;
     this.state.roundNumber = 0;
+    this.state.water = this.state.worldHeight + 1000;
+    this.drops = [];
     this.windSeed = (this.windSeed + 1) >>> 0;
     this.beginMatch(this.clockNow());
     return null;
@@ -469,6 +509,8 @@ export class Battle {
     }
     setAppearance(player, defaultAppearance(player.number));
     if (options) setAppearance(player, options);
+    player.lives = this.lives;
+    this.state.maxLives = this.lives;
     resetMovement(player);
     this.state.players.push(player);
     if (this.state.players.length === 2) this.beginMatch(this.clockNow());
@@ -511,6 +553,8 @@ export class Battle {
       player.abilityArmed = true;
     } else {
       if (!isWeapon(selection)) return "Invalid weapon selection";
+      if (this.roulette && selection !== player.selectedWeapon)
+        return "The roulette picked your weapon";
       player.selectedWeapon = selection;
       player.abilityArmed = false;
     }
@@ -544,7 +588,10 @@ export class Battle {
         direction: dcos(payload.angle) >= 0 ? 1 : -1,
       });
     const projectile = this.state.projectile;
-    const kind = payload.weapon ?? player.selectedWeapon;
+    const kind =
+      this.roulette || payload.weapon === undefined
+        ? player.selectedWeapon
+        : payload.weapon;
     player.selectedWeapon = kind;
     player.abilityArmed = false;
     if (this.state.terrainRows.length || kind !== "rocket")
@@ -574,6 +621,7 @@ export class Battle {
       });
     }
     this.state.lastAction = kind;
+    this.drops = [];
     projectile.active = true;
     this.state.phase = "flying";
     this.state.remainingMs = 0;
@@ -605,6 +653,7 @@ export class Battle {
     }
     if (this.state.phase === "exploding") {
       if (now + EPSILON >= this.explosionDeadline && !this.settleKnockouts()) {
+        if (this.continueDrops(now)) return;
         if (this.continueVolley(now)) return;
         if (
           this.state.terrainRows.length &&
@@ -692,6 +741,7 @@ export class Battle {
     for (const player of this.controlledMotion) player.vx = 0;
     this.controlledMotion.clear();
     this.volley = null;
+    this.drops = [];
     // Tools persist per seat; aimed powers must be armed again on a new turn.
     for (const player of this.state.players) {
       player.abilityArmed = false;
@@ -702,9 +752,26 @@ export class Battle {
     this.state.turnNumber++;
     // Rounds are turn pairs from the opening seat so wind stays fair.
     const turnInMatch = this.state.turnNumber - this.matchOriginTurn;
-    if ((turnInMatch - 1) % 2 === 0) this.state.roundNumber++;
+    if ((turnInMatch - 1) % 2 === 0) {
+      this.state.roundNumber++;
+      if (this.tide && this.state.roundNumber >= TIDE.round)
+        this.state.water = Math.max(
+          this.state.worldHeight * TIDE.floor,
+          this.state.worldHeight -
+            (this.state.roundNumber - TIDE.round + 1) * TIDE.step,
+        );
+    }
     this.state.wind = windForTurn(this.state.mapId, turnInMatch, this.windSeed);
     resetMovement(this.state.players[index]);
+    if (this.roulette) {
+      // Both seats get the same tool in a round, so the draw stays fair.
+      let h = Math.imul(this.windSeed ^ 0x9e3779b9, 0x85ebca6b);
+      h = Math.imul(h ^ (this.state.roundNumber * 0xc2b2ae35), 0x27d4eb2f);
+      h ^= h >>> 15;
+      const player = this.state.players[index];
+      player.selectedWeapon =
+        ROULETTE_WEAPONS[(h >>> 0) % ROULETTE_WEAPONS.length];
+    }
     this.moveSequence = 0;
     this.moveAt = -Infinity;
     this.state.remainingMs = ARENA.turnMs;
@@ -723,6 +790,12 @@ export class Battle {
     if (this.state.terrainRows.length)
       worldBodyStep(this.state, this.state.players, this.controlledMotion);
     else settlePlayers(this.state.players, this.state.terrain);
+    for (const player of this.state.players)
+      if (player.hp > 0 && player.y > this.state.water) {
+        player.hp = 0;
+        player.vx = 0;
+        player.vy = 0;
+      }
   }
 
   private physicsStep(now: number) {
@@ -736,6 +809,16 @@ export class Battle {
     const impact = advanceShot(flight, this.state, this.state.players, shooter);
     loadShot(shot, flight);
     this.flightMs += ARENA.stepMs;
+    // A boring drill carves its tunnel every third step.
+    if (
+      drilling(shot) &&
+      this.destructible &&
+      this.state.terrainRows.length &&
+      Math.round(shot.elapsedMs / ARENA.stepMs) % 3 === 0
+    ) {
+      eraseCircle(this.state.terrainRows, shot.x, shot.y, 16);
+      this.state.terrainRevision++;
+    }
     if (impact === "anchor") {
       shot.active = false;
       this.state.phase = "grappling";
@@ -942,18 +1025,41 @@ export class Battle {
     explosion.x = clamp(projectile.x, 0, this.state.worldWidth);
     explosion.y = projectile.y;
     this.state.phase = "exploding";
-    this.explosionDeadline = now + ARENA.explosionMs;
-    const weapon = PROJECTILES[projectile.kind];
-    explosion.radius = weapon.radius;
-    if (this.destructible && this.state.terrainRows.length) {
+    const kind = projectile.kind;
+    this.explosionDeadline = now + blastMsOf(kind, ARENA.explosionMs);
+    const weapon = PROJECTILES[kind];
+    const radius = weapon.radius * this.blastScale;
+    const knock = knockbackOf(kind);
+    // Tools that do not blow up still show a small puff where they landed.
+    explosion.radius = radius > 0 ? radius : 44;
+    if (
+      this.destructible &&
+      this.state.terrainRows.length &&
+      weapon.crater > 0
+    ) {
       eraseCircle(
         this.state.terrainRows,
         explosion.x,
         explosion.y,
-        weapon.crater,
+        weapon.crater * this.blastScale,
       );
       this.state.terrainRevision++;
     }
+    if (
+      kind === "totora" &&
+      this.state.terrainRows.length &&
+      buildSlab(
+        this.state.terrainRows,
+        explosion.x,
+        explosion.y,
+        120,
+        12,
+        this.state.players,
+      )
+    )
+      this.state.terrainRevision++;
+    if (kind === "condor") this.queueAirstrike(explosion.x);
+    if (kind === "choclo") this.queuePopcorn(explosion.x, explosion.y);
     for (const player of this.state.players) {
       // A blast near an ear or a foot counts like one at the old body circle's edge, and never for less than
       // the distance to the centre gave before silhouettes.
@@ -972,9 +1078,9 @@ export class Battle {
           explosion.y,
         ) + ARENA.playerRadius,
       );
-      if (distance >= weapon.radius) continue;
+      if (distance >= radius) continue;
       this.controlledMotion.delete(player);
-      const strength = 1 - distance / weapon.radius;
+      const strength = 1 - distance / radius;
       const incoming = Math.round(weapon.damage * strength);
       const absorbed = Math.min(player.shield, incoming);
       player.shield -= absorbed;
@@ -983,14 +1089,14 @@ export class Battle {
         : Math.max(0, player.hp - incoming + absorbed);
       const direction =
         Math.sign(player.x - explosion.x) || (player.number === 1 ? -1 : 1);
-      player.vy = -140 * strength;
+      player.vy = -140 * strength * knock;
       if (this.state.terrainRows.length) {
         moveHorizontal(
           this.state,
           player,
-          direction * ARENA.knockback * strength,
+          direction * ARENA.knockback * strength * knock,
         );
-        player.vx = direction * 100 * strength;
+        player.vx = direction * 100 * strength * knock;
         continue;
       }
       player.x = clamp(
@@ -1007,6 +1113,58 @@ export class Battle {
         explosion.y,
         ARENA.blastRadius * 0.55,
       );
+  }
+
+  // Three eggs fall from above the marked column, one after another.
+  private queueAirstrike(x: number) {
+    this.dropKind = "egg";
+    this.drops = [];
+    for (const offset of [-90, 0, 90])
+      this.drops.push(
+        clamp(x + offset, 8, this.state.worldWidth - 8),
+        -60,
+        0,
+        520,
+      );
+  }
+
+  // Five kernels pop up in a fan from where the cob burst.
+  private queuePopcorn(x: number, y: number) {
+    this.dropKind = "kernel";
+    this.drops = [];
+    for (let n = 0; n < 5; n++) {
+      const angle = -2.6 + n * 0.4;
+      this.drops.push(x, y - 6, dcos(angle) * 300, dsin(angle) * 300);
+    }
+  }
+
+  private continueDrops(now: number) {
+    if (this.drops.length < 4) return false;
+    const projectile = this.state.projectile;
+    const kind = this.dropKind;
+    loadShot(projectile, {
+      x: this.drops[0],
+      y: this.drops[1],
+      vx: this.drops[2],
+      vy: this.drops[3],
+      kind,
+      elapsedMs: 0,
+      bounces: 0,
+      stuck: false,
+      attachedPlayer: 0,
+      offsetX: 0,
+      offsetY: 0,
+    });
+    this.drops.splice(0, 4);
+    projectile.active = true;
+    this.state.lastAction = kind;
+    this.state.phase = "flying";
+    this.state.remainingMs = 0;
+    this.accumulator = 0;
+    this.bodyAccumulator = 0;
+    this.flightMs = 0;
+    this.flightDeadline = now + PROJECTILES[kind].fuse;
+    return true;
   }
 
   private separatePlayers() {
@@ -1065,6 +1223,7 @@ export class Battle {
         this.state,
         spawn ? spawn[0] : player.x,
         foe && foe.hp > 0 ? foe.x : -1,
+        this.state.water - ARENA.playerRadius - 4,
       );
       player.x = at.x;
       player.y = at.y;

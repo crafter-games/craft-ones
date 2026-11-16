@@ -64,6 +64,71 @@ export const WEAPONS = {
     fuse: 2000,
     bounce: 0.18,
   },
+  choclo: {
+    name: "Choclo cluster",
+    description: "Pops on impact · five kernels scatter",
+    icon: "choclo",
+    minSpeed: 220,
+    maxSpeed: 880,
+    gravity: 1,
+    radius: 70,
+    damage: 20,
+    crater: 40,
+    fuse: 8000,
+    bounce: 0,
+  },
+  condor: {
+    name: "Condor strike",
+    description: "Marks a spot · a condor drops three eggs",
+    icon: "condor",
+    minSpeed: 240,
+    maxSpeed: 960,
+    gravity: 1,
+    radius: 0,
+    damage: 0,
+    crater: 0,
+    fuse: 8000,
+    bounce: 0,
+  },
+  drill: {
+    name: "Huaca drill",
+    description: "Bores through rock · blows 1.4 s in",
+    icon: "drill",
+    minSpeed: 300,
+    maxSpeed: 1000,
+    gravity: 0.8,
+    radius: 110,
+    damage: 50,
+    crater: 70,
+    fuse: 8000,
+    bounce: 0,
+  },
+  spit: {
+    name: "Llama spit",
+    description: "Barely hurts · shoves them off the edge",
+    icon: "spit",
+    minSpeed: 520,
+    maxSpeed: 1300,
+    gravity: 0.35,
+    radius: 120,
+    damage: 10,
+    crater: 0,
+    fuse: 6000,
+    bounce: 0,
+  },
+  totora: {
+    name: "Totora bridge",
+    description: "Builds a reed slab where it lands",
+    icon: "totora",
+    minSpeed: 200,
+    maxSpeed: 900,
+    gravity: 1,
+    radius: 0,
+    damage: 0,
+    crater: 0,
+    fuse: 8000,
+    bounce: 0,
+  },
   grapple: {
     name: "Grapple",
     description: "Pull to terrain · spends turn",
@@ -282,7 +347,35 @@ export const ABILITY_PROJECTILES = {
     bounce: 0,
   },
 } as const;
-export type ProjectileKind = WeaponId | keyof typeof ABILITY_PROJECTILES;
+// What some weapons turn into on impact; never fired directly.
+export const SUB_PROJECTILES = {
+  egg: {
+    name: "Condor egg",
+    minSpeed: 0,
+    maxSpeed: 0,
+    gravity: 1,
+    radius: 95,
+    damage: 34,
+    crater: 56,
+    fuse: 8000,
+    bounce: 0,
+  },
+  kernel: {
+    name: "Popcorn",
+    minSpeed: 0,
+    maxSpeed: 0,
+    gravity: 1,
+    radius: 58,
+    damage: 15,
+    crater: 28,
+    fuse: 900,
+    bounce: 0,
+  },
+} as const;
+export type ProjectileKind =
+  | WeaponId
+  | keyof typeof ABILITY_PROJECTILES
+  | keyof typeof SUB_PROJECTILES;
 // The physics every projectile shares; WEAPONS adds UI copy on top.
 export type ProjectileSpec = {
   name: string;
@@ -298,7 +391,28 @@ export type ProjectileSpec = {
 export const PROJECTILES: Record<ProjectileKind, ProjectileSpec> = {
   ...WEAPONS,
   ...ABILITY_PROJECTILES,
+  ...SUB_PROJECTILES,
 };
+// How hard a blast throws critters, relative to a rocket's.
+export function knockbackOf(kind: ProjectileKind) {
+  return kind === "spit" ? 3.2 : 1;
+}
+// How long the explosion holds play before the next thing happens, in ms.
+export function blastMsOf(kind: ProjectileKind, base: number) {
+  return kind === "kernel" ? 160 : kind === "choclo" ? 260 : base;
+}
+// Weapons the roulette mode hands out: every tool that hurts.
+export const ROULETTE_WEAPONS: WeaponId[] = [
+  "rocket",
+  "grenade",
+  "sticky",
+  "mortar",
+  "dynamite",
+  "choclo",
+  "condor",
+  "drill",
+  "spit",
+];
 export function abilityProjectile(
   species: Species,
 ): keyof typeof ABILITY_PROJECTILES | null {

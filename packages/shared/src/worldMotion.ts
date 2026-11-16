@@ -81,8 +81,9 @@ export function worldBodyStep(
       syncMovement(player);
       if (room < 0.001) player.vx = 0;
     }
-    const dy = player.vy * dt + 0.5 * ARENA.gravity * dt * dt;
-    player.vy += ARENA.gravity * dt;
+    const g = ARENA.gravity * (world.gravity ?? 1);
+    const dy = player.vy * dt + 0.5 * g * dt * dt;
+    player.vy += g * dt;
     const steps = Math.max(1, Math.ceil(Math.abs(dy) / 2));
     for (let i = 0; i < steps; i++) {
       const y = player.y + dy / steps;

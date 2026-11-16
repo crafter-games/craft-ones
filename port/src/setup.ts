@@ -13,7 +13,7 @@ import {
   WORLD_WIDTH,
 } from "../../packages/shared/src";
 import { avatarKey, plates } from "./identity";
-import { DEFAULT_OPTIONS, type MatchOptions } from "./match";
+import { DEFAULT_OPTIONS, LIFE_CHOICES, type MatchOptions } from "./match";
 import {
   art,
   avatar,
@@ -30,6 +30,7 @@ type Row =
   | "one-coat"
   | "two-species"
   | "two-coat"
+  | "rules"
   | "start";
 type Seat = "one" | "two";
 // Plain arrays, not tuples: scriptc (native and iOS) lowers neither tuple loops nor tuple indexing.
@@ -39,6 +40,7 @@ const ROWS: Row[] = [
   "one-coat",
   "two-species",
   "two-coat",
+  "rules",
   "start",
 ];
 const SEATS: Seat[] = ["one", "two"];
@@ -61,6 +63,9 @@ export interface Setup {
   waiting: string;
   // This device's control scheme (controls.ts): "sling" or "aim". The chip under START switches it.
   controls: string;
+  // Whether this player may change the rules row, and which rule chip the keyboard is on.
+  editRules: boolean;
+  rule: number;
 }
 
 export type SetupKey = "up" | "down" | "left" | "right" | "confirm";
@@ -77,21 +82,26 @@ export function createSetup(
     editOne: true,
     editTwo: true,
     title: "CRAFT ONES",
-    subtitle: "Nine critters, six tools and a power, fifteen-second turns.",
+    subtitle: "Nine critters, eleven tools and a power, fifteen-second turns.",
     startLabel: "START DUEL",
     tags: ["", ""],
     waiting: "",
     controls: "sling",
+    editRules: true,
+    rule: 0,
   };
 }
 
 const editable = (setup: Setup, row: Row): boolean =>
   row === "start" ||
+  (row === "rules" && setup.editRules) ||
   (row === "map"
     ? setup.editMap
     : row === "one-species" || row === "one-coat"
       ? setup.editOne
-      : setup.editTwo);
+      : row === "rules"
+        ? false
+        : setup.editTwo);
 
 // Layout shared by drawing and pointer hit tests.
 const PREVIEW = { w: 520, y: 130 };
@@ -128,6 +138,72 @@ function rowBands(W: number): { row: Row; x: number; y: number; w: number }[] {
   return bands;
 }
 
+// The rules row between the seats and the buttons: lives, then the modes, which combine.
+export const RULES = ["lives", "tide", "roulette", "moon", "bigBoom"] as const;
+// Switches, not Record reads: a missing key aborts the native builds.
+export function ruleHint(id: string): string {
+  switch (id) {
+    case "lives":
+      return "Knockouts a critter can take";
+    case "tide":
+      return "The water rises from round 8";
+    case "roulette":
+      return "A random tool each round, same for both";
+    case "moon":
+      return "Low gravity, long flights";
+    default:
+      return "Every blast is 60% bigger";
+  }
+}
+const RULE_CHIP = { w: 116, h: 30, gap: 10 };
+const rulesY = (H: number): number => H - 196;
+export function ruleChips(
+  W: number,
+  H: number,
+): { id: string; x: number; y: number; w: number; h: number }[] {
+  const total = RULES.length * RULE_CHIP.w + (RULES.length - 1) * RULE_CHIP.gap;
+  return RULES.map((id, n) => ({
+    id,
+    x: W / 2 - total / 2 + n * (RULE_CHIP.w + RULE_CHIP.gap),
+    y: rulesY(H),
+    w: RULE_CHIP.w,
+    h: RULE_CHIP.h,
+  }));
+}
+export function ruleLabel(o: MatchOptions, id: string): string {
+  switch (id) {
+    case "lives":
+      return `${o.lives} ${o.lives === 1 ? "LIFE" : "LIVES"}`;
+    case "tide":
+      return "TIDE";
+    case "roulette":
+      return "ROULETTE";
+    case "moon":
+      return "MOON";
+    default:
+      return "BIG BOOM";
+  }
+}
+export function ruleOn(o: MatchOptions, id: string): boolean {
+  return id === "tide"
+    ? o.tide
+    : id === "roulette"
+      ? o.roulette
+      : id === "moon"
+        ? o.moon
+        : id === "bigBoom"
+          ? o.bigBoom
+          : true;
+}
+// Lives cycle 1, 3, 5; a mode flips.
+function toggleRule(o: MatchOptions, id: string, step: number): void {
+  if (id === "lives") o.lives = cycle(LIFE_CHOICES, o.lives, step);
+  else if (id === "tide") o.tide = !o.tide;
+  else if (id === "roulette") o.roulette = !o.roulette;
+  else if (id === "moon") o.moon = !o.moon;
+  else if (id === "bigBoom") o.bigBoom = !o.bigBoom;
+}
+
 // The control scheme chip under the buttons.
 const CHIP = { w: 340, h: 26 };
 const chipY = (H: number): number => H - 70;
@@ -159,6 +235,16 @@ export function tap(
     return null;
   }
   if (setup.waiting !== "") return null;
+  if (setup.editRules)
+    for (let n = 0; n < RULES.length; n++) {
+      const c = ruleChips(W, H)[n];
+      if (x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h) {
+        setup.row = ROWS.indexOf("rules");
+        setup.rule = n;
+        toggleRule(setup.options, c.id, 1);
+        return null;
+      }
+    }
   for (const b of buttons(setup, W, H))
     if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h)
       return {
@@ -216,6 +302,10 @@ export function press(setup: Setup, key: SetupKey): MatchOptions | null {
       if (editable(setup, ROWS[setup.row])) break;
     }
   }
+  if (key === "confirm" && ROWS[setup.row] === "rules") {
+    toggleRule(setup.options, RULES[setup.rule], 1);
+    return null;
+  }
   if (key === "confirm") {
     // Confirming on any other row jumps to START, so Enter twice always begins.
     if (ROWS[setup.row] === "start") return structuredClone(setup.options);
@@ -242,6 +332,9 @@ export function press(setup: Setup, key: SetupKey): MatchOptions | null {
       step,
     );
   if (row === "two-coat") o.two.coat = cycle(COAT_IDS, o.two.coat, step);
+  // On the rules row the arrows walk the chips; confirm (or a tap) flips one.
+  if (row === "rules")
+    setup.rule = (setup.rule + step + RULES.length) % RULES.length;
   return null;
 }
 
@@ -440,6 +533,44 @@ export function renderSetup(
       rowColor(`${seat}-coat`),
     );
   }
+  // Rules.
+  const onRules = ROWS[setup.row] === "rules";
+  const chips = ruleChips(W, H);
+  for (let n = 0; n < chips.length; n++) {
+    const c = chips[n];
+    const on = ruleOn(o, c.id);
+    const focused = onRules && setup.rule === n;
+    fillRound(
+      d,
+      c.x,
+      c.y,
+      c.w,
+      c.h,
+      8,
+      on ? "rgba(255,197,49,0.24)" : HUD.glass,
+    );
+    if (focused) strokeRound(d, c.x, c.y, c.w, c.h, 8, HUD.gold, 2);
+    label(
+      d,
+      ruleLabel(o, c.id),
+      c.x + c.w / 2,
+      c.y + c.h / 2,
+      "12px Archivo Black",
+      !setup.editRules ? HUD.dim : on ? HUD.gold : HUD.cream,
+    );
+  }
+  label(
+    d,
+    onRules
+      ? ruleHint(RULES[setup.rule])
+      : setup.editRules
+        ? "Rules: tap a chip to switch it"
+        : "Rules",
+    W / 2,
+    rulesY(H) - 14,
+    "10px Archivo Black",
+    HUD.dim,
+  );
   const start = ROWS[setup.row] === "start";
   for (const b of buttons(setup, W, H)) {
     const lit = b.id === "start" ? start : false;
