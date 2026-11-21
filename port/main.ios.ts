@@ -42,6 +42,7 @@ export function init(base: string): void {
     platform.audio,
     read,
     platform.sound,
+    platform.track,
     base,
   );
   const renderer = createRenderer(platform.gpu, WINDOW);

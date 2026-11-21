@@ -9,6 +9,7 @@ import {
   type BattleView,
   COATS,
   SELECTABLE_SPECIES,
+  WORLD_MAPS,
 } from "../packages/shared/src";
 import { loadSpeakers, type Speakers } from "./src/audio";
 import { createControls } from "./src/controls";
@@ -23,6 +24,7 @@ import {
   view,
   WINDOW,
 } from "./src/match";
+import { createPauseMenu, drawPauseButton } from "./src/pause";
 import {
   createRenderer,
   loadArt,
@@ -57,6 +59,7 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
     speakers = s;
   });
   const controls = createControls(input, WINDOW.width, WINDOW.height);
+  const pause = createPauseMenu(input);
   let simulated = -1;
   return (time: number): boolean => {
     draw.begin();
@@ -90,37 +93,65 @@ await run(WINDOW, ({ gpu, input, audio }: Platform): Frame => {
         });
       }
       renderSetup(setup, draw, WINDOW.width, WINDOW.height);
+      if (speakers) speakers.music("menu", false);
       simulated = -1;
     } else if (ready && match) {
-      if (
-        match.battle.state.phase === "finished" &&
-        (setupInput.tapped([Key.Escape]) || controls.menu())
-      )
-        match = null;
+      const over = match.battle.state.phase === "finished";
+      if (over) {
+        pause.open = false;
+        if (setupInput.tapped([Key.Escape]) || controls.menu()) match = null;
+      } else if (pause.open) {
+        controls.disarm();
+        const action = pause.poll(WINDOW.width, WINDOW.height, speakers, true);
+        if (action === "menu") {
+          match = null;
+          heard = null;
+        }
+      } else if (pause.checkButton(WINDOW.width, WINDOW.height)) {
+        controls.disarm();
+      }
     }
     if (ready && match) {
-      if (simulated < 0) simulated = time;
-      for (let n = 0; simulated + STEP <= time && n < 5; n++) {
-        const bits = controls.bits(match);
-        const inputs = [0, 0];
-        const seat = seatOf(match);
-        if (seat >= 0) inputs[seat] = bits;
-        // R and M work for both seats; the rest only for the seat with the turn.
-        inputs[1 - Math.max(0, seat)] |= bits & (Bit.Restart | Bit.Map);
-        const listener = match.battle.state.currentPlayer;
-        step(match, inputs);
-        const now = view(match);
-        if (speakers) {
-          speakers.hear(heard, now, listener);
-          speakers.charge(
-            seat >= 0 ? power01(match.charge[seat]) : 0,
-            match.frame,
-          );
+      const over = match.battle.state.phase === "finished";
+      if (pause.open) {
+        simulated = -1;
+      } else {
+        if (simulated < 0) simulated = time;
+        for (let n = 0; simulated + STEP <= time && n < 5; n++) {
+          const bits = controls.bits(match);
+          const inputs = [0, 0];
+          const seat = seatOf(match);
+          if (seat >= 0) inputs[seat] = bits;
+          // R and M work for both seats; the rest only for the seat with the turn.
+          inputs[1 - Math.max(0, seat)] |= bits & (Bit.Restart | Bit.Map);
+          const listener = match.battle.state.currentPlayer;
+          step(match, inputs);
+          const now = view(match);
+          if (speakers) {
+            speakers.hear(heard, now, listener);
+            speakers.charge(
+              seat >= 0 ? power01(match.charge[seat]) : 0,
+              match.frame,
+            );
+          }
+          heard = now;
+          simulated += STEP;
         }
-        heard = now;
-        simulated += STEP;
       }
+      if (speakers) speakers.music(match.lineup.map, over);
       renderer.render(match, draw, controls.touched(), controls.preview());
+      if (!over) {
+        if (pause.open)
+          pause.render(
+            draw,
+            WINDOW.width,
+            WINDOW.height,
+            speakers,
+            WORLD_MAPS[match.lineup.map].name,
+            true,
+          );
+        else drawPauseButton(draw, WINDOW.width);
+      }
     }
     draw.end({ r: 0, g: 0, b: 0 });
     return true;

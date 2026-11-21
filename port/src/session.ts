@@ -5,7 +5,7 @@ import type { Draw2D } from "dotframe/src/draw2d";
 import { type Input, Key } from "dotframe/src/input";
 import { createRollback, NOBODY, type Rollback } from "dotframe/src/netplay";
 import type { Probe } from "dotframe/src/probe";
-import type { BattleView } from "../../packages/shared/src";
+import { type BattleView, WORLD_MAPS } from "../../packages/shared/src";
 import type { Speakers } from "./audio";
 import { createControls } from "./controls";
 import { avatarPath, displayName, type People, plates } from "./identity";
@@ -28,6 +28,7 @@ import {
   WINDOW,
 } from "./match";
 import type { OnlineLink } from "./online";
+import { createPauseMenu, drawPauseButton } from "./pause";
 import {
   drawBanner,
   drawDrag,
@@ -106,6 +107,7 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
   setup.controls = o.scheme === "aim" ? "aim" : "sling";
   const setupInput = createSetupInput(input);
   const controls = createControls(input, WINDOW.width, WINDOW.height);
+  const pause = createPauseMenu(input);
   let scheme = o.scheme === "aim" ? "aim" : "sling";
   controls.setScheme(scheme);
   // Every setup-like screen shows this device's scheme; a change on any of them applies at once and is kept.
@@ -318,6 +320,11 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
     return words;
   };
   const finish = (): boolean => {
+    const sp = o.speakers();
+    if (sp) {
+      if (!match) sp.music("menu", false);
+      else sp.music(match.lineup.map, match.battle.state.phase === "finished");
+    }
     draw.end({ r: 0, g: 0, b: 0 });
     return true;
   };
@@ -577,9 +584,43 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
     }
     const m: Match = match;
     const over = m.battle.state.phase === "finished";
+    if (over || viewer) pause.open = false;
     if (rematch && !over) {
       rematch = null;
       rematchReady = false;
+    }
+    if (!over && !o.mashing && !viewer) {
+      if (pause.open) {
+        controls.disarm();
+        const action = pause.poll(W, H, o.speakers(), !link);
+        if (action === "menu") {
+          recordReplay(m, battleFrom);
+          match = null;
+          heard = null;
+          return finish();
+        }
+        if (pause.open && !link) {
+          simulated = -1;
+          o.render(
+            m,
+            draw,
+            controls.touched(),
+            controls.preview(),
+            controls.last(seatOf(m)),
+          );
+          pause.render(
+            draw,
+            W,
+            H,
+            o.speakers(),
+            WORLD_MAPS[m.lineup.map].name,
+            true,
+          );
+          return finish();
+        }
+      } else if (pause.checkButton(W, H)) {
+        controls.disarm();
+      }
     }
     if (over && !saved) {
       recordReplay(m, battleFrom);
@@ -628,7 +669,11 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
         ? rematchWords(m, controls.bits(m))
         : [0, 0];
     for (let n = 0; simulated + STEP <= time && n < 5; n++) {
-      const bits = o.mashing ? o.masher() : over ? 0 : controls.bits(m);
+      const bits = o.mashing
+        ? o.masher()
+        : over || pause.open
+          ? 0
+          : controls.bits(m);
       const seat = seatOf(m);
       const listener = m.battle.state.currentPlayer;
       if (rollback) {
@@ -667,8 +712,20 @@ export function createSession(o: SessionOptions): (time: number) => boolean {
       controls.last(seatOf(m)),
     );
     const pull = controls.drag();
-    if (pull.active && !over)
+    if (pull.active && !over && !pause.open)
       drawDrag(draw, pull.fromX, pull.fromY, pull.toX, pull.toY, pull.power);
+    if (!over && !o.mashing && !viewer) {
+      if (pause.open)
+        pause.render(
+          draw,
+          W,
+          H,
+          o.speakers(),
+          WORLD_MAPS[m.lineup.map].name,
+          !link,
+        );
+      else drawPauseButton(draw, W);
+    }
     if (rematch) renderSetup(rematch, draw, W, H);
     const r = rollback;
     if (link && r) {
