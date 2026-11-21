@@ -265,57 +265,57 @@ const SFX_SPECS: Record<string, SfxSpec> = {
 const MUSIC_SPECS: Record<string, MusicSpec> = {
   menu: {
     prompt:
-      "Upbeat, bouncy, catchy instrumental retro-modern video game lobby and character select background music. Playful marimba, bright brass stabs, cheerful chiptune synth lead melody, groovy slap bass, crisp tight drums, 128 BPM. Repetitive catchy arcade loop feel, cheerful and energetic without vocals, designed to loop seamlessly in the background of a colorful 2D critter battle game.",
+      "Super playful, nostalgic late-90s 64-bit console party brawler character-select screen music, instrumental only. Punchy upbeat brass fanfare stabs, bouncy funky slap bass, bright cheerful synth lead melody, lively xylophone runs, crisp energetic arcade drum groove, 134 BPM. Joyful, cheeky, catchy repetitive video game lobby loop, pure fun, no vocals.",
     lengthMs: 30000,
   },
   andes: {
     prompt:
-      "Bright, uplifting instrumental video game stage background music for a sunlit mountain valley with hanging gardens and stone arches. Cheerful pan flute and charango-inspired plucked melody blended with playful retro-modern chiptune synth lead, crisp light upbeat percussion, 126 BPM. Repetitive catchy platformer loop, warm breezy high-altitude adventure vibe, no vocals.",
+      "Playful, heroic late-90s 64-bit console arena fighter stage music set in a sunny Andean mountain valley, instrumental only. Bouncy bright brass hits and cheerful pan-flute lead trading catchy hooks with retro console synths, groovy walking slap bass, upbeat crisp drums and playful marimba accents, 138 BPM. Nostalgic joyful adventure brawler loop, no vocals.",
     lengthMs: 30000,
   },
   coast: {
     prompt:
-      "Warm, sun-drenched instrumental arcade video game stage background music for wind-carved coastal sandstone cliffs and caves. Groovy acoustic-meets-synth guitar riff, playful marimba, bouncy upbeat surf-adventure rhythm, crisp drums, 130 BPM. Repetitive catchy video game loop, sunny golden canyon energy, no vocals.",
+      "Super playful, sunny late-90s console party brawler beach-canyon stage music, instrumental only. Catchy surf-rock guitar riff, cheerful punchy horn section, bouncy funky slap bass, lively marimba and bright retro synth melody, crisp upbeat drums, 140 BPM. Joyful nostalgic arcade arena loop full of energy, no vocals.",
     lengthMs: 30000,
   },
   canopy: {
     prompt:
-      "Playful, bouncy instrumental treetop jungle platformer video game background music. Lively congas, woodblock, bright marimba, cheerful wooden flute and chiptune lead melody, groovy upbeat bassline, 132 BPM. Repetitive catchy tropical canopy adventure loop, joyful and rhythmic, no vocals.",
+      "Quirky, hyper-playful late-90s 64-bit console jungle-treetop brawler stage music, instrumental only. Bouncy marimba and xylophone lead melody, lively congas and woodblock groove, funky slap bass, cheeky brass stabs and bright retro synth hooks, 142 BPM. Fun mischievous classic console platform-fighter loop, no vocals.",
     lengthMs: 30000,
   },
   caldera: {
     prompt:
-      "Energetic, fiery instrumental volcanic crater arcade arena video game background music. Driving punchy drums, bold playful brass stabs, heroic retro-modern synth lead melody, rhythmic bassline, 140 BPM. Repetitive catchy boss-stage game loop, exciting molten adventure vibe without being harsh, no vocals.",
+      "Exciting yet playful late-90s console arena fighter volcano-stage music, instrumental only. Heroic punchy brass fanfares, fast groovy electric bass, bright retro-arcade synth guitar lead, energetic driving drums and playful timpani accents, 146 BPM. Classic nostalgic cartoon boss-arena energy, upbeat and fun rather than dark, no vocals.",
     lengthMs: 30000,
   },
   totora: {
     prompt:
-      "Relaxed yet upbeat instrumental lakeside reed-village video game background music. Warm wooden marimba, gentle kalimba, bouncy light bassline, playful soft percussion, cheerful sunlit water reflections vibe, 118 BPM. Repetitive catchy cozy adventure game loop, breezy and pleasant, no vocals.",
+      "Cheerful, bouncy late-90s console party brawler lakeside-village stage music, instrumental only. Playful wooden marimba and bright whistle-synth melody, groovy upbeat bassline, light jazzy brass pops, crisp bouncy snare and shaker groove, 132 BPM. Sunny, whimsical, catchy classic video game stage loop, no vocals.",
     lengthMs: 30000,
   },
   saltglass: {
     prompt:
-      "Shimmering, crystalline, dreamy yet upbeat instrumental video game stage background music for white salt flats and crystal arches. Sparkling bell synths, arpeggiated glassy chimes, crisp light electronic beat, warm airy pad, 124 BPM. Repetitive catchy sky-mirror platformer loop, bright ethereal atmosphere, no vocals.",
+      "Sparkling, playful late-90s 64-bit console sky-palace brawler stage music, instrumental only. Bright shimmering bell synths and cheerful glockenspiel arpeggios over a groovy funky bassline, crisp upbeat arcade drums, soaring joyful brass and synth lead hook, 136 BPM. Dreamy yet super fun nostalgic fighter stage loop, no vocals.",
     lengthMs: 30000,
   },
   huaca: {
     prompt:
-      "Playful, mysterious nocturnal ancient-temple instrumental video game background music for moonlit adobe ruins. Sneaky groovy pizzicato bassline, mystical wooden flute, warm plucked strings, crisp rhythmic hand percussion, 122 BPM. Repetitive catchy moonlit ruins game loop, magical and intriguing, no vocals.",
+      "Cheeky, playful late-90s console haunted-temple party brawler stage music, instrumental only. Mischievous bouncy pizzicato bass, playful staccato brass and xylophone melody, quirky retro organ and flute hooks, crisp upbeat groovy drums, 134 BPM. Fun cartoon moonlit ruins adventure vibe, lighthearted and catchy, no vocals.",
     lengthMs: 30000,
   },
   frost: {
     prompt:
-      "Crisp, sparkling winter snow-stage instrumental video game background music for glacier halls and snow bridges. Bright glockenspiel and icy celesta melody, subtle sleigh bells, bouncy cheerful upbeat bass and light drums, 126 BPM. Repetitive catchy playful winter platformer loop, cozy and lively, no vocals.",
+      "Joyful, super playful late-90s console snow-level party brawler stage music, instrumental only. Sparkling glockenspiel and bright celesta melody, cheerful brass stabs, jingling sleigh bells, bouncy funky bassline and lively upbeat arcade drums, 138 BPM. Cozy, festive, nostalgic winter platform-fighter loop, no vocals.",
     lengthMs: 30000,
   },
   loom: {
     prompt:
-      "Dramatic, electric sky-storm instrumental video game arena background music for floating woven islands above thunder clouds. Energetic synth arpeggios, punchy crisp snare groove, soaring heroic chiptune-brass lead melody, 138 BPM. Repetitive catchy sky-battle game loop, exhilarating adventure vibe, no vocals.",
+      "High-spirited, playful late-90s console sky-arena fighter stage music, instrumental only. Heroic soaring synth-brass melody, fast sparkling retro arpeggios, funky driving slap bass, punchy energetic arcade drums and triumphant horn hits, 144 BPM. Exhilarating nostalgic cartoon brawler showdown loop, joyful and catchy, no vocals.",
     lengthMs: 30000,
   },
   harbor: {
     prompt:
-      "Jaunty, upbeat steampunk-harbor sea-shanty instrumental video game background music for timber docks and towering cranes. Cheerful accordion and bright brass melody, rhythmic ticking clockwork percussion, bouncy lively bassline, 130 BPM. Repetitive catchy dockside adventure game loop, playful and spirited, no vocals.",
+      "Rollicking, super playful late-90s console harbor-docks party brawler stage music, instrumental only. Jaunty accordion and punchy brass sea-shanty melody, bouncy tuba-meets-slap-bass groove, crisp lively drums and whimsical clockwork xylophone ticks, 140 BPM. Cheeky, energetic classic console arena loop, no vocals.",
     lengthMs: 30000,
   },
 };
@@ -332,14 +332,17 @@ const onlyNames = onlyArg
   ? new Set(onlyArg.slice("--only=".length).split(",").filter(Boolean))
   : null;
 const force = args.has("--force");
+const loopOnly = args.has("--loop-only");
 const runSfx =
-  args.has("--sfx") ||
-  (!args.has("--music") && !onlyNames) ||
-  Boolean(onlyNames);
+  !loopOnly &&
+  (args.has("--sfx") ||
+    (!args.has("--music") && !onlyNames) ||
+    Boolean(onlyNames));
 const runMusic =
-  args.has("--music") ||
-  (!args.has("--sfx") && !onlyNames) ||
-  Boolean(onlyNames);
+  !loopOnly &&
+  (args.has("--music") ||
+    (!args.has("--sfx") && !onlyNames) ||
+    Boolean(onlyNames));
 
 const sfxDir = join(import.meta.dir, "../assets/sfx");
 const musicDir = join(import.meta.dir, "../assets/music");
@@ -415,6 +418,51 @@ async function generateSfx(name: string, spec: SfxSpec): Promise<void> {
   console.log(`[sfx] generated ${name}.mp3 (${sizeKb} KB)`);
 }
 
+async function makeSeamlessLoop(
+  inPath: string,
+  outPath: string,
+): Promise<void> {
+  const skip = 1.0;
+  const loopLen = 24.0;
+  const xfade = 2.5;
+  const tailStart = skip + loopLen;
+  const filter = [
+    `[0:a]atrim=start=${skip}:duration=${xfade},asetpts=PTS-STARTPTS,afade=t=in:st=0:d=${xfade}:curve=qsin[bhead]`,
+    `[0:a]atrim=start=${skip + xfade}:duration=${loopLen - xfade},asetpts=PTS-STARTPTS[brest]`,
+    `[0:a]atrim=start=${tailStart}:duration=${xfade},asetpts=PTS-STARTPTS,afade=t=out:st=0:d=${xfade}:curve=qsin[tail]`,
+    "[bhead][tail]amix=inputs=2:duration=shortest:normalize=0[seam]",
+    "[seam][brest]concat=n=2:v=0:a=1[out]",
+  ].join(";");
+  const tmpPath = `${outPath}.loop.mp3`;
+  const proc = Bun.spawn(
+    [
+      "ffmpeg",
+      "-y",
+      "-loglevel",
+      "error",
+      "-i",
+      inPath,
+      "-filter_complex",
+      filter,
+      "-map",
+      "[out]",
+      "-codec:a",
+      "libmp3lame",
+      "-b:a",
+      "128k",
+      tmpPath,
+    ],
+    { stderr: "pipe" },
+  );
+  const code = await proc.exited;
+  if (code !== 0) {
+    const err = await new Response(proc.stderr).text();
+    throw new Error(`ffmpeg loop failed for ${outPath}: ${err}`);
+  }
+  await Bun.write(outPath, Bun.file(tmpPath));
+  await unlink(tmpPath).catch(() => undefined);
+}
+
 async function generateMusic(name: string, spec: MusicSpec): Promise<void> {
   const outPath = join(musicDir, `${name}.mp3`);
   if (!force && existsSync(outPath)) {
@@ -442,9 +490,12 @@ async function generateMusic(name: string, spec: MusicSpec): Promise<void> {
     const body = await res.text();
     throw new Error(`Music ${name} failed (${res.status}): ${body}`);
   }
-  await Bun.write(outPath, await res.arrayBuffer());
+  const rawPath = join(musicDir, `.${name}.raw.mp3`);
+  await Bun.write(rawPath, await res.arrayBuffer());
+  await makeSeamlessLoop(rawPath, outPath);
+  await unlink(rawPath).catch(() => undefined);
   const sizeKb = Math.round(Bun.file(outPath).size / 1024);
-  console.log(`[music] generated ${name}.mp3 (${sizeKb} KB)`);
+  console.log(`[music] generated seamless loop ${name}.mp3 (${sizeKb} KB)`);
 }
 
 async function runPool<T>(
@@ -478,6 +529,18 @@ if (runMusic) {
     ([name]) => !onlyNames || onlyNames.has(name),
   );
   await runPool(entries, 2, ([name, spec]) => generateMusic(name, spec));
+}
+
+if (loopOnly) {
+  const entries = Object.keys(MUSIC_SPECS).filter(
+    (name) => !onlyNames || onlyNames.has(name),
+  );
+  await runPool(entries, 4, async (name) => {
+    const path = join(musicDir, `${name}.mp3`);
+    await makeSeamlessLoop(path, path);
+    const sizeKb = Math.round(Bun.file(path).size / 1024);
+    console.log(`[music] seamless-looped ${name}.mp3 (${sizeKb} KB)`);
+  });
 }
 
 console.log("Done generating ElevenLabs audio.");
